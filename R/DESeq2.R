@@ -1,5 +1,5 @@
 #' Create an interactive Shiny app for DESeq2 results exploration
-#' @import shiny
+#' @rawNamespace import(shiny, except = c(dataTableOutput, renderDataTable))
 #' @import DESeq2
 #' @import InteractiveComplexHeatmap
 #' @import ComplexHeatmap
@@ -143,7 +143,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       }
     })
 
-    output[["res_table"]] <- DT::renderDT({
+    output[["res_table"]] <- DT::renderDataTable({
       # Adjust output table columns based on results table.
       if ("svalue" %in% colnames(res)) {
         third <- "svalue"
@@ -210,7 +210,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       }
     })
 
-    output[["res_table"]] <- DT::renderDT({
+    output[["res_table"]] <- DT::renderDataTable({
       # Adjust output table columns based on results table.
       if ("svalue" %in% colnames(res)) {
         third <- "svalue"
@@ -250,7 +250,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
              plotOutput("volcano_plot", click = "volcano_plot_click"),
              htmlOutput("volcano_plot_selected"),
              h3("Result table of the selected genes"),
-             DT::DTOutput("res_table")
+             DT::dataTableOutput("res_table")
       )
     )
   )
