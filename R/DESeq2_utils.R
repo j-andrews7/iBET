@@ -1,5 +1,5 @@
 # Make the heatmap for differentially expressed genes under certain cutoffs.
-.make_heatmap <- function(mat, res, anno, bm_col_func, lgc_col_func, fdr = 0.05, base_mean = 0, log2fc = 0, row_km = 0) {
+.make_heatmap <- function(mat, res, anno, bm_col_func, lfc_col_func, fdr = 0.05, base_mean = 0, log2fc = 0, row_km = 0) {
 
   # Adjust for potential differences in the results table.
   sig.term <- "padj"
@@ -26,9 +26,9 @@
                 column_title = paste0(sum(l), " significant genes with ", sig.term," < ", fdr),
                 show_row_dend = FALSE) +
     Heatmap(log10(res$baseMean[l]+1), show_row_names = FALSE, width = unit(5, "mm"),
-            name = "log10(baseMean+1)", col = baseMean_col_fun, show_column_names = FALSE) +
+            name = "log10(baseMean+1)", col = bm_col_func, show_column_names = FALSE) +
     Heatmap(res$log2FoldChange[l], show_row_names = FALSE, width = unit(5, "mm"),
-            name = "log2FoldChange", col = log2fc_col_fun, show_column_names = FALSE)
+            name = "log2FoldChange", col = lfc_col_func, show_column_names = FALSE)
   ht <- draw(ht, merge_legend = TRUE)
   ht
 }
