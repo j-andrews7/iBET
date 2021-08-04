@@ -25,4 +25,5 @@ Imports: DESeq2,
     SummarizedExperiment,
     graphics,
     grDevices,
-    stats
+    stats,
+    apeglm
