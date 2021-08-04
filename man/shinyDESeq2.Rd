@@ -11,7 +11,8 @@ shinyDESeq2(
   annot.by = NULL,
   use.lfcShrink = TRUE,
   lfcThreshold = 0,
-  use.vst = TRUE
+  use.vst = TRUE,
+  h.id = "ht1"
 )
 }
 \arguments{
@@ -37,6 +38,9 @@ Ignored if \code{res} is not \code{NULL}.}
 \item{use.vst}{Boolean indicating whether \code{\link[DESeq2]{vst}} transformed counts should be used for heatmap generation (recommended). If \code{FALSE},
 normalized counts will be used. The variance stabilizing transformation helps to reduce increased variance seen for low counts in log space.
 This generally results in a better looking heatmap with fewer outliers.}
+
+\item{h.id}{String indicating unique ID for interactive heatmaps.
+Required if multiple apps are run within the same Rmd file.}
 }
 \value{
 A Shiny app containing an InteractiveComplexHeatmap, MAplot, and volcano plot that are interconnected.

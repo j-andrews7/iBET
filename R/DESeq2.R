@@ -28,6 +28,8 @@
 #' @param use.vst Boolean indicating whether \code{\link[DESeq2]{vst}} transformed counts should be used for heatmap generation (recommended). If \code{FALSE},
 #'   normalized counts will be used. The variance stabilizing transformation helps to reduce increased variance seen for low counts in log space.
 #'   This generally results in a better looking heatmap with fewer outliers.
+#' @param h.id String indicating unique ID for interactive heatmaps.
+#'   Required if multiple apps are run within the same Rmd file.
 #'
 #' @return A Shiny app containing an InteractiveComplexHeatmap, MAplot, and volcano plot that are interconnected.
 #'
@@ -38,7 +40,7 @@
 #' @author Jared Andrews, based heavily on code by Zuguang Gu.
 #' @export
 shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
-                        use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE) {
+                        use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE, h.id = "ht1") {
 
   # If gene dispersions not yet calculated, calculate them.
   if(is.null(body(dds@dispersionFunction))) {
@@ -230,27 +232,26 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     fluidRow(
       column(width = 4,
         h3("Differential heatmap"),
-        originalHeatmapOutput("ht_deseq2", height = 600, containment = TRUE)
+        originalHeatmapOutput(h.id, height = 600, containment = TRUE)
       ),
       column(width = 4,
         id = "column2",
         h3("Sub-heatmap"),
-        subHeatmapOutput("ht_deseq2", title = NULL, containment = TRUE),
+        subHeatmapOutput(h.id, title = NULL, containment = TRUE),
         h3(title = "Output"),
-        HeatmapInfoOutput("ht_deseq2", title = NULL)
+        HeatmapInfoOutput(h.id, title = NULL),
+        h3("Result table of the selected genes"),
+        DT::dataTableOutput("res_table")
       ),
       column(width = 4,
-             h3("MA-plot"),
-             p("Click on the highlighted point to see its related information."),
-             plotOutput("ma_plot", click = "ma_plot_click"),
-             htmlOutput("ma_plot_selected"),
-
-             h3("Volcano plot"),
-             p("Click on the highlighted point to see its related information."),
-             plotOutput("volcano_plot", click = "volcano_plot_click"),
-             htmlOutput("volcano_plot_selected"),
-             h3("Result table of the selected genes"),
-             DT::dataTableOutput("res_table")
+        h3("MA-plot"),
+        p("Click on the highlighted point to see its related information."),
+        plotOutput("ma_plot", click = "ma_plot_click", height = "350px"),
+        htmlOutput("ma_plot_selected"),
+        h3("Volcano plot"),
+        p("Click on the highlighted point to see its related information."),
+        plotOutput("volcano_plot", click = "volcano_plot_click", height = "350px"),
+        htmlOutput("volcano_plot_selected"),
       )
     )
   )
@@ -283,11 +284,11 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       dev.off()
 
       if(!is.null(ht)) {
-        makeInteractiveComplexHeatmap(input, output, session, ht, "ht_deseq2",
+        makeInteractiveComplexHeatmap(input, output, session, ht, h.id,
                                       brush_action = .brush_action, click_action = .click_action)
       } else {
         # The ID for the heatmap plot is encoded as @{heatmap_id}_heatmap, thus, it is ht_heatmap here.
-        output$ht_deseq2_heatmap <- renderPlot({
+        output[[paste0(h.id, "_heatmap")]] <- renderPlot({
           grid.newpage()
           grid.text("No row exists after filtering.")
         })
