@@ -19,7 +19,7 @@ shinyDESeq2(
 \item{dds}{A \code{\link[DESeq2]{DESeqDataSet}} object.}
 
 \item{res}{The object returned by \code{\link[DESeq2]{results}} or \code{\link[DESeq2]{lfcShrink}} (recommended).
-If not provided, it will be generated from the \code{dds} object via \code{\link[DESeq2]{lfcShrink}} and \code{coef}..}
+If not provided, it will be generated from the \code{dds} object via \code{\link[DESeq2]{lfcShrink}} and \code{coef}.}
 
 \item{coef}{A string indicating the coefficient name for which results will be generated.
 If not provided and \code{res} is \code{NULL}, the first non-intercept coefficient

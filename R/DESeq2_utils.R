@@ -35,6 +35,12 @@
 
 .make_maplot <- function(res, ylim, highlight = NULL) {
 
+  # Adjust for potential differences in the results table.
+  sig.term <- "padj"
+  if("svalue" %in% colnames(res)) {
+    sig.term <- "svalue"
+  }
+
   col <- rep("#00000020", nrow(res))
   cex <- rep(0.5, nrow(res))
   names(col) <- rownames(res)
@@ -43,23 +49,28 @@
     col[highlight] = "red"
     cex[highlight] = 1
   }
-  x <- res$baseMean
-  y <- res$log2FoldChange
-  y[y > ylim] <- ylim
-  y[y < -ylim] <- -ylim
-  col[col == "red" & y < 0] <- "darkgreen"
-  par(mar = c(4, 4, 1, 1))
+  res$x <- res$baseMean
+  res$y <- res$log2FoldChange
+  sh <- ifelse(res$log2FoldChange > ylim, 2, ifelse(res$log2FoldChange < -ylim, 6, 16))
+  res$y[res$y > ylim] <- ylim
+  res$y[res$y < -ylim] <- -ylim
+  col[col == "red" & res$log2FoldChange < 0] <- "darkgreen"
+  res$Gene <- rownames(res)
 
-  suppressWarnings(
-    plot(x, y, col = col,
-         pch = ifelse(res$log2FoldChange > ylim, 2, ifelse(res$log2FoldChange < -ylim, 6, 16)),
-         cex = cex, log = "x",
-         xlab = "baseMean", ylab = "log2 fold change")
-  )
+  res$hover.string <- paste("</br><b>Gene:</b> ", res$Gene,
+                            "</br><b>log2 Fold Change:</b> ", format(round(res$log2FoldChange, 4), nsmall = 4),
+                            "</br><b>", sig.term, ":</b> ", format(round(res[[sig.term]], 4), nsmall = 4),
+                            "</br><b>baseMean (avg. Expression):</b> ", format(round(res$baseMean, 2), nsmall = 2))
+
+  ggplotly(
+    ggplot(as.data.frame(res), aes(x, y, text = hover.string)) + geom_point(col = col,
+      shape = sh, size = cex) + xlab("baseMean") + ylab("log2 fold change") +
+      ylim(-ylim, ylim) + scale_x_log10() + theme_bw(), tooltip = c("text")
+  ) %>% toWebGL()
 }
 
 # make the volcano plot with some genes highlighted
-.make_volcano <- function(res, highlight = NULL) {
+.make_volcano <- function(res, xlim, ylim, highlight = NULL) {
 
   # Adjust for potential differences in the results table.
   sig.term <- "padj"
@@ -67,8 +78,6 @@
     sig.term <- "svalue"
   }
 
-  max.lfc <- max(abs(res$log2FoldChange)) + 0.2
-  xlim <- c(-max.lfc, max.lfc)
   col <- rep("#00000020", nrow(res))
   cex <- rep(0.5, nrow(res))
   names(col) <- rownames(res)
@@ -77,21 +86,34 @@
     col[highlight] <- "red"
     cex[highlight] <- 1
   }
-  x <- res$log2FoldChange
-  y <- -log10(res[[sig.term]])
-  ylim <- c(0, max(y[!is.infinite(y) & !is.na(y)]))
-  y[is.infinite(y)] <- max(y[!is.infinite(y) & !is.na(y)]) + 1
-  col[col == "red" & x < 0] <- "darkgreen"
-  par(mar = c(4, 4, 1, 1))
+  res$x <- res$log2FoldChange
+  res$y <- -log10(res[[sig.term]])
+  #sh <- ifelse(res$y > ylim, 2, ifelse(res$x < -xlim, 60, ifelse(res$x > xlim, 62, 16)))
+  sh <- ifelse(res$y > ylim, "triangle-up-open",
+               ifelse(res$x < -xlim, "triangle-left-open",
+                      ifelse(res$x > xlim, "triangle-right-open", 16)))
 
-  suppressWarnings(
-    plot(x, y, col = col,
-         pch = ifelse(y > max(ylim), 2, 16),
-         cex = cex,
-         xlab = "log2 fold change", ylab = paste0("-log10(", sig.term,")"),
-         xlim = xlim,
-         ylim = ylim)
-  )
+  res$y[res$y > ylim] <- ylim
+  res$x[res$x > xlim] <- xlim
+  res$x[res$x < -xlim] <- -xlim
+  ylim <- c(0, ylim)
+
+  col[col == "red" & res$x < 0] <- "darkgreen"
+
+  res$Gene <- rownames(res)
+
+  res$hover.string <- paste("</br><b>Gene:</b> ", res$Gene,
+                            "</br><b>log2 Fold Change:</b> ", format(round(res$log2FoldChange, 4), nsmall = 4),
+                            "</br><b>", sig.term, ":</b> ", format(round(res[[sig.term]], 6), nsmall = 6),
+                            "</br><b>baseMean (avg. Expression):</b> ", format(round(res$baseMean, 2), nsmall = 2))
+
+  ggplotly(
+    ggplot(as.data.frame(res), aes(res$x, res$y, text = hover.string)) +
+      geom_point(col = col, shape = sh, size = cex) +
+      xlab("log2 fold change") + ylab(paste0("-log10(", sig.term,")")) +
+      xlim(-xlim, xlim) + ylim(ylim) +
+      theme_bw(), tooltip = c("text")
+  ) %>% toWebGL()
 }
 
 # Determine columns in results table and adjust output appropriately.

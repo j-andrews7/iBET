@@ -11,10 +11,12 @@
 #' @importFrom grDevices dev.off pdf
 #' @importFrom graphics par
 #' @importFrom stats quantile
+#' @importFrom plotly ggplotly plotlyOutput renderPlotly toWebGL
+#' @import ggplot2
 #'
 #' @param dds A \code{\link[DESeq2]{DESeqDataSet}} object.
 #' @param res The object returned by \code{\link[DESeq2]{results}} or \code{\link[DESeq2]{lfcShrink}} (recommended).
-#'   If not provided, it will be generated from the \code{dds} object via \code{\link[DESeq2]{lfcShrink}} and \code{coef}..
+#'   If not provided, it will be generated from the \code{dds} object via \code{\link[DESeq2]{lfcShrink}} and \code{coef}.
 #' @param coef A string indicating the coefficient name for which results will be generated.
 #'   If not provided and \code{res} is \code{NULL}, the first non-intercept coefficient
 #'   provided by \code{\link[DESeq2]{resultsNames}} will be used.
@@ -95,54 +97,12 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     row_index <- unique(unlist(df$row_index))
     selected <- env$row_index[row_index]
 
-    output[["ma_plot"]] <- renderPlot({
+    output[["ma_plot"]] <- renderPlotly({
       .make_maplot(res = res, ylim = input$ma.y, highlight = selected)
     })
 
-    output[["ma_plot_selected"]] <- renderUI({
-      req(input$ma_plot_click)
-      res2 <- res
-      res2$index <- 1:nrow(res2)
-      res2$log2FoldChange[res2$log2FoldChange > input$ma.y] <- input$ma.y
-      res2$log2FoldChange[res2$log2FoldChange < -input$ma.y] <- -input$ma.y
-      df <- nearPoints(res2, input$ma_plot_click, xvar = "baseMean", yvar = "log2FoldChange")
-      df <- df[df$index %in% selected, , drop = FALSE]
-      if(nrow(df) == 0) {
-        return(NULL)
-      } else {
-        df <- res[df$index, , drop = FALSE]
-        gene <- rownames(df)
-        HTML(qq(.make_gene_output(df)))
-      }
-    })
-
-    output[["volcano_plot"]] <- renderPlot({
-      .make_volcano(res, selected)
-    })
-
-    output[["volcano_plot_selected"]] <- renderUI({
-      req(input$volcano_plot_click)
-      res2 <- res
-
-      # Adjust for potential differences in the results table.
-      sig.term <- "padj"
-      if("svalue" %in% colnames(res2)) {
-        sig.term <- "svalue"
-      }
-
-      res2$index <- 1:nrow(res2)
-      res2[[paste0("log", sig.term)]] <- -log10(res2[[sig.term]])
-      res2[[paste0("log", sig.term)]][is.infinite(res2[[paste0("log", sig.term)]])] <- max(res2[[paste0("log", sig.term)]][!is.infinite(res2[[paste0("log", sig.term)]])])
-
-      df <- nearPoints(res2, input$volcano_plot_click, xvar = "log2FoldChange", yvar = paste0("log", sig.term))
-      df <- df[df$index %in% selected, , drop = FALSE]
-      if(nrow(df) == 0) {
-        return(NULL)
-      } else {
-        df <- res[df$index, , drop = FALSE]
-        gene <- rownames(df)
-        HTML(qq(.make_gene_output(df)))
-      }
+    output[["volcano_plot"]] <- renderPlotly({
+      .make_volcano(res = res,xlim = input$vol.x, ylim = input$vol.y, highlight = selected)
     })
 
     output[["res_table"]] <- DT::renderDataTable({
@@ -161,55 +121,12 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     row_index <- unique(unlist(df$row_index))
     selected <- env$row_index[row_index]
 
-    output[["ma_plot"]] <- renderPlot({
+    output[["ma_plot"]] <- renderPlotly({
       .make_maplot(res = res, ylim = input$ma.y, highlight = selected)
     })
 
-    output[["ma_plot_selected"]] <- renderUI({
-      req(input$ma_plot_click)
-      res2 <- res
-      res2$index <- 1:nrow(res2)
-      res2$log2FoldChange[res2$log2FoldChange > input$ma.y] <- input$ma.y
-      res2$log2FoldChange[res2$log2FoldChange < -input$ma.y] <- -input$ma.y
-      df <- nearPoints(res2, input$ma_plot_click, xvar = "baseMean", yvar = "log2FoldChange")
-      df <- df[df$index %in% selected, , drop = FALSE]
-      if(nrow(df) == 0) {
-        return(NULL)
-      } else {
-        df <- res[df$index, , drop = FALSE]
-        gene <- rownames(df)
-        HTML(qq(.make_gene_output(df)))
-      }
-    })
-
-    output[["volcano_plot"]] <- renderPlot({
-      .make_volcano(res, selected)
-    })
-
-    output[["volcano_plot_selected"]] <- renderUI({
-      req(input$volcano_plot_click)
-      res2 <- res
-
-      # Adjust for potential differences in the results table.
-      sig.term <- "padj"
-      if("svalue" %in% colnames(res2)) {
-        sig.term <- "svalue"
-      }
-
-      res2$index <- 1:nrow(res2)
-      res2[[paste0("log", sig.term)]] <- -log10(res2[[sig.term]])
-      browser()
-      # Replace infinite values with just more than the max.
-      res2[[paste0("log", sig.term)]][is.infinite(res2[[paste0("log", sig.term)]])] <- max(res2[[paste0("log", sig.term)]][!is.infinite(res2[[paste0("log", sig.term)]])])
-      df <- nearPoints(res2, input$volcano_plot_click, xvar = "log2FoldChange", yvar = paste0("log", sig.term))
-      df <- df[df$index %in% selected, , drop = FALSE]
-      if(nrow(df) == 0) {
-        return(NULL)
-      } else {
-        df <- res[df$index, , drop = FALSE]
-        gene <- rownames(df)
-        HTML(qq(.make_gene_output(df)))
-      }
+    output[["volcano_plot"]] <- renderPlotly({
+      .make_volcano(res = res,xlim = input$vol.x, ylim = input$vol.y, highlight = selected)
     })
 
     output[["res_table"]] <- DT::renderDataTable({
@@ -220,7 +137,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
         third <- "padj"
       }
 
-      DT::formatRound(DT::datatable(as.data.frame(res[selected, c("baseMean", "log2FoldChange", third)]), rownames = TRUE), columns = 1:3, digits = 3)
+      DT::formatRound(DT::datatable(as.data.frame(res[selected, c("baseMean", "log2FoldChange", third)]),
+                                    rownames = TRUE), columns = 1:3, digits = 5)
     })
   }
 
@@ -232,25 +150,23 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     fluidRow(
       column(width = 4,
         h3("Differential heatmap"),
-        originalHeatmapOutput(h.id, height = 600, containment = TRUE)
+        originalHeatmapOutput(h.id, height = 600, width = 300, containment = TRUE)
       ),
       column(width = 4,
         id = "column2",
         h3("Sub-heatmap"),
-        subHeatmapOutput(h.id, title = NULL, containment = TRUE),
+        subHeatmapOutput(h.id, title = NULL, width = 300, containment = TRUE),
         h3(title = "Output"),
-        HeatmapInfoOutput(h.id, title = NULL),
+        HeatmapInfoOutput(h.id, title = NULL, width = 300),
         h3("Result table of the selected genes"),
         DT::dataTableOutput("res_table")
       ),
       column(width = 4,
         h3("MA-plot"),
-        p("Click on the highlighted point to see its related information."),
-        plotOutput("ma_plot", click = "ma_plot_click", height = "350px"),
+        plotlyOutput("ma_plot", height = "350px", width = "300px"),
         htmlOutput("ma_plot_selected"),
         h3("Volcano plot"),
-        p("Click on the highlighted point to see its related information."),
-        plotOutput("volcano_plot", click = "volcano_plot_click", height = "350px"),
+        plotlyOutput("volcano_plot", height = "350px", width = "300px"),
         htmlOutput("volcano_plot_selected"),
       )
     )
@@ -262,11 +178,13 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       sidebarPanel(width = 2,
         tags$label(HTML(qq("Comparison: <code style='font-weight:normal;'>@{paste(coef, collapse = ' ')}</code>")), class = "shiny-input-container", style = "font-size:1.2em;"),
         hr(style="margin:2px;"),
-        numericInput("fdr", label = "Cutoff for FDRs:", value = 0.05, step = 0.001, min = 0.0001),
+        numericInput("fdr", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
         numericInput("base_mean", label = "Minimal base mean:", value = 0, step = 1),
         numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
         numericInput("km", label = "Number of k-means groups. Set to 0 to suppress k-means clustering:", value = 2, step = 1),
         numericInput("ma.y", label = "MAplot y-axis limits:", value = 3, step = 0.1, min = 0.1),
+        numericInput("vol.x", label = "Volcano plot x-axis limits:", value = 3, step = 0.1, min = 0.1),
+        numericInput("vol.y", label = "Volcano plot y-axis limits:", value = 50, step = 0.5, min = 1),
         actionButton("filter", label = "Generate heatmap")
       ),
       body
@@ -276,7 +194,6 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
   # makeInteractiveComplexHeatmap() is put inside observeEvent() so that changes on the cutoffs can regenerate the heatmap.
   server <- function(input, output, session) {
     observeEvent(input$filter, {
-
       pdf(NULL)
       ht <- .make_heatmap(mat, res, anno, baseMean_col_fun, log2fc_col_fun,
                           fdr = as.numeric(input$fdr), base_mean = input$base_mean, log2fc = input$log2fc,
@@ -294,6 +211,14 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
         })
       }
     }, ignoreNULL = FALSE)
+
+    # observeEvent(c(input$ma.y), {
+    #   #selected <- env$row_index[row_index]
+    #   map <- debounce(.make_maplot(res = res, ylim = input$ma.y, highlight = NULL), 2000)
+    #   output[["ma_plot"]] <- renderPlotly({
+    #     map
+    #   })
+    # }, ignoreInit = TRUE)
   }
 
   shinyApp(ui, server)

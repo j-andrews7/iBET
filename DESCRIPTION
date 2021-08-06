@@ -26,4 +26,6 @@ Imports: DESeq2,
     graphics,
     grDevices,
     stats,
+    ggplot2,
+    plotly,
     apeglm
