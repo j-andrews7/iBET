@@ -63,7 +63,7 @@
                             "</br><b>baseMean (avg. Expression):</b> ", format(round(res$baseMean, 2), nsmall = 2))
 
   ggplotly(
-    ggplot(as.data.frame(res), aes(x, y, text = hover.string)) + geom_point(col = col,
+    ggplot(as.data.frame(res), aes_string(x, y, text = hover.string)) + geom_point(col = col,
       shape = sh, size = cex) + xlab("baseMean") + ylab("log2 fold change") +
       ylim(-ylim, ylim) + scale_x_log10() + theme_bw(), tooltip = c("text")
   ) %>% toWebGL()
@@ -108,7 +108,7 @@
                             "</br><b>baseMean (avg. Expression):</b> ", format(round(res$baseMean, 2), nsmall = 2))
 
   ggplotly(
-    ggplot(as.data.frame(res), aes(res$x, res$y, text = hover.string)) +
+    ggplot(as.data.frame(res), aes_string(x, y, text = hover.string)) +
       geom_point(col = col, shape = sh, size = cex) +
       xlab("log2 fold change") + ylab(paste0("-log10(", sig.term,")")) +
       xlim(-xlim, xlim) + ylim(ylim) +
