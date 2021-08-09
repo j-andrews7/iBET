@@ -13,7 +13,7 @@ shinyDESeq2(
   lfcThreshold = 0,
   use.vst = TRUE,
   h.id = "ht1",
-  height = 750
+  height = 800
 )
 }
 \arguments{

@@ -48,7 +48,7 @@
 #' @author Jared Andrews, based heavily on code by Zuguang Gu.
 #' @export
 shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
-                        use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE, h.id = "ht1", height = 750) {
+                        use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE, h.id = "ht1", height = 800) {
 
   # If gene dispersions not yet calculated, calculate them.
   if(is.null(body(dds@dispersionFunction))) {
@@ -215,7 +215,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       ),
       sidebarLayout(
         sidebarPanel(width = 2,
-          tags$label(HTML(qq("Comparison: <code style='font-weight:normal; font-size: 11px;'>@{paste(coef, collapse = ' ')}</code>")), class = "shiny-input-container", style = "font-size:1.2em;"),
+          tags$label(HTML(qq("Comparison: <code style='font-weight:normal; font-size: 10px;'>@{paste(coef, collapse = ' ')}</code>")), class = "shiny-input-container", style = "font-size:1.2em;"),
           hr(style="margin:2px; background-color: #737373;"),
           numericInput("fdr", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
           numericInput("base_mean", label = "Minimal base mean:", value = 0, step = 1),
@@ -237,7 +237,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                                  animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
                   prettyCheckbox("vol.sigline", label = "Show Volcano Signficance Threshold", value = TRUE,
                                  animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-                style = "font-size: 12px !important;")
+                style = "font-size: 10px !important;")
             )
           )
         ),
