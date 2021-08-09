@@ -37,6 +37,7 @@
 #'   This generally results in a better looking heatmap with fewer outliers.
 #' @param h.id String indicating unique ID for interactive heatmaps.
 #'   Required if multiple apps are run within the same Rmd file.
+#' @param height Number indicating height of app in pixels.
 #'
 #' @return A Shiny app containing an InteractiveComplexHeatmap, MAplot, and volcano plot that are interconnected.
 #'
@@ -47,7 +48,7 @@
 #' @author Jared Andrews, based heavily on code by Zuguang Gu.
 #' @export
 shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
-                        use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE, h.id = "ht1") {
+                        use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE, h.id = "ht1", height = 750) {
 
   # If gene dispersions not yet calculated, calculate them.
   if(is.null(body(dds@dispersionFunction))) {

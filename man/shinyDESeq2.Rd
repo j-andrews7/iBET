@@ -12,7 +12,8 @@ shinyDESeq2(
   use.lfcShrink = TRUE,
   lfcThreshold = 0,
   use.vst = TRUE,
-  h.id = "ht1"
+  h.id = "ht1",
+  height = 750
 )
 }
 \arguments{
@@ -41,6 +42,8 @@ This generally results in a better looking heatmap with fewer outliers.}
 
 \item{h.id}{String indicating unique ID for interactive heatmaps.
 Required if multiple apps are run within the same Rmd file.}
+
+\item{height}{Number indicating height of app in pixels.}
 }
 \value{
 A Shiny app containing an InteractiveComplexHeatmap, MAplot, and volcano plot that are interconnected.
