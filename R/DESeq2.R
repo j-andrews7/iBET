@@ -296,5 +296,5 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
 
   }
 
-  shinyApp(ui, server)
+  shinyApp(ui, server, options = list(height = height))
 }
