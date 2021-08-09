@@ -6,13 +6,18 @@
 #' @import DT
 #' @importFrom GetoptLong qq
 #' @import circlize
-#' @importFrom grid unit grid.newpage grid.text
+#' @importFrom grid unit grid.newpage grid.text gpar
 #' @importFrom SummarizedExperiment colData assay
 #' @importFrom grDevices dev.off pdf
 #' @importFrom graphics par
 #' @importFrom stats quantile
 #' @importFrom plotly ggplotly plotlyOutput renderPlotly toWebGL
 #' @import ggplot2
+#' @import shinydashboard
+#' @import dashboardthemes
+#' @importFrom shinyWidgets prettyCheckbox
+#' @importFrom shinycustomloader withLoader
+#' @importFrom shinyjqui jqui_resizable
 #'
 #' @param dds A \code{\link[DESeq2]{DESeqDataSet}} object.
 #' @param res The object returned by \code{\link[DESeq2]{results}} or \code{\link[DESeq2]{lfcShrink}} (recommended).
@@ -98,35 +103,14 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     selected <- env$row_index[row_index]
 
     output[["ma_plot"]] <- renderPlotly({
-      .make_maplot(res = res, ylim = input$ma.y, highlight = selected)
+      .make_maplot(res = res, ylim = input$ma.y, fc.thresh = input$log2fc,
+                   fc.lines = input$ma.fcline, highlight = selected)
     })
 
     output[["volcano_plot"]] <- renderPlotly({
-      .make_volcano(res = res,xlim = input$vol.x, ylim = input$vol.y, highlight = selected)
-    })
-
-    output[["res_table"]] <- DT::renderDataTable({
-      # Adjust output table columns based on results table.
-      if ("svalue" %in% colnames(res)) {
-        third <- "svalue"
-      } else {
-        third <- "padj"
-      }
-
-      DT::formatRound(DT::datatable(as.data.frame(res[selected, c("baseMean", "log2FoldChange", third)]), rownames = TRUE), columns = 1:3, digits = 3)
-    })
-  }
-
-  .click_action <- function(df, input, output, session) {
-    row_index <- unique(unlist(df$row_index))
-    selected <- env$row_index[row_index]
-
-    output[["ma_plot"]] <- renderPlotly({
-      .make_maplot(res = res, ylim = input$ma.y, highlight = selected)
-    })
-
-    output[["volcano_plot"]] <- renderPlotly({
-      .make_volcano(res = res,xlim = input$vol.x, ylim = input$vol.y, highlight = selected)
+      .make_volcano(res = res, xlim = input$vol.x, ylim = input$vol.y, fc.thresh = input$log2fc,
+                    fc.lines = input$vol.fcline, sig.thresh = input$fdr, sig.line = input$vol.sigline,
+                    highlight = selected)
     })
 
     output[["res_table"]] <- DT::renderDataTable({
@@ -138,61 +122,158 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       }
 
       DT::formatRound(DT::datatable(as.data.frame(res[selected, c("baseMean", "log2FoldChange", third)]),
-                                    rownames = TRUE), columns = 1:3, digits = 5)
+                                    rownames = TRUE, options = list(lengthMenu = c(5, 10, 25),
+                                                                    pageLength = 20)),
+                      columns = 1:3, digits = 5) %>%
+        DT::formatStyle(0, target = "row", lineHeight = '40%')
     })
   }
 
-  # The dashboard body contains three columns:
-  # 1. the original heatmap
-  # 2. the sub-heatmap and the default output
-  # 3. the self-defined output
+  .click_action <- function(df, input, output, session) {
+    row_index <- unique(unlist(df$row_index))
+    selected <- env$row_index[row_index]
+
+    output[["ma_plot"]] <- renderPlotly({
+      .make_maplot(res = res, ylim = input$ma.y, fc.thresh = input$log2fc,
+                   fc.lines = input$ma.fcline, highlight = selected)
+    })
+
+    output[["volcano_plot"]] <- renderPlotly({
+      .make_volcano(res = res, xlim = input$vol.x, ylim = input$vol.y, fc.thresh = input$log2fc,
+                    fc.lines = input$vol.fcline, sig.thresh = input$fdr, sig.line = input$vol.sigline,
+                    highlight = selected)
+    })
+
+    output[["res_table"]] <- DT::renderDataTable({
+      # Adjust output table columns based on results table.
+      if ("svalue" %in% colnames(res)) {
+        third <- "svalue"
+      } else {
+        third <- "padj"
+      }
+
+      DT::formatRound(DT::datatable(as.data.frame(res[selected, c("baseMean", "log2FoldChange", third)]),
+                                    rownames = TRUE, options = list(lengthMenu = c(5, 10, 25),
+                                                                  pageLength = 20)),
+                      columns = 1:3, digits = 5) %>%
+        DT::formatStyle(0, target = "row", lineHeight = '40%')
+    })
+  }
+
+
   body <- mainPanel(width = 10,
-    fluidRow(
-      column(width = 4,
-        h3("Differential heatmap"),
-        originalHeatmapOutput(h.id, height = 600, width = 300, containment = TRUE)
+    tabsetPanel(
+      tabPanel("Heatmap",
+        fluidRow(
+          column(width = 4,
+            h3("Differential heatmap"),
+            originalHeatmapOutput(h.id, height = 500, width = 300, containment = TRUE)
+          ),
+          column(width = 4,
+            id = "column2",
+            h3("Sub-heatmap"),
+            subHeatmapOutput(h.id, title = NULL, width = 300, containment = TRUE),
+            h3(title = "Output"),
+            HeatmapInfoOutput(h.id, title = NULL, width = 300),
+          ),
+          column(width = 4,
+                 h3("Results for the Selected Genes"),
+                 div(DT::dataTableOutput("res_table"), style = "font-size:80%")
+          )
+        )
       ),
-      column(width = 4,
-        id = "column2",
-        h3("Sub-heatmap"),
-        subHeatmapOutput(h.id, title = NULL, width = 300, containment = TRUE),
-        h3(title = "Output"),
-        HeatmapInfoOutput(h.id, title = NULL, width = 300),
-        h3("Result table of the selected genes"),
-        DT::dataTableOutput("res_table")
+      tabPanel("MA & Volcano Plots",
+        fluidRow(
+          column(width = 6,
+            h3("MA-plot"),
+            withLoader(jqui_resizable(plotlyOutput("ma_plot", height = "550px", width = "500px")),
+                       type = "html", loader = "dnaspin"),
+            htmlOutput("ma_plot_selected"),
+          ),
+          column(width = 6,
+            h3("Volcano plot"),
+            withLoader(jqui_resizable(plotlyOutput("volcano_plot", height = "550px", width = "500px")),
+                       type = "html", loader = "dnaspin"),
+            htmlOutput("volcano_plot_selected"),
+          )
+        )
       ),
-      column(width = 4,
-        h3("MA-plot"),
-        plotlyOutput("ma_plot", height = "350px", width = "300px"),
-        htmlOutput("ma_plot_selected"),
-        h3("Volcano plot"),
-        plotlyOutput("volcano_plot", height = "350px", width = "300px"),
-        htmlOutput("volcano_plot_selected"),
+      tabPanel("Full Results Table",
+        div(DT::dataTableOutput("res_table_full"), style = "font-size:80%; margin:10px;")
       )
     )
   )
 
   # Side bar contains settings for certain cutoffs to select significant genes.
-  ui <- fluidPage(
-    sidebarLayout(
-      sidebarPanel(width = 2,
-        tags$label(HTML(qq("Comparison: <code style='font-weight:normal;'>@{paste(coef, collapse = ' ')}</code>")), class = "shiny-input-container", style = "font-size:1.2em;"),
-        hr(style="margin:2px;"),
-        numericInput("fdr", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
-        numericInput("base_mean", label = "Minimal base mean:", value = 0, step = 1),
-        numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
-        numericInput("km", label = "Number of k-means groups. Set to 0 to suppress k-means clustering:", value = 2, step = 1),
-        numericInput("ma.y", label = "MAplot y-axis limits:", value = 3, step = 0.1, min = 0.1),
-        numericInput("vol.x", label = "Volcano plot x-axis limits:", value = 3, step = 0.1, min = 0.1),
-        numericInput("vol.y", label = "Volcano plot y-axis limits:", value = 50, step = 0.5, min = 1),
-        actionButton("filter", label = "Generate heatmap")
+  ui <- dashboardPage(
+    dashboardHeader(disable = TRUE),
+    dashboardSidebar(disable = TRUE),
+    dashboardBody(
+      shinyDashboardThemes(
+        theme = "onenote"
       ),
-      body
+      sidebarLayout(
+        sidebarPanel(width = 2,
+          tags$label(HTML(qq("Comparison: <code style='font-weight:normal; font-size: 11px;'>@{paste(coef, collapse = ' ')}</code>")), class = "shiny-input-container", style = "font-size:1.2em;"),
+          hr(style="margin:2px; background-color: #737373;"),
+          numericInput("fdr", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
+          numericInput("base_mean", label = "Minimal base mean:", value = 0, step = 1),
+          numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
+          numericInput("km", label = "Number of k-means groups. Set to 0 to suppress k-means clustering:", value = 2, step = 1),
+          actionButton("filter", label = "Generate heatmap"),
+
+          hr(style="margin:10px; background-color: #737373;"),
+          fluidRow(
+            box(collapsible = TRUE, collapsed = TRUE, title = "Additional Plot Controls", width = 12,
+                solidHeader = TRUE,
+                numericInput("ma.y", label = "MAplot y-axis limits:", value = 3, step = 0.1, min = 0.1),
+                numericInput("vol.x", label = "Volcano plot x-axis limits:", value = 3, step = 0.1, min = 0.1),
+                numericInput("vol.y", label = "Volcano plot y-axis limits:", value = 50, step = 0.5, min = 1),
+                div(
+                  prettyCheckbox("ma.fcline", label = "Show MAplot FC Threshold", value = TRUE,
+                                 animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
+                  prettyCheckbox("vol.fcline", label = "Show Volcano FC Threshold", value = TRUE,
+                                 animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
+                  prettyCheckbox("vol.sigline", label = "Show Volcano Signficance Threshold", value = TRUE,
+                                 animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
+                style = "font-size: 12px !important;")
+            )
+          )
+        ),
+        body
+      )
     )
   )
 
   # makeInteractiveComplexHeatmap() is put inside observeEvent() so that changes on the cutoffs can regenerate the heatmap.
   server <- function(input, output, session) {
+
+    output[["res_table_full"]] <- DT::renderDataTable({
+      df <- as.data.frame(res)
+
+      # Collect proper output columns..
+      if ("svalue" %in% colnames(res)) {
+        cnames <- "svalue"
+      } else if ("stat" %in% colnames(res)) {
+        cnames <- c("padj", "pvalue", "stat")
+      } else {
+        cnames <- c("padj", "pvalue")
+      }
+
+      df <- df[, c("baseMean", "log2FoldChange", "lfcSE", cnames)]
+
+      DT::formatRound(DT::datatable(df,
+                                    rownames = TRUE,
+                                    filter = "top",
+                                    extensions = c("Buttons"),
+                                    options = list(lengthMenu = c(5, 10, 25, 50),
+                                                   pageLength = 25,
+                                                   dom = 'Blfrtip',
+                                                   buttons = c('copy', 'csv', 'excel', 'pdf', 'print'))),
+                      columns = c("baseMean", "log2FoldChange", cnames), digits = 5) %>%
+        DT::formatStyle(1, target = "row", lineHeight = '40%')
+    })
+
     observeEvent(input$filter, {
       pdf(NULL)
       ht <- .make_heatmap(mat, res, anno, baseMean_col_fun, log2fc_col_fun,
@@ -212,13 +293,6 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       }
     }, ignoreNULL = FALSE)
 
-    # observeEvent(c(input$ma.y), {
-    #   #selected <- env$row_index[row_index]
-    #   map <- debounce(.make_maplot(res = res, ylim = input$ma.y, highlight = NULL), 2000)
-    #   output[["ma_plot"]] <- renderPlotly({
-    #     map
-    #   })
-    # }, ignoreInit = TRUE)
   }
 
   shinyApp(ui, server)

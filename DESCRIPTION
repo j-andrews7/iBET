@@ -28,4 +28,9 @@ Imports: DESeq2,
     stats,
     ggplot2,
     plotly,
-    apeglm
+    apeglm,
+    shinydashboard,
+    shinyWidgets,
+    dashboardthemes,
+    shinycustomloader,
+    shinyjqui

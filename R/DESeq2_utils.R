@@ -1,5 +1,6 @@
 # Make the heatmap for differentially expressed genes under certain cutoffs.
-.make_heatmap <- function(mat, res, anno, bm_col_func, lfc_col_func, fdr = 0.05, base_mean = 0, log2fc = 0, row_km = 0) {
+.make_heatmap <- function(mat, res, anno, bm_col_func, lfc_col_func,
+                          fdr = 0.05, base_mean = 0, log2fc = 0, row_km = 0) {
 
   # Adjust for potential differences in the results table.
   sig.term <- "padj"
@@ -23,7 +24,8 @@
   ht <- Heatmap(m, name = "z-score",
                 top_annotation = HeatmapAnnotation(df = anno),
                 show_row_names = FALSE, show_column_names = FALSE, row_km = row_km,
-                column_title = paste0(sum(l), " significant genes with ", sig.term," < ", fdr),
+                column_title_gp = gpar(fontsize = 10),
+                column_title = paste0(sum(l), " significant genes \nwith ", sig.term," < ", fdr),
                 show_row_dend = FALSE) +
     Heatmap(log10(res$baseMean[l]+1), show_row_names = FALSE, width = unit(5, "mm"),
             name = "log10(baseMean+1)", col = bm_col_func, show_column_names = FALSE) +
@@ -33,7 +35,8 @@
   ht
 }
 
-.make_maplot <- function(res, ylim, highlight = NULL) {
+
+.make_maplot <- function(res, ylim, fc.thresh, fc.lines, highlight = NULL) {
 
   # Adjust for potential differences in the results table.
   sig.term <- "padj"
@@ -41,20 +44,21 @@
     sig.term <- "svalue"
   }
 
-  col <- rep("#00000020", nrow(res))
-  cex <- rep(0.5, nrow(res))
-  names(col) <- rownames(res)
-  names(cex) <- rownames(res)
+  res$col <- rep("black", nrow(res))
+  res$cex <- rep(0.5, nrow(res))
+  res$order <- rep(0, nrow(res))
+
   if(!is.null(highlight)) {
-    col[highlight] = "red"
-    cex[highlight] = 1
+    res$col[highlight] = "red"
+    res$cex[highlight] = 1
+    res$order[highlight] <- 1
   }
   res$x <- res$baseMean
   res$y <- res$log2FoldChange
-  sh <- ifelse(res$log2FoldChange > ylim, 2, ifelse(res$log2FoldChange < -ylim, 6, 16))
+  res$sh <- ifelse(res$log2FoldChange > ylim, 2, ifelse(res$log2FoldChange < -ylim, 6, 16))
   res$y[res$y > ylim] <- ylim
   res$y[res$y < -ylim] <- -ylim
-  col[col == "red" & res$log2FoldChange < 0] <- "darkgreen"
+  res$col[res$col == "red" & res$log2FoldChange < 0] <- "darkgreen"
   res$Gene <- rownames(res)
 
   res$hover.string <- paste("</br><b>Gene:</b> ", res$Gene,
@@ -62,15 +66,31 @@
                             "</br><b>", sig.term, ":</b> ", format(round(res[[sig.term]], 4), nsmall = 4),
                             "</br><b>baseMean (avg. Expression):</b> ", format(round(res$baseMean, 2), nsmall = 2))
 
-  ggplotly(
-    ggplot(as.data.frame(res), aes_string(x, y, text = hover.string)) + geom_point(col = col,
-      shape = sh, size = cex) + xlab("baseMean") + ylab("log2 fold change") +
-      ylim(-ylim, ylim) + scale_x_log10() + theme_bw(), tooltip = c("text")
-  ) %>% toWebGL()
+  res <- as.data.frame(res)
+  res <- res[order(res$order),]
+
+  p <- ggplot(res, aes_string("x", "y", text = "hover.string")) +
+    geom_point(col = res$col, shape = res$sh, size = res$cex, alpha = 1) +
+    xlab("baseMean") + ylab("log2 fold change") +
+    ylim(-ylim, ylim) + scale_x_log10() +
+    theme(panel.background = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_rect(colour = "black", fill = NA, size = 0.2)) +
+    geom_hline(yintercept = 0, size = 0.2)
+
+  if (fc.thresh != 0 & fc.lines) {
+    p <- p + geom_hline(yintercept = fc.thresh, color = "blue", size = 0.2) +
+      geom_hline(yintercept = -fc.thresh, color = "blue", size = 0.2)
+  }
+
+  ggplotly(p, tooltip = c("text")) %>% toWebGL()
 }
 
+
 # make the volcano plot with some genes highlighted
-.make_volcano <- function(res, xlim, ylim, highlight = NULL) {
+.make_volcano <- function(res, xlim, ylim, fc.thresh, fc.lines,
+                          sig.thresh, sig.line, highlight = NULL) {
 
   # Adjust for potential differences in the results table.
   sig.term <- "padj"
@@ -78,18 +98,22 @@
     sig.term <- "svalue"
   }
 
-  col <- rep("#00000020", nrow(res))
-  cex <- rep(0.5, nrow(res))
-  names(col) <- rownames(res)
-  names(cex) <- rownames(res)
+  res$col <- rep("black", nrow(res))
+  res$cex <- rep(0.5, nrow(res))
+  res$order <- rep(0, nrow(res))
+
   if(!is.null(highlight)) {
-    col[highlight] <- "red"
-    cex[highlight] <- 1
+    res$col[highlight] <- "red"
+    res$cex[highlight] <- 1
+    res$order[highlight] <- 1
   }
+
   res$x <- res$log2FoldChange
   res$y <- -log10(res[[sig.term]])
-  #sh <- ifelse(res$y > ylim, 2, ifelse(res$x < -xlim, 60, ifelse(res$x > xlim, 62, 16)))
-  sh <- ifelse(res$y > ylim, "triangle-up-open",
+
+  res$col[res$y < -log10(sig.thresh)] <- "grey80"
+
+  res$sh <- ifelse(res$y > ylim, "triangle-up-open",
                ifelse(res$x < -xlim, "triangle-left-open",
                       ifelse(res$x > xlim, "triangle-right-open", 16)))
 
@@ -97,23 +121,36 @@
   res$x[res$x > xlim] <- xlim
   res$x[res$x < -xlim] <- -xlim
   ylim <- c(0, ylim)
-
-  col[col == "red" & res$x < 0] <- "darkgreen"
-
+  res$col[res$col == "red" & res$x < 0] <- "darkgreen"
   res$Gene <- rownames(res)
 
   res$hover.string <- paste("</br><b>Gene:</b> ", res$Gene,
                             "</br><b>log2 Fold Change:</b> ", format(round(res$log2FoldChange, 4), nsmall = 4),
                             "</br><b>", sig.term, ":</b> ", format(round(res[[sig.term]], 6), nsmall = 6),
                             "</br><b>baseMean (avg. Expression):</b> ", format(round(res$baseMean, 2), nsmall = 2))
+  res <- as.data.frame(res)
+  res <- res[order(res$order),]
 
-  ggplotly(
-    ggplot(as.data.frame(res), aes_string(x, y, text = hover.string)) +
-      geom_point(col = col, shape = sh, size = cex) +
-      xlab("log2 fold change") + ylab(paste0("-log10(", sig.term,")")) +
-      xlim(-xlim, xlim) + ylim(ylim) +
-      theme_bw(), tooltip = c("text")
-  ) %>% toWebGL()
+  p <- ggplot(res, aes_string("x", "y", text = "hover.string")) +
+    geom_point(col = res$col, shape = res$sh, size = res$cex, alpha = 1) +
+    xlab("log2 fold change") + ylab(paste0("-log10(", sig.term,")")) +
+    xlim(-xlim, xlim) + ylim(ylim) +
+    theme(panel.background = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_rect(colour = "black", fill = NA, size = 0.2)) +
+    geom_vline(xintercept = 0, size = 0.2, colour = "grey70")
+
+  if (fc.thresh != 0 & fc.lines) {
+    p <- p + geom_vline(xintercept = fc.thresh, color = "blue", size = 0.2) +
+      geom_vline(xintercept = -fc.thresh, color = "blue", size = 0.2)
+  }
+
+  if (sig.line) {
+    p <- p + geom_hline(yintercept = -log10(sig.thresh), color = "grey70", size = 0.2)
+  }
+
+  ggplotly(p, tooltip = c("text")) %>% toWebGL()
 }
 
 # Determine columns in results table and adjust output appropriately.
