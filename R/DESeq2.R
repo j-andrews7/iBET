@@ -38,6 +38,9 @@
 #' @param h.id String indicating unique ID for interactive heatmaps.
 #'   Required if multiple apps are run within the same Rmd file.
 #' @param height Number indicating height of app in pixels.
+#' @param return.elements Boolean indicating whether to return a list containing the UI and server elements of
+#'   the app rather than running the app directly. This is useful for running in with the 'shiny_prerendered'
+#'   runtime in Rmd notebooks.
 #'
 #' @return A Shiny app containing an InteractiveComplexHeatmap, MAplot, and volcano plot that are interconnected.
 #'
@@ -48,7 +51,8 @@
 #' @author Jared Andrews, based heavily on code by Zuguang Gu.
 #' @export
 shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
-                        use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE, h.id = "ht1", height = 800) {
+                        use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE, h.id = "ht1",
+                        height = 800, return.elements = FALSE) {
 
   # If gene dispersions not yet calculated, calculate them.
   if(is.null(body(dds@dispersionFunction))) {
@@ -296,5 +300,9 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
 
   }
 
-  shinyApp(ui, server, options = list(height = height))
+  if (return.elements) {
+    return(list(ui = ui, server = server))
+  } else {
+    shinyApp(ui, server, options = list(height = height))
+  }
 }
