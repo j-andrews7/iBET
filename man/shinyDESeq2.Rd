@@ -13,8 +13,7 @@ shinyDESeq2(
   lfcThreshold = 0,
   use.vst = TRUE,
   h.id = "ht1",
-  height = 800,
-  return.elements = FALSE
+  height = 800
 )
 }
 \arguments{
@@ -45,10 +44,6 @@ This generally results in a better looking heatmap with fewer outliers.}
 Required if multiple apps are run within the same Rmd file.}
 
 \item{height}{Number indicating height of app in pixels.}
-
-\item{return.elements}{Boolean indicating whether to return a list containing the UI and server elements of
-the app rather than running the app directly. This is useful for running in with the 'shiny_prerendered'
-runtime in Rmd notebooks.}
 }
 \value{
 A Shiny app containing an InteractiveComplexHeatmap, MAplot, and volcano plot that are interconnected.
