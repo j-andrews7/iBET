@@ -1,6 +1,6 @@
 # Make the heatmap for differentially expressed genes under certain cutoffs.
-.make_heatmap <- function(mat, res, anno, bm_col_func, lfc_col_func,
-                          fdr = 0.05, base_mean = 0, log2fc = 0, row_km = 0) {
+.make_heatmap <- function(mat, res, anno, bm.col.func, lfc.col.func,
+                          fdr = 0.05, base_mean = 0, log2fc = 0, row.km = 0, col.km = 0) {
 
   # Adjust for potential differences in the results table.
   sig.term <- "padj"
@@ -23,14 +23,15 @@
 
   ht <- Heatmap(m, name = "z-score",
                 top_annotation = HeatmapAnnotation(df = anno),
-                show_row_names = FALSE, show_column_names = FALSE, row_km = row_km,
+                show_row_names = FALSE, show_column_names = FALSE,
+                row_km = row.km, column_km = col.km,
                 column_title_gp = gpar(fontsize = 10),
                 column_title = paste0(sum(l), " significant genes \nwith ", sig.term," < ", fdr),
                 show_row_dend = FALSE) +
     Heatmap(log10(res$baseMean[l]+1), show_row_names = FALSE, width = unit(5, "mm"),
-            name = "log10(baseMean+1)", col = bm_col_func, show_column_names = FALSE) +
+            name = "log10(baseMean+1)", col = bm.col.func, show_column_names = FALSE) +
     Heatmap(res$log2FoldChange[l], show_row_names = FALSE, width = unit(5, "mm"),
-            name = "log2FoldChange", col = lfc_col_func, show_column_names = FALSE)
+            name = "log2FoldChange", col = lfc.col.func, show_column_names = FALSE)
   ht <- draw(ht, merge_legend = TRUE)
   ht
 }
@@ -58,7 +59,7 @@
   res$sh <- ifelse(res$log2FoldChange > ylim, 2, ifelse(res$log2FoldChange < -ylim, 6, 16))
   res$y[res$y > ylim] <- ylim
   res$y[res$y < -ylim] <- -ylim
-  res$col[res$col == "red" & res$log2FoldChange < 0] <- "darkgreen"
+  res$col[res$col == "red" & res$log2FoldChange < 0] <- "#0026ff"
   res$Gene <- rownames(res)
 
   res$hover.string <- paste("</br><b>Gene:</b> ", res$Gene,
@@ -121,7 +122,7 @@
   res$x[res$x > xlim] <- xlim
   res$x[res$x < -xlim] <- -xlim
   ylim <- c(0, ylim)
-  res$col[res$col == "red" & res$x < 0] <- "darkgreen"
+  res$col[res$col == "red" & res$x < 0] <- "#0026ff"
   res$Gene <- rownames(res)
 
   res$hover.string <- paste("</br><b>Gene:</b> ", res$Gene,

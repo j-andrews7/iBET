@@ -92,7 +92,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
   baseMean_col_fun <- circlize::colorRamp2(c(0, qa/2, qa), c("blue", "white", "red"))
 
   qa <- quantile(abs(abs(res$log2FoldChange[!is.na(res$log2FoldChange)])), 0.99)
-  log2fc_col_fun <- circlize::colorRamp2(c(-qa, 0, qa), c("green", "white", "red"))
+  log2fc_col_fun <- circlize::colorRamp2(c(-qa, 0, qa), c("blue", "white", "red"))
 
   environment(.make_heatmap) <- env
 
@@ -168,14 +168,14 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
         fluidRow(
           column(width = 4,
             h3("Differential heatmap"),
-            originalHeatmapOutput(h.id, height = 500, width = 300, containment = TRUE)
+            originalHeatmapOutput(h.id, height = 500, width = 450, containment = TRUE)
           ),
           column(width = 4,
             id = "column2",
             h3("Sub-heatmap"),
-            subHeatmapOutput(h.id, title = NULL, width = 300, containment = TRUE),
+            subHeatmapOutput(h.id, title = NULL, width = 450, containment = TRUE),
             h3(title = "Output"),
-            HeatmapInfoOutput(h.id, title = NULL, width = 300),
+            HeatmapInfoOutput(h.id, title = NULL, width = 450),
           ),
           column(width = 4,
                  h3("Results for the Selected Genes"),
@@ -187,13 +187,13 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
         fluidRow(
           column(width = 6,
             h3("MA-plot"),
-            withLoader(jqui_resizable(plotlyOutput("ma_plot", height = "550px", width = "500px")),
+            withLoader(jqui_resizable(plotlyOutput("ma_plot", height = "550px", width = "550px")),
                        type = "html", loader = "dnaspin"),
             htmlOutput("ma_plot_selected"),
           ),
           column(width = 6,
             h3("Volcano plot"),
-            withLoader(jqui_resizable(plotlyOutput("volcano_plot", height = "550px", width = "500px")),
+            withLoader(jqui_resizable(plotlyOutput("volcano_plot", height = "550px", width = "550px")),
                        type = "html", loader = "dnaspin"),
             htmlOutput("volcano_plot_selected"),
           )
@@ -220,7 +220,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
           numericInput("fdr", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
           numericInput("base_mean", label = "Minimal base mean:", value = 0, step = 1),
           numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
-          numericInput("km", label = "Number of k-means groups. Set to 0 to suppress k-means clustering:", value = 2, step = 1),
+          numericInput("row.km", label = "Number of row k-means groups:", value = 2, step = 1),
+          numericInput("col.km", label = "Number of column k-means groups:", value = 0, step = 1),
           actionButton("filter", label = "Generate heatmap"),
 
           hr(style="margin:10px; background-color: #737373;"),
@@ -279,14 +280,14 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       pdf(NULL)
       ht <- .make_heatmap(mat, res, anno, baseMean_col_fun, log2fc_col_fun,
                           fdr = as.numeric(input$fdr), base_mean = input$base_mean, log2fc = input$log2fc,
-                        row_km = input$km)
+                        row.km = input$row.km, col.km = input$col.km)
       dev.off()
 
-      if(!is.null(ht)) {
+      if (!is.null(ht)) {
         makeInteractiveComplexHeatmap(input, output, session, ht, h.id,
                                       brush_action = .brush_action, click_action = .click_action)
       } else {
-        # The ID for the heatmap plot is encoded as @{heatmap_id}_heatmap, thus, it is ht_heatmap here.
+        # The ID for the heatmap plot is encoded as @{heatmap_id}_heatmap.
         output[[paste0(h.id, "_heatmap")]] <- renderPlot({
           grid.newpage()
           grid.text("No row exists after filtering.")
