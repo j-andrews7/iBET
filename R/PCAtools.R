@@ -3,7 +3,7 @@
 #' @rawNamespace import(shiny, except = c(dataTableOutput, renderDataTable))
 #' @import DT
 #' @import PCAtools
-#' @importFrom plotly ggplotly plotlyOutput renderPlotly toWebGL
+#' @importFrom plotly ggplotly plotlyOutput renderPlotly toWebGL layout
 #' @import ggplot2
 #' @import shinydashboard
 #' @import dashboardthemes
