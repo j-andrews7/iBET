@@ -51,6 +51,9 @@ A Shiny app containing an InteractiveComplexHeatmap, MAplot, and volcano plot th
 \description{
 Create an interactive Shiny app for DESeq2 results exploration
 }
+\details{
+Note that significance values of 0 will always be pushed to the top of the volcano plot, as they are infinite values after log transformation.
+}
 \seealso{
 \code{\link[DESeq2]{results}}, \code{\link[DESeq2]{lfcShrink}}, \code{\link[DESeq2]{resultsNames}}.
 }

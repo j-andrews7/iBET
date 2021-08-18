@@ -1,4 +1,7 @@
 #' Create an interactive Shiny app for DESeq2 results exploration
+#'
+#' @details Note that significance values of 0 will always be pushed to the top of the volcano plot, as they are infinite values after log transformation.
+#'
 #' @rawNamespace import(shiny, except = c(dataTableOutput, renderDataTable))
 #' @import DESeq2
 #' @import InteractiveComplexHeatmap
@@ -168,14 +171,14 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
         fluidRow(
           column(width = 4,
             h3("Differential heatmap"),
-            originalHeatmapOutput(h.id, height = 500, width = 450, containment = TRUE)
+            originalHeatmapOutput(h.id, height = 500, width = 400, containment = TRUE)
           ),
           column(width = 4,
             id = "column2",
             h3("Sub-heatmap"),
-            subHeatmapOutput(h.id, title = NULL, width = 450, containment = TRUE),
+            subHeatmapOutput(h.id, title = NULL, width = 400, containment = TRUE),
             h3(title = "Output"),
-            HeatmapInfoOutput(h.id, title = NULL, width = 450),
+            HeatmapInfoOutput(h.id, title = NULL, width = 400),
           ),
           column(width = 4,
                  h3("Results for the Selected Genes"),
@@ -228,8 +231,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
           fluidRow(
             box(collapsible = TRUE, collapsed = TRUE, title = "Additional Plot Controls", width = 12,
                 solidHeader = TRUE,
-                numericInput("ma.y", label = "MAplot y-axis limits:", value = 3, step = 0.1, min = 0.1),
-                numericInput("vol.x", label = "Volcano plot x-axis limits:", value = 3, step = 0.1, min = 0.1),
+                numericInput("ma.y", label = "MAplot y-axis limits:", value = 5, step = 0.1, min = 0.1),
+                numericInput("vol.x", label = "Volcano plot x-axis limits:", value = 5, step = 0.1, min = 0.1),
                 numericInput("vol.y", label = "Volcano plot y-axis limits:", value = 50, step = 0.5, min = 1),
                 div(
                   prettyCheckbox("ma.fcline", label = "Show MAplot FC Threshold", value = TRUE,

@@ -7,7 +7,7 @@ Authors@R:
            role = c("aut", "cre"),
            email = "jared.andrews@stjude.org",
            comment = c(ORCID = "0000-0002-0780-6248"))
-Description: A collection of drop-in Shiny applications for common Bioconductor 
+Description: A collection of drop-in Shiny widgets for common Bioconductor 
     analyses and classes, designed for embedding in Rmd reports and interactive exploration.
 License: Apache License (>= 2)
 Encoding: UTF-8
@@ -33,4 +33,5 @@ Imports: DESeq2,
     shinyWidgets,
     dashboardthemes,
     shinycustomloader,
-    shinyjqui
+    shinyjqui,
+    PCAtools
