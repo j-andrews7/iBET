@@ -99,9 +99,6 @@
     sig.term <- "svalue"
   }
 
-  # Handle NAs and significance values.
-  res <- res[!is.na(res[[sig.term]]),]
-
   res$col <- rep("black", nrow(res))
   res$cex <- rep(0.5, nrow(res))
   res$order <- rep(0, nrow(res))
