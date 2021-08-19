@@ -97,7 +97,7 @@ shinyPCAtools(vst, metadata = colData(airway), annot.by = c("SampleName", "cell"
 
 Works well on larger datasets, though it takes significant time for the PCA to run. Removing a much greater percentage of features is highly recommended.
 
-```{r bigpca, message = FALSE, warning = FALSE, eval = FALSE}
+```{r bigpca, message = FALSE, warning = FALSE}
 data <- ZeiselBrainData()
 
 # Remove genes expressed in few cells.

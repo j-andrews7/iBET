@@ -34,7 +34,8 @@ Imports: DESeq2,
     dashboardthemes,
     shinycustomloader,
     shinyjqui,
-    PCAtools
+    PCAtools,
+    dittoSeq
 Suggests:
     airway,
     magrittr,
