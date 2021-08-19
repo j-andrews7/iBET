@@ -2,7 +2,7 @@
 % Please edit documentation in R/DESeq2.R
 \name{shinyDESeq2}
 \alias{shinyDESeq2}
-\title{Create an interactive Shiny app for DESeq2 results exploration}
+\title{Create an interactive Shiny app for DESeq2 analysis and results exploration}
 \usage{
 shinyDESeq2(
   dds,
@@ -46,10 +46,10 @@ Required if multiple apps are run within the same Rmd file.}
 \item{height}{Number indicating height of app in pixels.}
 }
 \value{
-A Shiny app containing an InteractiveComplexHeatmap, MAplot, and volcano plot that are interconnected.
+A Shiny app containing interconnected InteractiveComplexHeatmap, MAplot, and volcano plots along with full DE results.
 }
 \description{
-Create an interactive Shiny app for DESeq2 results exploration
+Create an interactive Shiny app for DESeq2 analysis and results exploration
 }
 \details{
 Note that significance values of 0 will always be pushed to the top of the volcano plot, as they are infinite values after log transformation.

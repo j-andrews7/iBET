@@ -35,3 +35,11 @@ Imports: DESeq2,
     shinycustomloader,
     shinyjqui,
     PCAtools
+Suggests:
+    airway,
+    magrittr,
+    org.Hs.eg.db,
+    scRNAseq,
+    scater,
+    scran,
+    scuttle

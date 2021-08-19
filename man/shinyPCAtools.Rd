@@ -2,7 +2,7 @@
 % Please edit documentation in R/PCAtools.R
 \name{shinyPCAtools}
 \alias{shinyPCAtools}
-\title{Create an interactive Shiny app for PCAtools}
+\title{Create an interactive Shiny app for PCAtools analysis and results exploration}
 \usage{
 shinyPCAtools(
   mat,
@@ -40,7 +40,10 @@ shinyPCAtools(
 A Shiny app wrapped around most PCAtools functions and plots.
 }
 \description{
-Create an interactive Shiny app for PCAtools
+Create an interactive Shiny app for PCAtools analysis and results exploration
+}
+\details{
+Features with no variation will be removed prior to \code{\link[PCAtools]{pca}} being run.
 }
 \seealso{
 \code{\link[PCAtools]{pca}}, \code{\link[PCAtools]{screeplot}}, \code{\link[PCAtools]{biplot}}, \code{\link[PCAtools]{pairsplot}}.

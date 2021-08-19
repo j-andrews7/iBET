@@ -1,9 +1,11 @@
-#' Create an interactive Shiny app for PCAtools
+#' Create an interactive Shiny app for PCAtools analysis and results exploration
+#'
+#' @details Features with no variation will be removed prior to \code{\link[PCAtools]{pca}} being run.
 #'
 #' @rawNamespace import(shiny, except = c(dataTableOutput, renderDataTable))
 #' @import DT
 #' @import PCAtools
-#' @importFrom plotly ggplotly plotlyOutput renderPlotly toWebGL layout
+#' @importFrom plotly ggplotly plotlyOutput renderPlotly toWebGL layout plot_ly
 #' @import ggplot2
 #' @import shinydashboard
 #' @import dashboardthemes
@@ -22,7 +24,6 @@
 #' @inheritParams PCAtools::pca
 #'
 #' @return A Shiny app wrapped around most PCAtools functions and plots.
-#'
 #'
 #' @seealso
 #' \code{\link[PCAtools]{pca}}, \code{\link[PCAtools]{screeplot}}, \code{\link[PCAtools]{biplot}}, \code{\link[PCAtools]{pairsplot}}.
@@ -156,7 +157,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = TRUE,
 
       # Check if 2D is wanted.
       if (input$twod) {
-        plot_ly(pc.res$rotated, x = as.formula(paste0("~",input$dim1)),
+        fig <- plot_ly(pc.res$rotated, x = as.formula(paste0("~",input$dim1)),
                 y = as.formula(paste0("~",input$dim2)),
                 type = "scatter",
                 mode = "markers",
@@ -167,13 +168,19 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = TRUE,
                 symbols = c("circle", "square", "diamond", "cross", "diamond-open", "circle-open", "square-open", "x"),
                 text = hov.text,
                 width = 1000, height = 710, hoverinfo = "text") %>%
-          layout(xaxis = list(showgrid = FALSE, showline = TRUE, mirror = TRUE, zeroline = FALSE),
-                 yaxis = list(showgrid = FALSE, showline = TRUE, mirror = TRUE, zeroline = FALSE))
+          layout(xaxis = list(showgrid = FALSE, showline = TRUE, mirror = TRUE, zeroline = FALSE,
+                              title = paste0(input$dim1,
+                                             " (", format(round(pc.res$variance[input$dim1], 2), nsmall = 2),"%)")),
+                 yaxis = list(showgrid = FALSE, showline = TRUE, mirror = TRUE, zeroline = FALSE,
+                              title = paste0(input$dim2,
+                                             " (", format(round(pc.res$variance[input$dim2], 2), nsmall = 2),"%)")))
 
+        fig <- fig %>% toWebGL()
+        fig
       } else {
 
         # Generate plot.
-        plot_ly(pc.res$rotated, x = as.formula(paste0("~",input$dim1)),
+        fig <- plot_ly(pc.res$rotated, x = as.formula(paste0("~",input$dim1)),
                 y = as.formula(paste0("~",input$dim2)),
                 z = as.formula(paste0("~",input$dim3)),
                 type = "scatter3d",
@@ -181,9 +188,16 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = TRUE,
                 color = pl.cols,
                 colors = pl.col,
                 symbol = pl.shapes,
-                symbols = c("circle", "square", "diamond", "cross", "diamond-open", "circle-open", "square-open", "x"),
+                symbols = c("circle", "square", "diamond", "cross", "diamond-open",
+                            "circle-open", "square-open", "x"),
                 text = hov.text,
-                width = 1000, height = 710, hoverinfo = "text")
+                width = 1000, height = 710, hoverinfo = "text") %>%
+          layout(scene = list(
+            xaxis = list(title = paste0(input$dim1, " (", format(round(pc.res$variance[input$dim1], 2), nsmall = 2),"%)")),
+            yaxis = list(title = paste0(input$dim2, " (", format(round(pc.res$variance[input$dim2], 2), nsmall = 2),"%)")),
+            zaxis = list(title = paste0(input$dim3, " (", format(round(pc.res$variance[input$dim3], 2), nsmall = 2),"%)"))))
+
+        fig
       }
     })
   }

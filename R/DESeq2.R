@@ -1,4 +1,4 @@
-#' Create an interactive Shiny app for DESeq2 results exploration
+#' Create an interactive Shiny app for DESeq2 analysis and results exploration
 #'
 #' @details Note that significance values of 0 will always be pushed to the top of the volcano plot, as they are infinite values after log transformation.
 #'
@@ -14,7 +14,7 @@
 #' @importFrom grDevices dev.off pdf
 #' @importFrom graphics par
 #' @importFrom stats quantile
-#' @importFrom plotly ggplotly plotlyOutput renderPlotly toWebGL
+#' @importFrom plotly ggplotly plotlyOutput renderPlotly toWebGL plot_ly
 #' @import ggplot2
 #' @import shinydashboard
 #' @import dashboardthemes
@@ -42,7 +42,7 @@
 #'   Required if multiple apps are run within the same Rmd file.
 #' @param height Number indicating height of app in pixels.
 #'
-#' @return A Shiny app containing an InteractiveComplexHeatmap, MAplot, and volcano plot that are interconnected.
+#' @return A Shiny app containing interconnected InteractiveComplexHeatmap, MAplot, and volcano plots along with full DE results.
 #'
 #'
 #' @seealso
@@ -61,7 +61,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
   # Get contrast name if results are not provided.
   if (is.null(res)) {
     if(is.null(coef)) {
-      coef <- resultsNames(dds)[2]
+      coef <- resultsNames(dds)[resultsNames(dds) != "Intercept"][1]
     }
 
     if (use.lfcShrink) {
