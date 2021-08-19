@@ -1,49 +1,4 @@
----
-title: "iBET - Interactive Shiny Widgets for Bioconductor Packages"
-author: 
-- name: "Jared Andrews"
-  email: jared.andrews@stjude.org
-  affiliation: St. Jude Children's Research Hospital, Memphis, TN
-date: "August 17th, 2021"
-output: 
-  html_document:
-    code_folding: show
-    toc: true
-    toc_depth: 5
-    toc_float: true	 
-runtime: shiny
-vignette: >
-  %\VignetteIndexEntry{iBET - Interactive Shiny Widgets for Bioconductor Packages}
-  %\VignetteEngine{knitr::rmarkdown}
-  \usepackage[utf8]{inputenc}
----
-
-```{css, echo=FALSE}
-# This is to change width of the content so that half the page isn't empty as it is by default.
-body {
-  max-width: 1850px !important;
-}
-div.main-container {
-  max-width: 1850px !important;
-  width: 1850px !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-}
-.toc-content {
-  padding-right: 0px;
-  padding-left: 0px;
-  margin-left: 300px;
-  max-width: 1550px !important;
-  width: 1550px !important;
-}
-```
-
-```{r, include=FALSE}
-library(BiocStyle)
-knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
-```
-
-# Introduction
+# iBET - Interactive Bioconductor Exploratory Tools
 
 Generating static reports from R markdown documents is a common way to distribute bioinformatics analyses with additional context and commentary. However, interactivity within these reports is limited. While one can embed minimally interactive figures in HTML reports, there is no way to alter the underlying data or plot by the end user.
 
@@ -51,9 +6,24 @@ Generating static reports from R markdown documents is a common way to distribut
 
 [iBET](https://github.com/j-andrews7/iBET) (interactive Bioconductor Exploratory Tools) is an R package that contains drop-in Shiny widgets that run and/or display the results of common analyses performed with Bioconductor R packages. These empower end-users to fully immerse themselves in the data through interactive alterations of plot and analysis parameters. Hopefully, it helps to alleviate some of the frustration that comes with frequent back-and-forth interactions to generate and alter figures.
 
-# An Example
+## Installation
 
-```{r, message = FALSE, warning = FALSE}
+This package is in development - it may break at any time and contain unstable or untested features. A stable version will be submitted to CRAN or Bioconductor once the initially planned features are completed.
+
+To install the package via Github:
+
+```
+install.packages("devtools")
+devtools::install_github("j-andrews7/iBET")
+```
+
+## Usage
+
+**iBET** currently contains two interactive widgets - `shinyPCAtools` and `shinyDESeq2`. They can be dropped into Rmd documents or ran directly within RStudio as shown below.
+
+### Load Example Data
+
+```
 shh <- suppressPackageStartupMessages
 shh(library("airway"))
 shh(library("magrittr"))
@@ -84,20 +54,20 @@ dds <- DESeq(dds)
 vst <- assay(vst(dds))
 ```
 
-## Interactive PCA via `PCAtools`
+### Interactive PCA via `PCAtools`
 
 [PCAtools](https://bioconductor.org/packages/release/bioc/html/PCAtools.html) is a straight-forward package for principle component analysis.
 
-```{r pca, message = FALSE, warning = FALSE}
+```
 shinyPCAtools(vst, metadata = colData(airway), annot.by = c("SampleName", "cell", "dex"), color.by = "dex", shape.by = "cell", height = 850)
 ```
 
 
-### Larger (scRNA) Dataset
+#### Larger (scRNA) Dataset
 
-Works well on larger datasets, though it takes significant time for the PCA to run. Removing a much greater percentage of features is highly recommended.
+`shinyPCAtools` Works well on larger datasets, though it takes significant time for the PCA to run. Removing a much greater percentage of features is highly recommended. 
 
-```{r bigpca, message = FALSE, warning = FALSE, eval = FALSE}
+```
 data <- ZeiselBrainData()
 
 # Remove genes expressed in few cells.
@@ -109,22 +79,12 @@ data$Cell.Type <- factor(data$level1class)
 shinyPCAtools(logcounts(data), metadata = colData(data), annot.by = c("Cell.Type", "tissue", "age"), color.by = "Cell.Type", removeVar = 0.9)
 ```
 
-## Interactive Differential Expression via `DESeq2`
+### Interactive Differential Expression via `DESeq2`
 
 This widget was heavily inspired by the `interactivate` function from the [InteractiveComplexHeatmap](https://bioconductor.org/packages/release/bioc/html/InteractiveComplexHeatmap.html) package. It wraps [DESeq2](https://bioconductor.org/packages/release/bioc/html/DESeq2.html) and will run differential expression analysis if not provided a results dataframe as well.
 
-```{r de, message = FALSE, warning = FALSE}
+```
 shinyDESeq2(dds, coef = "dex_trt_vs_untrt", annot.by = c("cell", "dex"))
 ```
 
-# SessionInfo
 
-<details>
-
-<summary>Click to expand</summary>
-
-```{r, echo = FALSE}
-sessionInfo()
-```
-
-</details>

@@ -32,7 +32,7 @@
 #' @export
 shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = TRUE,
                           center = TRUE, color.by = NULL, shape.by = NULL,
-                          annot.by = NULL, height = 800) {
+                          annot.by = NULL, height = 850) {
 
   ui <- dashboardPage(
     dashboardHeader(disable = TRUE),
@@ -167,7 +167,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = TRUE,
                 symbol = pl.shapes,
                 symbols = c("circle", "square", "diamond", "cross", "diamond-open", "circle-open", "square-open", "x"),
                 text = hov.text,
-                width = 1000, height = 710, hoverinfo = "text") %>%
+                width = 900, height = 710, hoverinfo = "text") %>%
           layout(xaxis = list(showgrid = FALSE, showline = TRUE, mirror = TRUE, zeroline = FALSE,
                               title = paste0(input$dim1,
                                              " (", format(round(pc.res$variance[input$dim1], 2), nsmall = 2),"%)")),

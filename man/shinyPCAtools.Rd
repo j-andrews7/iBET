@@ -13,7 +13,7 @@ shinyPCAtools(
   color.by = NULL,
   shape.by = NULL,
   annot.by = NULL,
-  height = 800
+  height = 850
 )
 }
 \arguments{
