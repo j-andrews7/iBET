@@ -45,6 +45,9 @@
     sig.term <- "svalue"
   }
 
+  # Remove genes with NA padj/svalue due to low expression.
+  res <- res[!is.na(res[[sig.term]]),]
+
   res$col <- rep("black", nrow(res))
   res$cex <- rep(0.5, nrow(res))
   res$order <- rep(0, nrow(res))
@@ -98,6 +101,9 @@
   if("svalue" %in% colnames(res)) {
     sig.term <- "svalue"
   }
+
+  # Remove genes with NA padj/svalue due to low expression.
+  res <- res[!is.na(res[[sig.term]]),]
 
   res$col <- rep("black", nrow(res))
   res$cex <- rep(0.5, nrow(res))
