@@ -14,6 +14,7 @@
 #' @importFrom shinycustomloader withLoader
 #' @importFrom shinyjqui jqui_resizable
 #' @importFrom matrixStats rowVars
+#' @importFrom stats as.formula
 #'
 #' @param mat A matrix with features as rows and samples as columns.
 #' @param metadata A dataframe containing sample metadata. The rownames must match the column names of the matrix.

@@ -12,6 +12,7 @@ shinyDESeq2(
   use.lfcShrink = TRUE,
   lfcThreshold = 0,
   use.vst = TRUE,
+  samples.use = NULL,
   h.id = "ht1",
   height = 800
 )
@@ -40,6 +41,9 @@ Ignored if \code{res} is not \code{NULL}.}
 normalized counts will be used. The variance stabilizing transformation helps to reduce increased variance seen for low counts in log space.
 This generally results in a better looking heatmap with fewer outliers.}
 
+\item{samples.use}{Vector of Boolean values indicating which samples should be included in the visualizations.
+Must be the same length as the number of samples in the \code{dds} object.}
+
 \item{h.id}{String indicating unique ID for interactive heatmaps.
 Required if multiple apps are run within the same Rmd file.}
 
@@ -52,7 +56,7 @@ A Shiny app containing interconnected InteractiveComplexHeatmap, MAplot, and vol
 Create an interactive Shiny app for DESeq2 analysis and results exploration
 }
 \details{
-Note that significance values of 0 will always be pushed to the top of the volcano plot, as they are infinite values after log transformation.
+Note that significance values of 0 will always be pushed above the y-limit of the volcano plot, as they are infinite values after log transformation.
 }
 \seealso{
 \code{\link[DESeq2]{results}}, \code{\link[DESeq2]{lfcShrink}}, \code{\link[DESeq2]{resultsNames}}.

@@ -1,6 +1,6 @@
 #' Create an interactive Shiny app for DESeq2 analysis and results exploration
 #'
-#' @details Note that significance values of 0 will always be pushed to the top of the volcano plot, as they are infinite values after log transformation.
+#' @details Note that significance values of 0 will always be pushed above the y-limit of the volcano plot, as they are infinite values after log transformation.
 #'
 #' @rawNamespace import(shiny, except = c(dataTableOutput, renderDataTable))
 #' @import DESeq2
@@ -38,6 +38,8 @@
 #' @param use.vst Boolean indicating whether \code{\link[DESeq2]{vst}} transformed counts should be used for heatmap generation (recommended). If \code{FALSE},
 #'   normalized counts will be used. The variance stabilizing transformation helps to reduce increased variance seen for low counts in log space.
 #'   This generally results in a better looking heatmap with fewer outliers.
+#' @param samples.use Vector of Boolean values indicating which samples should be included in the visualizations.
+#'   Must be the same length as the number of samples in the \code{dds} object.
 #' @param h.id String indicating unique ID for interactive heatmaps.
 #'   Required if multiple apps are run within the same Rmd file.
 #' @param height Number indicating height of app in pixels.
@@ -51,7 +53,8 @@
 #' @author Jared Andrews, based heavily on code by Zuguang Gu.
 #' @export
 shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
-                        use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE, h.id = "ht1", height = 800) {
+                        use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE, samples.use = NULL,
+                        h.id = "ht1", height = 800) {
 
   # If gene dispersions not yet calculated, calculate them.
   if(is.null(body(dds@dispersionFunction))) {
@@ -78,6 +81,12 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
   }
 
   anno <- SummarizedExperiment::colData(dds)
+
+  # Filter samples.
+  if (!is.null(samples.use)) {
+    mat <- mat[,samples.use]
+    anno <- anno[samples.use,]
+  }
 
   # Change to use `annot.by`.
   if (!is.null(annot.by)) {

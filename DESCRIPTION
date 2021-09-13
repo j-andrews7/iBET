@@ -35,7 +35,8 @@ Imports: DESeq2,
     shinycustomloader,
     shinyjqui,
     PCAtools,
-    dittoSeq
+    dittoSeq,
+    matrixStats
 Suggests:
     airway,
     magrittr,
