@@ -1,10 +1,10 @@
 ---
-title: "iBET - Interactive Shiny Widgets for Bioconductor Packages"
+title: "iBET - interactive Bioconductor Exploratory Tools"
 author: 
 - name: "Jared Andrews"
   email: jared.andrews@stjude.org
   affiliation: St. Jude Children's Research Hospital, Memphis, TN
-date: "August 17th, 2021"
+date: "September 20th, 2021"
 output: 
   html_document:
     code_folding: show
@@ -55,31 +55,18 @@ Generating static reports from R markdown documents is a common way to distribut
 
 ```{r, message = FALSE, warning = FALSE}
 shh <- suppressPackageStartupMessages
-shh(library("airway"))
-shh(library("magrittr"))
-shh(library("org.Hs.eg.db"))
 shh(library("DESeq2"))
 shh(library("PCAtools"))
 shh(library("iBET"))
-shh(library("scRNAseq"))
-shh(library("scran"))
-shh(library("scuttle"))
-shh(library("scater"))
+#shh(library("scRNAseq"))
+#shh(library("scran"))
+#shh(library("scuttle"))
+#shh(library("scater"))
 
-data('airway')
-airway$dex %<>% relevel('untrt')
-
-# Swap to gene symbols.
-ens <- rownames(airway)
-symbols <- mapIds(org.Hs.eg.db, keys = ens, column = c('SYMBOL'), keytype = 'ENSEMBL')
-symbols <- symbols[!is.na(symbols)]
-symbols <- symbols[match(rownames(airway), names(symbols))]
-rownames(airway) <- symbols
-keep <- !is.na(rownames(airway))
-airway <- airway[keep,]
-
-# vst counts and make DESeqDataSet.
-dds <- DESeqDataSet(airway, design = ~ cell + dex)
+# Make a mock DESeq2Dataset.
+dds <- makeExampleDESeqDataSet(n = 3000, betaSD = 2)
+dds$sample <- rownames(colData(dds))
+dds$group <- rep(c("g1", "g2"), 6)
 dds <- DESeq(dds)
 vst <- assay(vst(dds))
 ```
@@ -89,7 +76,7 @@ vst <- assay(vst(dds))
 [PCAtools](https://bioconductor.org/packages/release/bioc/html/PCAtools.html) is a straight-forward package for principle component analysis.
 
 ```{r pca, message = FALSE, warning = FALSE}
-shinyPCAtools(vst, metadata = colData(airway), annot.by = c("SampleName", "cell", "dex"), color.by = "dex", shape.by = "cell", height = 850)
+shinyPCAtools(vst, metadata = colData(dds), annot.by = c("sample", "condition", "group"), color.by = "condition", shape.by = "group", scale = TRUE, height = 850)
 ```
 
 
@@ -97,7 +84,8 @@ shinyPCAtools(vst, metadata = colData(airway), annot.by = c("SampleName", "cell"
 
 Works well on larger datasets, though it takes significant time for the PCA to run. Removing a much greater percentage of features is highly recommended.
 
-```{r bigpca, message = FALSE, warning = FALSE}
+```{r bigpca, message = FALSE, warning = FALSE, eval = FALSE}
+# Not run
 data <- ZeiselBrainData()
 
 # Remove genes expressed in few cells.
@@ -106,15 +94,17 @@ data <- computeSumFactors(data, cluster = quickCluster(data))
 data <- logNormCounts(data)
 data$Cell.Type <- factor(data$level1class)
 
-shinyPCAtools(logcounts(data), metadata = colData(data), annot.by = c("Cell.Type", "tissue", "age"), color.by = "Cell.Type", removeVar = 0.9)
+shinyPCAtools(logcounts(data), metadata = colData(data), annot.by = c("Cell.Type", "tissue", "age"), color.by = "Cell.Type", removeVar = 0.9, scale = TRUE)
 ```
 
 ## Interactive Differential Expression via `DESeq2`
 
-This widget was heavily inspired by the `interactivate` function from the [InteractiveComplexHeatmap](https://bioconductor.org/packages/release/bioc/html/InteractiveComplexHeatmap.html) package. It wraps [DESeq2](https://bioconductor.org/packages/release/bioc/html/DESeq2.html) and will run differential expression analysis if not provided a results dataframe as well.
+This widget was heavily inspired by the `interactivate` function from the [InteractiveComplexHeatmap](https://bioconductor.org/packages/release/bioc/html/InteractiveComplexHeatmap.html) package. It wraps [DESeq2](https://bioconductor.org/packages/release/bioc/html/DESeq2.html) and will run differential expression analysis if not provided a results dataframe as well. 
+
+Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around, though adding labels will reset the position, so it's recommended to add all labels prior to re-positioning them.
 
 ```{r de, message = FALSE, warning = FALSE}
-shinyDESeq2(dds, coef = "dex_trt_vs_untrt", annot.by = c("cell", "dex"))
+shinyDESeq2(dds, annot.by = c("condition", "group"))
 ```
 
 # SessionInfo

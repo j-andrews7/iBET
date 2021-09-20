@@ -53,14 +53,18 @@ Required if multiple apps are run within the same Rmd file.}
 A Shiny app containing interconnected InteractiveComplexHeatmap, MAplot, and volcano plots along with full DE results.
 }
 \description{
-Create an interactive Shiny app for DESeq2 analysis and results exploration
+This shiny app is composed of three tabs - an interactive heatmap, MA and volcano plots, and a table of full
+differential expression results. The interactive heatmap will generate a sub-heatmap for selected rows/columns.
 }
 \details{
+Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around,
+though adding labels will reset the positions, so it's recommended to add all labels prior to re-positioning them.
+
 Note that significance values of 0 will always be pushed above the y-limit of the volcano plot, as they are infinite values after log transformation.
 }
 \seealso{
 \code{\link[DESeq2]{results}}, \code{\link[DESeq2]{lfcShrink}}, \code{\link[DESeq2]{resultsNames}}.
 }
 \author{
-Jared Andrews, based heavily on code by Zuguang Gu.
+Jared Andrews, based on code by Zuguang Gu.
 }

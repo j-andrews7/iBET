@@ -8,7 +8,7 @@ shinyPCAtools(
   mat,
   metadata,
   removeVar = 0.3,
-  scale = TRUE,
+  scale = FALSE,
   center = TRUE,
   color.by = NULL,
   shape.by = NULL,

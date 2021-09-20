@@ -1,5 +1,11 @@
 #' Create an interactive Shiny app for DESeq2 analysis and results exploration
 #'
+#' This shiny app is composed of three tabs - an interactive heatmap, MA and volcano plots, and a table of full
+#' differential expression results. The interactive heatmap will generate a sub-heatmap for selected rows/columns.
+#'
+#' Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around,
+#' though adding labels will reset the positions, so it's recommended to add all labels prior to re-positioning them.
+#'
 #' @details Note that significance values of 0 will always be pushed above the y-limit of the volcano plot, as they are infinite values after log transformation.
 #'
 #' @rawNamespace import(shiny, except = c(dataTableOutput, renderDataTable))
@@ -14,7 +20,7 @@
 #' @importFrom grDevices dev.off pdf
 #' @importFrom graphics par
 #' @importFrom stats quantile
-#' @importFrom plotly ggplotly plotlyOutput renderPlotly toWebGL plot_ly
+#' @importFrom plotly ggplotly plotlyOutput renderPlotly toWebGL plot_ly layout add_annotations config toRGB event_data
 #' @import ggplot2
 #' @import shinydashboard
 #' @import dashboardthemes
@@ -50,7 +56,7 @@
 #' @seealso
 #' \code{\link[DESeq2]{results}}, \code{\link[DESeq2]{lfcShrink}}, \code{\link[DESeq2]{resultsNames}}.
 #'
-#' @author Jared Andrews, based heavily on code by Zuguang Gu.
+#' @author Jared Andrews, based on code by Zuguang Gu.
 #' @export
 shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                         use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE, samples.use = NULL,
@@ -106,6 +112,12 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
   qa <- quantile(abs(abs(res$log2FoldChange[!is.na(res$log2FoldChange)])), 0.99)
   log2fc_col_fun <- circlize::colorRamp2(c(-qa, 0, qa), c("blue", "white", "red"))
 
+  if ("svalue" %in% colnames(res)) {
+    sig.term <- "svalue"
+  } else {
+    sig.term <- "padj"
+  }
+
   environment(.make_heatmap) <- env
 
   # A self-defined action to respond brush event. It updates the MA-plot, the volcano plot
@@ -115,17 +127,6 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     row_index <- unique(unlist(df$row_index))
     selected <- env$row_index[row_index]
 
-    output[["ma_plot"]] <- renderPlotly({
-      .make_maplot(res = res, ylim = input$ma.y, fc.thresh = input$log2fc,
-                   fc.lines = input$ma.fcline, highlight = selected)
-    })
-
-    output[["volcano_plot"]] <- renderPlotly({
-      .make_volcano(res = res, xlim = input$vol.x, ylim = input$vol.y, fc.thresh = input$log2fc,
-                    fc.lines = input$vol.fcline, sig.thresh = input$fdr, sig.line = input$vol.sigline,
-                    highlight = selected)
-    })
-
     output[["res_table"]] <- DT::renderDataTable({
       # Adjust output table columns based on results table.
       if ("svalue" %in% colnames(res)) {
@@ -134,7 +135,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
         third <- "padj"
       }
 
-      DT::formatRound(DT::datatable(as.data.frame(res[selected, c("baseMean", "log2FoldChange", third)]),
+      DT::formatRound(DT::datatable(as.data.frame(res[selected, c("baseMean", "log2FoldChange", sig.term)]),
                                     rownames = TRUE, options = list(lengthMenu = c(5, 10, 25),
                                                                     pageLength = 20)),
                       columns = 1:3, digits = 5) %>%
@@ -146,17 +147,6 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     row_index <- unique(unlist(df$row_index))
     selected <- env$row_index[row_index]
 
-    output[["ma_plot"]] <- renderPlotly({
-      .make_maplot(res = res, ylim = input$ma.y, fc.thresh = input$log2fc,
-                   fc.lines = input$ma.fcline, highlight = selected)
-    })
-
-    output[["volcano_plot"]] <- renderPlotly({
-      .make_volcano(res = res, xlim = input$vol.x, ylim = input$vol.y, fc.thresh = input$log2fc,
-                    fc.lines = input$vol.fcline, sig.thresh = input$fdr, sig.line = input$vol.sigline,
-                    highlight = selected)
-    })
-
     output[["res_table"]] <- DT::renderDataTable({
       # Adjust output table columns based on results table.
       if ("svalue" %in% colnames(res)) {
@@ -165,7 +155,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
         third <- "padj"
       }
 
-      DT::formatRound(DT::datatable(as.data.frame(res[selected, c("baseMean", "log2FoldChange", third)]),
+      DT::formatRound(DT::datatable(as.data.frame(res[selected, c("baseMean", "log2FoldChange", sig.term)]),
                                     rownames = TRUE, options = list(lengthMenu = c(5, 10, 25),
                                                                   pageLength = 20)),
                       columns = 1:3, digits = 5) %>%
@@ -242,7 +232,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                 solidHeader = TRUE,
                 numericInput("ma.y", label = "MAplot y-axis limits:", value = 5, step = 0.1, min = 0.1),
                 numericInput("vol.x", label = "Volcano plot x-axis limits:", value = 5, step = 0.1, min = 0.1),
-                numericInput("vol.y", label = "Volcano plot y-axis limits:", value = 50, step = 0.5, min = 1),
+                numericInput("vol.y", label = "Volcano plot y-axis limits:", value = max(-log10(res[[sig.term]])),
+                             step = 0.5, min = 1),
                 div(
                   prettyCheckbox("ma.fcline", label = "Show MAplot FC Threshold", value = TRUE,
                                  animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
@@ -262,11 +253,62 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
   # makeInteractiveComplexHeatmap() is put inside observeEvent() so that changes on the cutoffs can regenerate the heatmap.
   server <- function(input, output, session) {
 
+    # Keep track of which genes have been clicked
+    genes <- reactiveValues(ma = NULL, volc = NULL)
+
+    # On click, the key field of the event data contains the gene symbol
+    # Add that gene to the set of all "selected" genes
+    observeEvent(event_data("plotly_click", source = paste0(h.id,"_ma")), {
+      gene <- event_data("plotly_click", source = paste0(h.id,"_ma"))
+      gene_old_new <- rbind(genes$ma, gene)
+      keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
+
+      if (nrow(keep) == 0) {
+        genes$ma <- NULL
+      } else {
+        genes$ma <- keep
+      }
+    })
+
+    observeEvent(event_data("plotly_click", source = paste0(h.id,"_volc")), {
+      gene <- event_data("plotly_click", source = paste0(h.id,"_volc"))
+      gene_old_new <- rbind(genes$volc, gene)
+      keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
+
+      if (nrow(keep) == 0) {
+        genes$volc <- NULL
+      } else {
+        genes$volc <- keep
+      }
+    })
+
+    # clear the set of genes when a double-click occurs
+    observeEvent(event_data("plotly_doubleclick", source = paste0(h.id,"_ma")), {
+      genes$ma <- NULL
+    })
+
+    observeEvent(event_data("plotly_doubleclick", source = paste0(h.id,"_volc")), {
+      genes$volc <- NULL
+    })
+
+    output$ma_plot <- renderPlotly({
+      req(genes)
+      .make_maplot(res = res, ylim = input$ma.y, fc.thresh = input$log2fc,
+                   fc.lines = input$ma.fcline, sig.thresh = input$fdr, h.id = h.id, sig.term = sig.term, gs = genes$ma)
+    })
+
+    output$volcano_plot <- renderPlotly({
+      req(genes)
+      .make_volcano(res = res, xlim = input$vol.x, ylim = input$vol.y, fc.thresh = input$log2fc,
+                    fc.lines = input$vol.fcline, sig.thresh = input$fdr, sig.line = input$vol.sigline,
+                    h.id = h.id, sig.term = sig.term, gs = genes$volc)
+    })
+
     output[["res_table_full"]] <- DT::renderDataTable({
       df <- as.data.frame(res)
 
       # Collect proper output columns..
-      if ("svalue" %in% colnames(res)) {
+      if (sig.term == "svalue") {
         cnames <- "svalue"
       } else if ("stat" %in% colnames(res)) {
         cnames <- c("padj", "pvalue", "stat")

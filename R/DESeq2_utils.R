@@ -37,32 +37,40 @@
 }
 
 
-.make_maplot <- function(res, ylim, fc.thresh, fc.lines, highlight = NULL) {
+.make_maplot <- function(res, ylim, fc.thresh, fc.lines, h.id, sig.term, sig.thresh = 0.05, gs = NULL) {
 
-  # Adjust for potential differences in the results table.
-  sig.term <- "padj"
-  if("svalue" %in% colnames(res)) {
-    sig.term <- "svalue"
+  res$col <- rep("black", nrow(res))
+  res$cex <- rep(3, nrow(res))
+  res$order <- rep(0, nrow(res))
+
+  # Significance filter.
+  up.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange > 0
+  res$col[up.degs] <- "red"
+  res$cex[up.degs] <- 5
+  res$order[up.degs] <- 1
+
+  dn.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange < 0
+  res$col[dn.degs] <- "#0026ff"
+  res$cex[dn.degs] <- 5
+  res$order[dn.degs] <- 1
+
+  # LFC filter.
+  if(fc.thresh > 0) {
+    fc.threshed <- abs(res$log2FoldChange) < fc.thresh
+    res$col[fc.threshed] <- "black"
+    res$cex[fc.threshed] <- 3
+    res$order[fc.threshed] <- 0
   }
 
   # Remove genes with NA padj/svalue due to low expression.
   res <- res[!is.na(res[[sig.term]]),]
 
-  res$col <- rep("black", nrow(res))
-  res$cex <- rep(0.5, nrow(res))
-  res$order <- rep(0, nrow(res))
-
-  if(!is.null(highlight)) {
-    res$col[highlight] = "red"
-    res$cex[highlight] = 1
-    res$order[highlight] <- 1
-  }
   res$x <- res$baseMean
   res$y <- res$log2FoldChange
-  res$sh <- ifelse(res$log2FoldChange > ylim, 2, ifelse(res$log2FoldChange < -ylim, 6, 16))
-  res$y[res$y > ylim] <- ylim
-  res$y[res$y < -ylim] <- -ylim
-  res$col[res$col == "red" & res$log2FoldChange < 0] <- "#0026ff"
+  res$sh <- ifelse(res$log2FoldChange > ylim, "triangle-up-open",
+                   ifelse(res$log2FoldChange < -ylim, "triangle-down-open", 0))
+  res$y[res$y > ylim] <- ylim - 0.05
+  res$y[res$y < -ylim] <- -ylim + 0.05
   res$Gene <- rownames(res)
 
   res$hover.string <- paste("</br><b>Gene:</b> ", res$Gene,
@@ -73,62 +81,112 @@
   res <- as.data.frame(res)
   res <- res[order(res$order),]
 
-  p <- ggplot(res, aes_string("x", "y", text = "hover.string")) +
-    geom_point(col = res$col, shape = res$sh, size = res$cex, alpha = 1) +
-    xlab("baseMean") + ylab("log2 fold change") +
-    ylim(-ylim, ylim) + scale_x_log10() +
-    theme(panel.background = element_blank(),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          panel.border = element_rect(colour = "black", fill = NA, size = 0.2)) +
-    geom_hline(yintercept = 0, size = 0.2)
+  # Add plot border.
+  ay <- list(
+    showline = TRUE,
+    mirror = "ticks",
+    linecolor = toRGB("black"),
+    linewidth = 1,
+    title = "log2(fold change)",
+    range = list(-ylim, ylim),
+    showgrid = FALSE,
+    layer = "below traces"
+  )
 
+  ax <- list(
+    showline = TRUE,
+    mirror = "ticks",
+    linecolor = toRGB("black"),
+    linewidth = 1,
+    title = "log10(baseMean)",
+    showgrid = FALSE,
+    layer = "below traces"
+  )
+
+  # Create vertical and horizontal lines.
+  fc.line1 <- NULL
+  fc.line2 <- NULL
   if (fc.thresh != 0 & fc.lines) {
-    p <- p + geom_hline(yintercept = fc.thresh, color = "blue", size = 0.2) +
-      geom_hline(yintercept = -fc.thresh, color = "blue", size = 0.2)
+    fc.line1 <- .hline(y = fc.thresh, color = "#999999", width = 1)
+    fc.line2 <- .hline(y = -fc.thresh, color = "#999999", width = 1)
   }
 
-  ggplotly(p, tooltip = c("text")) %>% toWebGL()
+  fig <- plot_ly(res, x = ~log10(x),
+                 y = ~y,
+                 customdata = ~Gene,
+                 type = "scatter",
+                 mode = "markers",
+                 marker = list(color = ~col,
+                               size = ~cex,
+                               symbol = ~sh,
+                               line = list(color = ~col)),
+                 text = ~hover.string,
+                 hoverinfo = "text",
+                 source = paste0(h.id, "_ma")) %>%
+    config(edits = list(annotationPosition = TRUE,
+                        annotationTail = TRUE))
+
+  if (!is.null(gs)) {
+    fig %>%
+      layout(xaxis = ax,
+             yaxis = ay,
+             showlegend = FALSE,
+             shapes = list(fc.line1, fc.line2)) %>%
+      add_annotations(x = gs$x, y = gs$y, text = gs$customdata,
+                      font = list(size = 10, family = "Arial"), arrowside = "none") %>%
+      toWebGL()
+  } else {
+    fig %>% layout(xaxis = ax,
+                   yaxis = ay,
+                   showlegend = FALSE,
+                   shapes = list(fc.line1, fc.line2)) %>% toWebGL()
+  }
 }
 
 
 # make the volcano plot with some genes highlighted
 .make_volcano <- function(res, xlim, ylim, fc.thresh, fc.lines,
-                          sig.thresh, sig.line, highlight = NULL) {
+                          sig.line, h.id, sig.term, sig.thresh = 0.05, gs = NULL) {
 
   # Adjust for potential differences in the results table.
-  sig.term <- "padj"
-  if("svalue" %in% colnames(res)) {
-    sig.term <- "svalue"
+  res$col <- rep("black", nrow(res))
+  res$cex <- rep(3, nrow(res))
+  res$order <- rep(0, nrow(res))
+
+  # Significance filter.
+  up.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange > 0
+  res$col[up.degs] <- "red"
+  res$cex[up.degs] <- 5
+  res$order[up.degs] <- 1
+
+  dn.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange < 0
+  res$col[dn.degs] <- "#0026ff"
+  res$cex[dn.degs] <- 5
+  res$order[dn.degs] <- 1
+
+  # LFC filter.
+  if(fc.thresh > 0) {
+    fc.threshed <- abs(res$log2FoldChange) < fc.thresh
+    res$col[fc.threshed] <- "black"
+    res$cex[fc.threshed] <- 3
+    res$order[fc.threshed] <- 0
   }
 
   # Remove genes with NA padj/svalue due to low expression.
   res <- res[!is.na(res[[sig.term]]),]
 
-  res$col <- rep("black", nrow(res))
-  res$cex <- rep(0.5, nrow(res))
-  res$order <- rep(0, nrow(res))
-
-  if(!is.null(highlight)) {
-    res$col[highlight] <- "red"
-    res$cex[highlight] <- 1
-    res$order[highlight] <- 1
-  }
-
   res$x <- res$log2FoldChange
   res$y <- -log10(res[[sig.term]])
 
-  res$col[res$y < -log10(sig.thresh)] <- "grey80"
+  res$col[res$y < -log10(sig.thresh)] <- "#A6A6A6"
 
   res$sh <- ifelse(res$y > ylim, "triangle-up-open",
                ifelse(res$x < -xlim, "triangle-left-open",
-                      ifelse(res$x > xlim, "triangle-right-open", 16)))
+                      ifelse(res$x > xlim, "triangle-right-open", 0)))
 
-  res$y[res$y > ylim] <- ylim
-  res$x[res$x > xlim] <- xlim
-  res$x[res$x < -xlim] <- -xlim
-  ylim <- c(0, ylim)
-  res$col[res$col == "red" & res$x < 0] <- "#0026ff"
+  res$y[res$y > ylim] <- ylim - 0.2
+  res$x[res$x > xlim] <- xlim - 0.05
+  res$x[res$x < -xlim] <- -xlim + 0.05
   res$Gene <- rownames(res)
 
   res$hover.string <- paste("</br><b>Gene:</b> ", res$Gene,
@@ -138,26 +196,72 @@
   res <- as.data.frame(res)
   res <- res[order(res$order),]
 
-  p <- ggplot(res, aes_string("x", "y", text = "hover.string")) +
-    geom_point(col = res$col, shape = res$sh, size = res$cex, alpha = 1) +
-    xlab("log2 fold change") + ylab(paste0("-log10(", sig.term,")")) +
-    xlim(-xlim, xlim) + ylim(ylim) +
-    theme(panel.background = element_blank(),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          panel.border = element_rect(colour = "black", fill = NA, size = 0.2)) +
-    geom_vline(xintercept = 0, size = 0.2, colour = "grey70")
+  # Add plot border.
+  ay <- list(
+    showline = TRUE,
+    mirror = "ticks",
+    linecolor = toRGB("black"),
+    linewidth = 1,
+    title = paste0("-log10(", sig.term, ")"),
+    range = list(0, ylim),
+    showgrid = FALSE,
+    layer = "below traces"
+  )
+
+  ax <- list(
+    showline = TRUE,
+    mirror = "ticks",
+    linecolor = toRGB("black"),
+    linewidth = 1,
+    title = "log2(fold change)",
+    range = list(-xlim, xlim),
+    showgrid = FALSE,
+    layer = "below traces"
+  )
+
+  # Create vertical and horizontal lines.
+  fc.line1 <- NULL
+  fc.line2 <- NULL
+
+  if(sig.line) {
+    sig.hline <- .hline(y = -log10(sig.thresh), color = "#999999", width = 1)
+  }
 
   if (fc.thresh != 0 & fc.lines) {
-    p <- p + geom_vline(xintercept = fc.thresh, color = "blue", size = 0.2) +
-      geom_vline(xintercept = -fc.thresh, color = "blue", size = 0.2)
+    fc.line1 <- .vline(x = fc.thresh, color = "#999999", width = 1)
+    fc.line2 <- .vline(x = -fc.thresh, color = "#999999", width = 1)
   }
 
-  if (sig.line) {
-    p <- p + geom_hline(yintercept = -log10(sig.thresh), color = "grey70", size = 0.2)
-  }
+  fig <- plot_ly(res, x = ~x,
+                 y = ~y,
+                 customdata = ~Gene,
+                 type = "scatter",
+                 mode = "markers",
+                 marker = list(color = ~col,
+                               size = ~cex,
+                               symbol = ~sh,
+                               line = list(color = ~col)),
+                 text = ~hover.string,
+                 hoverinfo = "text",
+                 source = paste0(h.id, "_volc")) %>%
+    config(edits = list(annotationPosition = TRUE,
+                        annotationTail = TRUE))
 
-  ggplotly(p, tooltip = c("text")) %>% toWebGL()
+  if (!is.null(gs)) {
+    fig %>%
+      layout(xaxis = ax,
+             yaxis = ay,
+             showlegend = FALSE,
+             shapes = list(sig.hline, fc.line1, fc.line2)) %>%
+      add_annotations(x = gs$x, y = gs$y, text = gs$customdata,
+                      font = list(size = 10, family = "Arial"), arrowside = "none") %>%
+      toWebGL()
+  } else {
+    fig %>% layout(xaxis = ax,
+                   yaxis = ay,
+                   showlegend = FALSE,
+                   shapes = list(sig.hline, fc.line1, fc.line2)) %>% toWebGL()
+  }
 }
 
 # Determine columns in results table and adjust output appropriately.

@@ -31,7 +31,7 @@
 #'
 #' @author Jared Andrews
 #' @export
-shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = TRUE,
+shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                           center = TRUE, color.by = NULL, shape.by = NULL,
                           annot.by = NULL, height = 850) {
 
