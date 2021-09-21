@@ -67,7 +67,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
         mainPanel(width = 10,
                   tabsetPanel(
                     tabPanel("Plot", div(plotlyOutput("main.plot"), align = "center", style = "height:700px;")),
-                    tabPanel("Metadata", div(DTOutput("metadata"), style = "font-size:80%"))
+                    tabPanel("Metadata", div(br(), DTOutput("metadata"), style = "font-size:80%"))
                   )
         )
       )

@@ -64,7 +64,7 @@ shh(library("iBET"))
 #shh(library("scater"))
 
 # Make a mock DESeq2Dataset.
-dds <- makeExampleDESeqDataSet(n = 3000, betaSD = 2)
+dds <- makeExampleDESeqDataSet(n = 3000, m = 12, betaSD = 2)
 dds$sample <- rownames(colData(dds))
 dds$group <- rep(c("g1", "g2"), 6)
 dds <- DESeq(dds)
@@ -73,7 +73,7 @@ vst <- assay(vst(dds))
 
 ## Interactive PCA via `PCAtools`
 
-[PCAtools](https://bioconductor.org/packages/release/bioc/html/PCAtools.html) is a straight-forward package for principle component analysis.
+[PCAtools](https://bioconductor.org/packages/release/bioc/html/PCAtools.html) is a straight-forward package for principle component analysis. Note that filtering samples in the Metadata tab will re-run and re-plot the PCA.
 
 ```{r pca, message = FALSE, warning = FALSE}
 shinyPCAtools(vst, metadata = colData(dds), annot.by = c("sample", "condition", "group"), color.by = "condition", shape.by = "group", scale = TRUE, height = 850)
@@ -87,8 +87,8 @@ Works well on larger datasets, though it takes significant time for the PCA to r
 ```{r bigpca, message = FALSE, warning = FALSE, eval = FALSE}
 # Not run
 data <- ZeiselBrainData()
-
-# Remove genes expressed in few cells.
+ 
+# # Remove genes expressed in few cells.
 data <- data[rowMeans(counts(data) != 0) > 0.05, ]
 data <- computeSumFactors(data, cluster = quickCluster(data))
 data <- logNormCounts(data)
