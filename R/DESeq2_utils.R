@@ -37,27 +37,28 @@
 }
 
 
-.make_maplot <- function(res, ylim, fc.thresh, fc.lines, h.id, sig.term, sig.thresh = 0.05, gs = NULL) {
+.make_maplot <- function(res, ylim, fc.thresh, fc.lines, h.id, sig.term,
+                         down.color, up.color, insig.color, sig.thresh = 0.05, gs = NULL) {
 
-  res$col <- rep("black", nrow(res))
+  res$col <- rep(insig.color, nrow(res))
   res$cex <- rep(3, nrow(res))
   res$order <- rep(0, nrow(res))
 
   # Significance filter.
   up.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange > 0
-  res$col[up.degs] <- "red"
+  res$col[up.degs] <- up.color
   res$cex[up.degs] <- 5
   res$order[up.degs] <- 1
 
   dn.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange < 0
-  res$col[dn.degs] <- "#0026ff"
+  res$col[dn.degs] <- down.color
   res$cex[dn.degs] <- 5
   res$order[dn.degs] <- 1
 
   # LFC filter.
   if(fc.thresh > 0) {
     fc.threshed <- abs(res$log2FoldChange) < fc.thresh
-    res$col[fc.threshed] <- "black"
+    res$col[fc.threshed] <- insig.color
     res$cex[fc.threshed] <- 3
     res$order[fc.threshed] <- 0
   }
@@ -100,15 +101,16 @@
     linewidth = 1,
     title = "log10(baseMean)",
     showgrid = FALSE,
-    layer = "below traces"
+    layer = "below traces",
+    zeroline = FALSE
   )
 
   # Create vertical and horizontal lines.
   fc.line1 <- NULL
   fc.line2 <- NULL
   if (fc.thresh != 0 & fc.lines) {
-    fc.line1 <- .hline(y = fc.thresh, color = "#999999", width = 1)
-    fc.line2 <- .hline(y = -fc.thresh, color = "#999999", width = 1)
+    fc.line1 <- .hline(y = fc.thresh, color = "#999999", width = 1, dash = "longdash")
+    fc.line2 <- .hline(y = -fc.thresh, color = "#999999", width = 1, dash = "longdash")
   }
 
   fig <- plot_ly(res, x = ~log10(x),
@@ -146,28 +148,29 @@
 
 # make the volcano plot with some genes highlighted
 .make_volcano <- function(res, xlim, ylim, fc.thresh, fc.lines,
-                          sig.line, h.id, sig.term, sig.thresh = 0.05, gs = NULL) {
+                          sig.line, h.id, sig.term, down.color, up.color,
+                          insig.color, sig.thresh = 0.05, gs = NULL) {
 
   # Adjust for potential differences in the results table.
-  res$col <- rep("black", nrow(res))
+  res$col <- rep(insig.color, nrow(res))
   res$cex <- rep(3, nrow(res))
   res$order <- rep(0, nrow(res))
 
   # Significance filter.
   up.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange > 0
-  res$col[up.degs] <- "red"
+  res$col[up.degs] <- up.color
   res$cex[up.degs] <- 5
   res$order[up.degs] <- 1
 
   dn.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange < 0
-  res$col[dn.degs] <- "#0026ff"
+  res$col[dn.degs] <- down.color
   res$cex[dn.degs] <- 5
   res$order[dn.degs] <- 1
 
   # LFC filter.
   if(fc.thresh > 0) {
     fc.threshed <- abs(res$log2FoldChange) < fc.thresh
-    res$col[fc.threshed] <- "black"
+    res$col[fc.threshed] <- insig.color
     res$cex[fc.threshed] <- 3
     res$order[fc.threshed] <- 0
   }
@@ -178,7 +181,7 @@
   res$x <- res$log2FoldChange
   res$y <- -log10(res[[sig.term]])
 
-  res$col[res$y < -log10(sig.thresh)] <- "#A6A6A6"
+  res$col[res$y < -log10(sig.thresh)] <- insig.color
 
   res$sh <- ifelse(res$y > ylim, "triangle-up-open",
                ifelse(res$x < -xlim, "triangle-left-open",
@@ -205,7 +208,8 @@
     title = paste0("-log10(", sig.term, ")"),
     range = list(0, ylim),
     showgrid = FALSE,
-    layer = "below traces"
+    layer = "below traces",
+    zeroline = FALSE
   )
 
   ax <- list(
@@ -224,12 +228,12 @@
   fc.line2 <- NULL
 
   if(sig.line) {
-    sig.hline <- .hline(y = -log10(sig.thresh), color = "#999999", width = 1)
+    sig.hline <- .hline(y = -log10(sig.thresh), color = "#999999", width = 1, dash = "longdash")
   }
 
   if (fc.thresh != 0 & fc.lines) {
-    fc.line1 <- .vline(x = fc.thresh, color = "#999999", width = 1)
-    fc.line2 <- .vline(x = -fc.thresh, color = "#999999", width = 1)
+    fc.line1 <- .vline(x = fc.thresh, color = "#999999", width = 1, dash = "longdash")
+    fc.line2 <- .vline(x = -fc.thresh, color = "#999999", width = 1, dash = "longdash")
   }
 
   fig <- plot_ly(res, x = ~x,

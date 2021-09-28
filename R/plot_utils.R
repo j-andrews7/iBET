@@ -1,4 +1,4 @@
-.vline <- function(x = 0, color = "red", width = 1) {
+.vline <- function(x = 0, color = "red", width = 1, dash = "solid") {
   list(
     type = "line",
     y0 = 0,
@@ -6,11 +6,11 @@
     yref = "paper",
     x0 = x,
     x1 = x,
-    line = list(color = color, width = width)
+    line = list(color = color, width = width, dash = dash)
   )
 }
 
-.hline <- function(y = 0, color = "blue", width = 1) {
+.hline <- function(y = 0, color = "blue", width = 1, dash = "solid") {
   list(
     type = "line",
     x0 = 0,
@@ -18,6 +18,6 @@
     xref = "paper",
     y0 = y,
     y1 = y,
-    line = list(color = color, width = width)
+    line = list(color = color, width = width, dash = dash)
   )
 }

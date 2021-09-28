@@ -24,9 +24,10 @@
 #' @import ggplot2
 #' @import shinydashboard
 #' @import dashboardthemes
-#' @importFrom shinyWidgets prettyCheckbox
+#' @importFrom shinyWidgets prettyCheckbox dropdownButton tooltipOptions
 #' @importFrom shinycustomloader withLoader
 #' @importFrom shinyjqui jqui_resizable
+#' @importFrom colourpicker colourInput
 #'
 #' @param dds A \code{\link[DESeq2]{DESeqDataSet}} object.
 #' @param res The object returned by \code{\link[DESeq2]{results}} or \code{\link[DESeq2]{lfcShrink}} (recommended).
@@ -188,16 +189,44 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       tabPanel("MA & Volcano Plots",
         fluidRow(
           column(width = 6,
-            h3("MA-plot"),
-            withLoader(jqui_resizable(plotlyOutput("ma_plot", height = "550px", width = "550px")),
-                       type = "html", loader = "dnaspin"),
-            htmlOutput("ma_plot_selected"),
+            br(),
+            dropdownButton(
+              tags$h3("Plot Settings"),
+              colourInput("ma.down.color", "Down-regulated genes colour", value = "#0026ff"),
+              colourInput("ma.up.color", "Up-regulated genes colour", value = "red"),
+              colourInput("ma.insig.color", "Unchanged genes colour", value = "black"),
+              numericInput("ma.y", label = "MAplot y-axis limits:", value = 5, step = 0.1, min = 0.1),
+              prettyCheckbox("ma.fcline", label = "Show MAplot FC Threshold", value = TRUE,
+                            animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
+              circle = FALSE, label = strong("MA-Plot"), status = "danger", size = "lg", icon = icon("gear"),
+              width = "300px", tooltip = tooltipOptions(title = "Click to change plot settings")
+            ),
+            withLoader(
+              jqui_resizable(
+                plotlyOutput("ma_plot", height = "550px", width = "550px")
+              ),
+              type = "html", loader = "dnaspin"
+            )
           ),
           column(width = 6,
-            h3("Volcano plot"),
+            br(),
+            dropdownButton(
+              tags$h3("Plot Settings"),
+              colourInput("vol.down.color", "Down-regulated genes colour", value = "#0026ff"),
+              colourInput("vol.up.color", "Up-regulated genes colour", value = "red"),
+              colourInput("vol.insig.color", "Unchanged genes colour", value = "#A6A6A6"),
+              numericInput("vol.x", label = "Volcano plot x-axis limits:", value = 5, step = 0.1, min = 0.1),
+              numericInput("vol.y", label = "Volcano plot y-axis limits:", value = max(-log10(res[[sig.term]])),
+                           step = 0.5, min = 1),
+              prettyCheckbox("vol.fcline", label = "Show Volcano FC Threshold", value = TRUE,
+                             animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
+              prettyCheckbox("vol.sigline", label = "Show Volcano Signficance Threshold", value = TRUE,
+                             animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
+              circle = FALSE, label = strong("Volcano Plot"), status = "danger", size = "lg", icon = icon("gear"),
+              width = "300px", tooltip = tooltipOptions(title = "Click to change plot settings")
+            ),
             withLoader(jqui_resizable(plotlyOutput("volcano_plot", height = "550px", width = "550px")),
                        type = "html", loader = "dnaspin"),
-            htmlOutput("volcano_plot_selected"),
           )
         )
       ),
@@ -224,26 +253,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
           numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
           numericInput("row.km", label = "Number of row k-means groups:", value = 2, step = 1),
           numericInput("col.km", label = "Number of column k-means groups:", value = 0, step = 1),
-          actionButton("filter", label = "Generate heatmap"),
-
-          hr(style="margin:10px; background-color: #737373;"),
-          fluidRow(
-            box(collapsible = TRUE, collapsed = TRUE, title = "Additional Plot Controls", width = 12,
-                solidHeader = TRUE,
-                numericInput("ma.y", label = "MAplot y-axis limits:", value = 5, step = 0.1, min = 0.1),
-                numericInput("vol.x", label = "Volcano plot x-axis limits:", value = 5, step = 0.1, min = 0.1),
-                numericInput("vol.y", label = "Volcano plot y-axis limits:", value = max(-log10(res[[sig.term]])),
-                             step = 0.5, min = 1),
-                div(
-                  prettyCheckbox("ma.fcline", label = "Show MAplot FC Threshold", value = TRUE,
-                                 animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-                  prettyCheckbox("vol.fcline", label = "Show Volcano FC Threshold", value = TRUE,
-                                 animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-                  prettyCheckbox("vol.sigline", label = "Show Volcano Signficance Threshold", value = TRUE,
-                                 animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-                style = "font-size: 10px !important;")
-            )
-          )
+          actionButton("filter", label = "Generate heatmap")
         ),
         body
       )
@@ -294,14 +304,17 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     output$ma_plot <- renderPlotly({
       req(genes)
       .make_maplot(res = res, ylim = input$ma.y, fc.thresh = input$log2fc,
-                   fc.lines = input$ma.fcline, sig.thresh = input$fdr, h.id = h.id, sig.term = sig.term, gs = genes$ma)
+                   fc.lines = input$ma.fcline, sig.thresh = input$fdr, h.id = h.id,
+                   sig.term = sig.term, gs = genes$ma, up.color = input$ma.up.color,
+                   down.color = input$ma.down.color, insig.color = input$ma.insig.color)
     })
 
     output$volcano_plot <- renderPlotly({
       req(genes)
       .make_volcano(res = res, xlim = input$vol.x, ylim = input$vol.y, fc.thresh = input$log2fc,
                     fc.lines = input$vol.fcline, sig.thresh = input$fdr, sig.line = input$vol.sigline,
-                    h.id = h.id, sig.term = sig.term, gs = genes$volc)
+                    h.id = h.id, sig.term = sig.term, gs = genes$volc, up.color = input$vol.up.color,
+                    down.color = input$vol.down.color, insig.color = input$vol.insig.color)
     })
 
     output[["res_table_full"]] <- DT::renderDataTable({
