@@ -51,22 +51,22 @@ Generating static reports from R markdown documents is a common way to distribut
 
 [iBET](https://github.com/j-andrews7/iBET) (interactive Bioinformatics Exploratory Tools) is an R package that contains drop-in Shiny widgets that run and/or display the results of common analyses performed with bioinformatics R packages. These empower end-users to fully immerse themselves in the data through interactive alterations of plot and analysis parameters. Hopefully, it helps to alleviate some of the frustration that comes with frequent back-and-forth interactions to generate and alter figures. While these widgets are designed for drop-in use in Rmd notebooks, they also functions perfectly well as Shiny apps on their own when run from the console.
 
-# An Example
+# The Widgets
+
+First, let's load up some example data.
 
 ```{r, message = FALSE, warning = FALSE}
 shh <- suppressPackageStartupMessages
 shh(library("DESeq2"))
 shh(library("PCAtools"))
 shh(library("iBET"))
-#shh(library("scRNAseq"))
-#shh(library("scran"))
-#shh(library("scuttle"))
-#shh(library("scater"))
+shh(library("DEFormats"))
+shh(library("edgeR"))
+shh(library("airway"))
 
-# Make a mock DESeq2Dataset.
-dds <- makeExampleDESeqDataSet(n = 3000, m = 12, betaSD = 2)
-dds$sample <- rownames(colData(dds))
-dds$group <- rep(c("g1", "g2"), 6)
+data("airway")
+airway$dex <- relevel(airway$dex, ref = "untrt")
+dds <- DESeqDataSet(airway, design = ~ cell)
 dds <- DESeq(dds)
 vst <- assay(vst(dds))
 ```
@@ -76,7 +76,7 @@ vst <- assay(vst(dds))
 [PCAtools](https://bioconductor.org/packages/release/bioc/html/PCAtools.html) is a straight-forward package for principle component analysis. Note that filtering samples in the Metadata tab will re-run and re-plot the PCA.
 
 ```{r pca, message = FALSE, warning = FALSE}
-shinyPCAtools(vst, metadata = colData(dds), annot.by = c("sample", "condition", "group"), color.by = "condition", shape.by = "group", scale = TRUE, height = 850)
+shinyPCAtools(vst, metadata = colData(dds), annot.by = c("cell", "dex"), color.by = "dex", shape.by = "cell", scale = TRUE, height = 850)
 ```
 
 
@@ -86,6 +86,10 @@ Works well on larger datasets, though it takes significant time for the PCA to r
 
 ```{r bigpca, message = FALSE, warning = FALSE, eval = FALSE}
 # Not run
+shh(library("scRNAseq"))
+shh(library("scran"))
+shh(library("scuttle"))
+shh(library("scater"))
 data <- ZeiselBrainData()
  
 # # Remove genes expressed in few cells.
@@ -104,7 +108,57 @@ This widget was heavily inspired by the `interactivate` function from the [Inter
 Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around, though adding labels will reset the position, so it's recommended to add all labels prior to re-positioning them.
 
 ```{r de, message = FALSE, warning = FALSE}
-shinyDESeq2(dds, annot.by = c("condition", "group"))
+shinyDESeq2(dds, annot.by = c("cell", "dex"))
+```
+
+## Correlating DE Results
+
+This widget creates scatter plots for arbitrary combinations of DE results. It takes a named list of dataframes as input and will plot scatter plots of log2 Fold Change values for each gene. It accepts up to 4 results dataframes and will generate plots for all combinations of them along with a regression line and correlation testing. Points are colored by significance in each DE analysis. Results dataframes from edgeR, limma, and DESeq2 will automatically have the appropriate columns used for plotting, but users can also provide the column names for their significance value or fold change column as necessary.
+
+Gene labels can be added to a plot by clicking a point. The labels can also be dragged around, though adding labels to a plot will reset the label positions for said plot, so it's recommended to add all labels prior to re-positioning them.
+
+```{r}
+deseq.res1 <- results(dds, contrast = c("cell", "N61311", "N052611"))
+deseq.res2 <- results(dds, contrast = c("cell", "N080611", "N052611"))
+deseq.res3 <- results(dds, contrast = c("cell", "N61311", "N080611"))
+deseq.res4 <- results(dds, contrast = c("cell", "N080611", "N61311"))
+
+meta <- colData(dds)
+dge <- as.DGEList(dds)
+grp <- meta$cell
+design <- model.matrix(~0 + grp)
+colnames(design) <- levels(grp)
+contr1 <- makeContrasts(N61311 - N052611, levels = design)
+contr2 <- makeContrasts(N080611 - N052611, levels = design)
+contr3<- makeContrasts(N61311 - N080611, levels = design)
+contr4 <- makeContrasts(N080611 - N61311, levels = design)
+
+dge <- calcNormFactors(dge)
+keep <- filterByExpr(dge)
+dge <- dge[keep, , keep.lib.sizes=FALSE]
+dge <- estimateDisp(dge, design = design)
+
+fit <- glmQLFit(dge, design)
+qlf <- glmQLFTest(fit, contrast = contr1)
+edgeR.res1 <- topTags(qlf, n = nrow(dge))
+qlf <- glmQLFTest(fit, contrast = contr2)
+edgeR.res2 <- topTags(qlf, n = nrow(dge))
+qlf <- glmQLFTest(fit, contrast = contr3)
+edgeR.res3 <- topTags(qlf, n = nrow(dge))
+qlf <- glmQLFTest(fit, contrast = contr4)
+edgeR.res4 <- topTags(qlf, n = nrow(dge))
+```
+
+```{r}
+res <- list("comp1" = as.data.frame(deseq.res1), "comp2" = as.data.frame(deseq.res2), 
+            "comp3" = as.data.frame(deseq.res3), "comp4" = as.data.frame(deseq.res4))
+shinyDECorr(res, height = 800)
+```
+
+```{r}
+res <- list("comp1" = as.data.frame(edgeR.res1), "comp2" = as.data.frame(edgeR.res2), 
+            "comp3" = as.data.frame(edgeR.res3), "comp4" = as.data.frame(edgeR.res4))
+shinyDECorr(res, height = 800)
 ```
 
 # SessionInfo

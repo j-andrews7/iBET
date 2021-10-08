@@ -36,7 +36,8 @@ Imports: DESeq2,
     shinyjqui,
     PCAtools,
     dittoSeq,
-    matrixStats
+    matrixStats,
+    colourpicker
 Suggests:
     airway,
     magrittr,

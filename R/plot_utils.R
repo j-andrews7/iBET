@@ -21,3 +21,18 @@
     line = list(color = color, width = width, dash = dash)
   )
 }
+
+.fitline <- function(df, color = "black", width = 0.75, dash = "solid") {
+  list(
+    type = "line",
+    line = list(color = color, width = width, dash = dash),
+    xref = "x",
+    yref = "y",
+    y0 = min(df$fv),
+    y1 = max(df$fv),
+    x0 = df$lfc.x[df$fv == min(df$fv)],
+    x1 = df$lfc.x[df$fv == max(df$fv)]
+  )
+
+
+}
