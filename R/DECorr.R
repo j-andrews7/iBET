@@ -132,14 +132,15 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                          icon = icon("check"), width = "100%"),
           hr(),
           h4("Point Color"),
-          splitLayout(
-            colourInput("comp1.sig", "X-axis Signif", value = "#E69F00"),
-            colourInput("comp2.sig", "Y-axis Signif", value = "#56B4E9")
+          fluidRow(
+            column(6, colourInput("comp1.sig", "X-axis Signif", value = "#E69F00")),
+            column(6,colourInput("comp2.sig", "Y-axis Signif", value = "#56B4E9"))
           ),
-          splitLayout(
-            colourInput("both.sig", "Both Signif", value = "#009E73"),
-            colourInput("insig.color", "Insignificant", value = "#666666")
-          )
+          fluidRow(
+            column(6, colourInput("both.sig", "Both Signif", value = "#009E73")),
+            column(6, colourInput("insig.color", "Insignificant", value = "#666666"))
+          ),
+          div(actionButton("update", "Update Plots"), align = "center")
         ),
         body
       )
@@ -226,13 +227,14 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
         # Make plots. Has to be plot_ly made to add the labels. Regression line still confusing.
         output[[my_n]] <- renderPlotly({
           req(genes)
+          input$update
           .make_xyplot(res[df1], res[df2], sig.col = sig.col, lfc.col = lfc.col,
-                       sig.thresh = input$sig,
-                       lfc.thresh = input$log2fc, gene.col = gene.col, source = my_n,
-                       expr.col = expr.col, regr = input$draw.reg, genes.labeled = genes[[my_n]],
-                       res1.color = input$comp1.sig, res2.color = input$comp2.sig,
-                       both.color = input$both.sig, insig.color = input$insig.color,
-                       xlim = input$xlim, ylim = input$ylim, show = input$show)
+                       sig.thresh = isolate(input$sig), lfc.thresh = isolate(input$log2fc),
+                       gene.col = gene.col, source = my_n, expr.col = expr.col,
+                       regr = isolate(input$draw.reg), genes.labeled = genes[[my_n]],
+                       res1.color = isolate(input$comp1.sig), res2.color = isolate(input$comp2.sig),
+                       both.color = isolate(input$both.sig), insig.color = isolate(input$insig.color),
+                       xlim = isolate(input$xlim), ylim = isolate(input$ylim), show = isolate(input$show))
         })
       })
     }

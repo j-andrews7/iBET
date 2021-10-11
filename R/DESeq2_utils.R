@@ -126,7 +126,8 @@
                  hoverinfo = "text",
                  source = paste0(h.id, "_ma")) %>%
     config(edits = list(annotationPosition = TRUE,
-                        annotationTail = TRUE))
+                        annotationTail = TRUE),
+           toImageButtonOptions = list(format = "svg"))
 
   if (!is.null(gs)) {
     fig %>%
@@ -227,6 +228,7 @@
   fc.line1 <- NULL
   fc.line2 <- NULL
 
+  sig.hline <- NULL
   if(sig.line) {
     sig.hline <- .hline(y = -log10(sig.thresh), color = "#999999", width = 1, dash = "longdash")
   }
@@ -249,7 +251,8 @@
                  hoverinfo = "text",
                  source = paste0(h.id, "_volc")) %>%
     config(edits = list(annotationPosition = TRUE,
-                        annotationTail = TRUE))
+                        annotationTail = TRUE),
+           toImageButtonOptions = list(format = "svg"))
 
   if (!is.null(gs)) {
     fig %>%

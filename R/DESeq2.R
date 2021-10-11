@@ -253,7 +253,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
           numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
           numericInput("row.km", label = "Number of row k-means groups:", value = 2, step = 1),
           numericInput("col.km", label = "Number of column k-means groups:", value = 0, step = 1),
-          actionButton("filter", label = "Generate heatmap")
+          div(actionButton("update", label = "Update Plots"), align = "center")
         ),
         body
       )
@@ -303,18 +303,23 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
 
     output$ma_plot <- renderPlotly({
       req(genes)
-      .make_maplot(res = res, ylim = input$ma.y, fc.thresh = input$log2fc,
-                   fc.lines = input$ma.fcline, sig.thresh = input$fdr, h.id = h.id,
-                   sig.term = sig.term, gs = genes$ma, up.color = input$ma.up.color,
-                   down.color = input$ma.down.color, insig.color = input$ma.insig.color)
+      input$update
+
+      .make_maplot(res = res, ylim = isolate(input$ma.y), fc.thresh = isolate(input$log2fc),
+                   fc.lines = isolate(input$ma.fcline), sig.thresh = isolate(input$fdr), h.id = h.id,
+                   sig.term = sig.term, gs = genes$ma, up.color = isolate(input$ma.up.color),
+                   down.color = isolate(input$ma.down.color), insig.color = isolate(input$ma.insig.color))
     })
 
     output$volcano_plot <- renderPlotly({
       req(genes)
-      .make_volcano(res = res, xlim = input$vol.x, ylim = input$vol.y, fc.thresh = input$log2fc,
-                    fc.lines = input$vol.fcline, sig.thresh = input$fdr, sig.line = input$vol.sigline,
-                    h.id = h.id, sig.term = sig.term, gs = genes$volc, up.color = input$vol.up.color,
-                    down.color = input$vol.down.color, insig.color = input$vol.insig.color)
+      input$update
+
+      .make_volcano(res = res, xlim = isolate(input$vol.x), ylim = isolate(input$vol.y),
+                    fc.thresh = isolate(input$log2fc), fc.lines = isolate(input$vol.fcline),
+                    sig.thresh = isolate(input$fdr), sig.line = isolate(input$vol.sigline),
+                    h.id = h.id, sig.term = sig.term, gs = genes$volc, up.color = isolate(input$vol.up.color),
+                    down.color = isolate(input$vol.down.color), insig.color = isolate(input$vol.insig.color))
     })
 
     output[["res_table_full"]] <- DT::renderDataTable({
@@ -343,7 +348,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
         DT::formatStyle(1, target = "row", lineHeight = '40%')
     })
 
-    observeEvent(input$filter, {
+    observeEvent(input$update, {
       pdf(NULL)
       ht <- .make_heatmap(mat, res, anno, baseMean_col_fun, log2fc_col_fun,
                           fdr = as.numeric(input$fdr), base_mean = input$base_mean, log2fc = input$log2fc,

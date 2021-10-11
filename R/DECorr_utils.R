@@ -80,6 +80,13 @@
                           ifelse(full.df$lfc.x < -xlim, "triangle-left-open",
                             ifelse(full.df$lfc.x > xlim, "triangle-right-open", 0))))
 
+  # Calculate regression line if needed, prior to change values due to axis limits.
+  regr.line <- NULL
+  if (regr) {
+    full.df$fv <- lm(lfc.y ~ lfc.x, data = full.df) %>% fitted.values()
+    regr.line <- .fitline(full.df)
+  }
+
   full.df$lfc.y[full.df$lfc.y > ylim] <- ylim - 0.1
   full.df$lfc.y[full.df$lfc.y < -ylim] <- -ylim + 0.1
 
@@ -102,12 +109,6 @@
 
   full.df <- as.data.frame(full.df)
   full.df <- full.df[order(full.df$order),]
-
-  regr.line <- NULL
-  if (regr) {
-    full.df$fv <- lm(lfc.y ~ lfc.x, data = full.df) %>% fitted.values()
-    regr.line <- .fitline(full.df)
-  }
 
   # Add plot border.
   ay <- list(
