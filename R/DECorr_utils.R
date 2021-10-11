@@ -85,6 +85,11 @@
   if (regr) {
     full.df$fv <- lm(lfc.y ~ lfc.x, data = full.df) %>% fitted.values()
     regr.line <- .fitline(full.df)
+
+    regr.anno <- paste0("R = ",
+                  round(with(full.df, cor.test(lfc.x, lfc.y))$estimate, 2),
+                  ", p = ",
+                  format(with(full.df, cor.test(lfc.x, lfc.y))$p.value, scientific = TRUE, digits = 3))
   }
 
   full.df$lfc.y[full.df$lfc.y > ylim] <- ylim - 0.1
@@ -158,10 +163,7 @@
         y= 1,
         xref = "paper",
         yref = "paper",
-        text = paste0("R = ",
-                      round(with(full.df, cor.test(lfc.x, lfc.y))$estimate, 2),
-                      ", p = ", format(with(full.df, cor.test(lfc.x, lfc.y))$p.value,
-                                       scientific = TRUE, digits = 3)),
+        text = regr.anno,
         showarrow = FALSE,
         font = list(size = 8)
       )
