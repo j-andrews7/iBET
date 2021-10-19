@@ -1,6 +1,7 @@
 .make_xyplot <- function(res1, res2, res1.color, res2.color, both.color, insig.color, sig.col, lfc.col,
-                         sig.thresh, lfc.thresh, gene.col, expr.col,
-                         regr = TRUE, genes.labeled = NULL, ylim, xlim, show, source) {
+                         sig.thresh, lfc.thresh, gene.col, expr.col, opacity,
+                         regr = TRUE, genes.labeled = NULL, ylim, xlim, show,
+                         source, label.size) {
 
   comp1.name <- names(res1)
   comp1 <- res1[[1]]
@@ -8,7 +9,7 @@
   comp2.name <- names(res2)
   comp2 <- res2[[1]]
 
-  # If gene column not clear, set to rownames.
+  # If gene column not defined, set to rownames.
   if (is.null(gene.col)) {
     comp1$Gene <- rownames(comp1)
     comp2$Gene <- rownames(comp2)
@@ -146,7 +147,8 @@
                  marker = list(color = ~col,
                                size = ~cex,
                                symbol = ~sh,
-                               line = list(color = ~col)),
+                               line = list(color = ~col),
+                               opacity = opacity),
                  text = ~hover.string,
                  hoverinfo = "text",
                  source = source) %>%
@@ -175,7 +177,7 @@
              yaxis = ay,
              showlegend = FALSE, shapes = list(regr.line)) %>%
       add_annotations(x = genes.labeled$x, y = genes.labeled$y, text = genes.labeled$customdata,
-                      font = list(size = 10, family = "Arial"), arrowside = "none") %>%
+                      font = list(size = label.size, family = "Arial"), arrowside = "none") %>%
       toWebGL()
   } else {
     fig <- fig %>% layout(xaxis = ax,

@@ -26,7 +26,7 @@
 #'   the function will search for commonly used values ("padj", "FDR", "svalue", "adj.P.Val") in the column names.
 #' @param sig.thresh Number to be used as the significance threshold. Adjustable within the app.
 #' @param lfc.col String for the column name of the log2 fold change column, e.g. "log2FC". If not provided,
-#'   the function will search for commonly used values c("log2FoldChange", "logFC") in the column names.
+#'   the function will search for commonly used values ("log2FoldChange", "logFC") in the column names.
 #' @param gene.col String for the column name containing the gene identifier. If not provided, rownames will
 #'   be used.
 #' @param expr.col Optional string for the column name containing average expression. If not provided,
@@ -130,10 +130,14 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                          animation = "smooth", status = "success",
                          icon = icon("check"), width = "100%"),
           hr(),
-          h4("Point Color"),
+          h4("Point Aesthetics"),
+          fluidRow(
+            column(6, numericInput("lab.size", label = "Label Size:", value = 10, step = 0.5, min = 1)),
+            column(6, numericInput("opa", label = "Opacity:", value = 1, step = 0.05, min = 0))
+          ),
           fluidRow(
             column(6, colourInput("comp1.sig", "X-axis Signif", value = "#E69F00")),
-            column(6,colourInput("comp2.sig", "Y-axis Signif", value = "#56B4E9"))
+            column(6, colourInput("comp2.sig", "Y-axis Signif", value = "#56B4E9"))
           ),
           fluidRow(
             column(6, colourInput("both.sig", "Both Signif", value = "#009E73")),
@@ -210,13 +214,13 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
       output$row2 <- renderUI({div()})
     }
 
+    # Iteratively make plots.
     for (n in colnames(res.comb)) {
       local({
         my_n <- n
         df1 <- res.comb[[1, my_n]]
         df2 <- res.comb[[2, my_n]]
 
-        # Make plots. Has to be plot_ly made to add the labels. Regression line still confusing.
         output[[my_n]] <- renderPlotly({
           req(genes)
           input$update
@@ -226,7 +230,8 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                        regr = isolate(input$draw.reg), genes.labeled = genes[[my_n]],
                        res1.color = isolate(input$comp1.sig), res2.color = isolate(input$comp2.sig),
                        both.color = isolate(input$both.sig), insig.color = isolate(input$insig.color),
-                       xlim = isolate(input$xlim), ylim = isolate(input$ylim), show = isolate(input$show))
+                       xlim = isolate(input$xlim), ylim = isolate(input$ylim), show = isolate(input$show),
+                       opacity = isolate(input$opa), label.size = isolate(input$lab.size))
         })
       })
     }

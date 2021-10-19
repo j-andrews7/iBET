@@ -38,7 +38,8 @@
 
 
 .make_maplot <- function(res, ylim, fc.thresh, fc.lines, h.id, sig.term,
-                         down.color, up.color, insig.color, sig.thresh = 0.05, gs = NULL) {
+                         down.color, up.color, insig.color, sig.thresh = 0.05,
+                         gs = NULL, opacity, label.size) {
 
   res$col <- rep(insig.color, nrow(res))
   res$cex <- rep(3, nrow(res))
@@ -121,7 +122,8 @@
                  marker = list(color = ~col,
                                size = ~cex,
                                symbol = ~sh,
-                               line = list(color = ~col)),
+                               line = list(color = ~col),
+                               opacity = opacity),
                  text = ~hover.string,
                  hoverinfo = "text",
                  source = paste0(h.id, "_ma")) %>%
@@ -136,7 +138,7 @@
              showlegend = FALSE,
              shapes = list(fc.line1, fc.line2)) %>%
       add_annotations(x = gs$x, y = gs$y, text = gs$customdata,
-                      font = list(size = 10, family = "Arial"), arrowside = "none") %>%
+                      font = list(size = label.size, family = "Arial"), arrowside = "none") %>%
       toWebGL()
   } else {
     fig %>% layout(xaxis = ax,
@@ -150,7 +152,8 @@
 # make the volcano plot with some genes highlighted
 .make_volcano <- function(res, xlim, ylim, fc.thresh, fc.lines,
                           sig.line, h.id, sig.term, down.color, up.color,
-                          insig.color, sig.thresh = 0.05, gs = NULL) {
+                          insig.color, sig.thresh = 0.05, gs = NULL,
+                          opacity, label.size) {
 
   # Adjust for potential differences in the results table.
   res$col <- rep(insig.color, nrow(res))
@@ -246,7 +249,8 @@
                  marker = list(color = ~col,
                                size = ~cex,
                                symbol = ~sh,
-                               line = list(color = ~col)),
+                               line = list(color = ~col),
+                               opacity = opacity),
                  text = ~hover.string,
                  hoverinfo = "text",
                  source = paste0(h.id, "_volc")) %>%
@@ -261,7 +265,7 @@
              showlegend = FALSE,
              shapes = list(sig.hline, fc.line1, fc.line2)) %>%
       add_annotations(x = gs$x, y = gs$y, text = gs$customdata,
-                      font = list(size = 10, family = "Arial"), arrowside = "none") %>%
+                      font = list(size = label.size, family = "Arial"), arrowside = "none") %>%
       toWebGL()
   } else {
     fig %>% layout(xaxis = ax,

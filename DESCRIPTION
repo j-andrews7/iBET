@@ -38,7 +38,9 @@ Imports:
     PCAtools,
     dittoSeq,
     matrixStats,
-    colourpicker
+    colourpicker,
+    shinyjs,
+    methods
 Suggests:
     airway,
     magrittr,

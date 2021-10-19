@@ -9,7 +9,6 @@
 #' @details Note that significance values of 0 will always be pushed above the y-limit of the volcano plot, as they are infinite values after log transformation.
 #'
 #' @rawNamespace import(shiny, except = c(dataTableOutput, renderDataTable))
-#' @import DESeq2
 #' @import InteractiveComplexHeatmap
 #' @import ComplexHeatmap
 #' @import DT
@@ -27,10 +26,16 @@
 #' @importFrom shinyWidgets prettyCheckbox dropdownButton tooltipOptions
 #' @importFrom shinycustomloader withLoader
 #' @importFrom shinyjqui jqui_resizable
+#' @importFrom shinyjs show useShinyjs hidden
 #' @importFrom colourpicker colourInput
+#' @importFrom methods is
+#' @importFrom DESeq2 DESeq results lfcShrink resultsNames counts
 #'
 #' @param dds A \code{\link[DESeq2]{DESeqDataSet}} object.
-#' @param res The object returned by \code{\link[DESeq2]{results}} or \code{\link[DESeq2]{lfcShrink}} (recommended).
+#' @param res Either the object returned by \code{\link[DESeq2]{results}} or \code{\link[DESeq2]{lfcShrink}} (recommended)
+#'   or a named list of such results. If a named list is provided, users will be
+#'   able to choose between the provided results and \code{coef} will be ignored.
+#'
 #'   If not provided, it will be generated from the \code{dds} object via \code{\link[DESeq2]{lfcShrink}} and \code{coef}.
 #' @param coef A string indicating the coefficient name for which results will be generated.
 #'   If not provided and \code{res} is \code{NULL}, the first non-intercept coefficient
@@ -62,6 +67,19 @@
 shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                         use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE, samples.use = NULL,
                         h.id = "ht1", height = 800) {
+
+  # Check is res is individual or named list.
+  multi.res <- FALSE
+  res.list <- NULL
+  if (is(res, "list")) {
+    if (!is.null(names(res))) {
+      multi.res <- TRUE
+      res.list <- res
+      res <- res[[1]]
+    } else {
+      stop("Results list elements should be named.")
+    }
+  }
 
   # If gene dispersions not yet calculated, calculate them.
   if(is.null(body(dds@dispersionFunction))) {
@@ -95,7 +113,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     anno <- anno[samples.use,]
   }
 
-  # Change to use `annot.by`.
+  # Get annotations. If none provided, use design variables.
   if (!is.null(annot.by)) {
     anno <- anno[, annot.by, drop = FALSE]
   } else {
@@ -110,7 +128,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
   qa <- quantile(log10(res$baseMean + 1), 0.99)
   baseMean_col_fun <- circlize::colorRamp2(c(0, qa/2, qa), c("blue", "white", "red"))
 
-  qa <- quantile(abs(abs(res$log2FoldChange[!is.na(res$log2FoldChange)])), 0.99)
+  qa <- quantile(abs(res$log2FoldChange[!is.na(res$log2FoldChange)]), 0.99)
   log2fc_col_fun <- circlize::colorRamp2(c(-qa, 0, qa), c("blue", "white", "red"))
 
   if ("svalue" %in% colnames(res)) {
@@ -120,50 +138,6 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
   }
 
   environment(.make_heatmap) <- env
-
-  # A self-defined action to respond brush event. It updates the MA-plot, the volcano plot
-  # and a table which contains DESeq2 results for the selected genes.
-  .brush_action <- function(df, input, output, session) {
-
-    row_index <- unique(unlist(df$row_index))
-    selected <- env$row_index[row_index]
-
-    output[["res_table"]] <- DT::renderDataTable({
-      # Adjust output table columns based on results table.
-      if ("svalue" %in% colnames(res)) {
-        third <- "svalue"
-      } else {
-        third <- "padj"
-      }
-
-      DT::formatRound(DT::datatable(as.data.frame(res[selected, c("baseMean", "log2FoldChange", sig.term)]),
-                                    rownames = TRUE, options = list(lengthMenu = c(5, 10, 25),
-                                                                    pageLength = 20)),
-                      columns = 1:3, digits = 5) %>%
-        DT::formatStyle(0, target = "row", lineHeight = '40%')
-    })
-  }
-
-  .click_action <- function(df, input, output, session) {
-    row_index <- unique(unlist(df$row_index))
-    selected <- env$row_index[row_index]
-
-    output[["res_table"]] <- DT::renderDataTable({
-      # Adjust output table columns based on results table.
-      if ("svalue" %in% colnames(res)) {
-        third <- "svalue"
-      } else {
-        third <- "padj"
-      }
-
-      DT::formatRound(DT::datatable(as.data.frame(res[selected, c("baseMean", "log2FoldChange", sig.term)]),
-                                    rownames = TRUE, options = list(lengthMenu = c(5, 10, 25),
-                                                                  pageLength = 20)),
-                      columns = 1:3, digits = 5) %>%
-        DT::formatStyle(0, target = "row", lineHeight = '40%')
-    })
-  }
-
 
   body <- mainPanel(width = 10,
     tabsetPanel(
@@ -194,8 +168,10 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
               tags$h3("Plot Settings"),
               colourInput("ma.down.color", "Down-regulated genes colour", value = "#0026ff"),
               colourInput("ma.up.color", "Up-regulated genes colour", value = "red"),
-              colourInput("ma.insig.color", "Unchanged genes colour", value = "black"),
-              numericInput("ma.y", label = "MAplot y-axis limits:", value = 5, step = 0.1, min = 0.1),
+              colourInput("ma.insig.color", "Insignificant genes colour", value = "black"),
+              numericInput("ma.y", label = "y-axis limits:", value = 5, step = 0.1, min = 0.1),
+              numericInput("ma.opa", label = "Opacity:", value = 1, step = 0.05, min = 0),
+              numericInput("ma.lab.size", label = "Label Size:", value = 10, step = 0.5, min = 1),
               prettyCheckbox("ma.fcline", label = "Show MAplot FC Threshold", value = TRUE,
                             animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
               circle = FALSE, label = strong("MA-Plot"), status = "danger", size = "lg", icon = icon("gear"),
@@ -214,10 +190,12 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
               tags$h3("Plot Settings"),
               colourInput("vol.down.color", "Down-regulated genes colour", value = "#0026ff"),
               colourInput("vol.up.color", "Up-regulated genes colour", value = "red"),
-              colourInput("vol.insig.color", "Unchanged genes colour", value = "#A6A6A6"),
-              numericInput("vol.x", label = "Volcano plot x-axis limits:", value = 5, step = 0.1, min = 0.1),
-              numericInput("vol.y", label = "Volcano plot y-axis limits:", value = max(-log10(res[[sig.term]])),
+              colourInput("vol.insig.color", "Insignificant genes colour", value = "#A6A6A6"),
+              numericInput("vol.x", label = "x-axis limits:", value = 5, step = 0.1, min = 0.1),
+              numericInput("vol.y", label = "y-axis limits:", value = max(-log10(res[[sig.term]])),
                            step = 0.5, min = 1),
+              numericInput("vol.opa", label = "Opacity:", value = 1, step = 0.05, min = 0),
+              numericInput("vol.lab.size", label = "Label Size:", value = 10, step = 0.5, min = 1),
               prettyCheckbox("vol.fcline", label = "Show Volcano FC Threshold", value = TRUE,
                              animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
               prettyCheckbox("vol.sigline", label = "Show Volcano Signficance Threshold", value = TRUE,
@@ -241,12 +219,14 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     dashboardHeader(disable = TRUE),
     dashboardSidebar(disable = TRUE),
     dashboardBody(
+      useShinyjs(),
       shinyDashboardThemes(
         theme = "onenote"
       ),
       sidebarLayout(
         sidebarPanel(width = 2,
           tags$label(HTML(qq("Comparison: <code style='font-weight:normal; font-size: 10px;'>@{paste(coef, collapse = ' ')}</code>")), class = "shiny-input-container", style = "font-size:1.2em;"),
+          hidden(div(id = "mres", selectInput("res.select", NULL, choices = names(res.list)))),
           hr(style="margin:2px; background-color: #737373;"),
           numericInput("fdr", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
           numericInput("base_mean", label = "Minimal base mean:", value = 0, step = 1),
@@ -260,11 +240,70 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     )
   )
 
-  # makeInteractiveComplexHeatmap() is put inside observeEvent() so that changes on the cutoffs can regenerate the heatmap.
   server <- function(input, output, session) {
+
+    if (multi.res) {
+      shinyjs::show("mres")
+    }
 
     # Keep track of which genes have been clicked
     genes <- reactiveValues(ma = NULL, volc = NULL)
+
+    ress <- reactiveVal({res})
+
+    # Get the selected results tables.
+    observeEvent(input$res.select, {
+      req(ress)
+      ress(res.list[[input$res.select]])
+
+      pdf(NULL)
+      ht <- .make_heatmap(mat, ress(), anno, baseMean_col_fun, log2fc_col_fun,
+                          fdr = as.numeric(input$fdr), base_mean = input$base_mean, log2fc = input$log2fc,
+                          row.km = input$row.km, col.km = input$col.km)
+      dev.off()
+
+      if (!is.null(ht)) {
+        makeInteractiveComplexHeatmap(input, output, session, ht, h.id,
+                                      brush_action = .brush_action, click_action = .click_action)
+      } else {
+        # The ID for the heatmap plot is encoded as @{heatmap_id}_heatmap.
+        output[[paste0(h.id, "_heatmap")]] <- renderPlot({
+          grid.newpage()
+          grid.text("No row exists after filtering.")
+        })
+      }
+    }, ignoreInit = TRUE)
+
+    # A self-defined action to respond brush event. It updates the MA-plot, the volcano plot
+    # and a table which contains DESeq2 results for the selected genes.
+    .brush_action <- function(df, input, output, session) {
+
+      row_index <- unique(unlist(df$row_index))
+      selected <- env$row_index[row_index]
+
+      output[["res_table"]] <- DT::renderDataTable({
+
+        DT::formatRound(DT::datatable(as.data.frame(ress()[selected, c("baseMean", "log2FoldChange", sig.term)]),
+                                      rownames = TRUE, options = list(lengthMenu = c(5, 10, 25),
+                                                                      pageLength = 20)),
+                        columns = 1:3, digits = 5) %>%
+          DT::formatStyle(0, target = "row", lineHeight = '40%')
+      })
+    }
+
+    .click_action <- function(df, input, output, session) {
+      row_index <- unique(unlist(df$row_index))
+      selected <- env$row_index[row_index]
+
+      output[["res_table"]] <- DT::renderDataTable({
+        # Adjust output table columns based on results table.
+        DT::formatRound(DT::datatable(as.data.frame(ress()[selected, c("baseMean", "log2FoldChange", sig.term)]),
+                                      rownames = TRUE, options = list(lengthMenu = c(5, 10, 25),
+                                                                      pageLength = 20)),
+                        columns = 1:3, digits = 5) %>%
+          DT::formatStyle(0, target = "row", lineHeight = '40%')
+      })
+    }
 
     # On click, the key field of the event data contains the gene symbol
     # Add that gene to the set of all "selected" genes
@@ -305,30 +344,33 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       req(genes)
       input$update
 
-      .make_maplot(res = res, ylim = isolate(input$ma.y), fc.thresh = isolate(input$log2fc),
+      .make_maplot(res = ress(), ylim = isolate(input$ma.y), fc.thresh = isolate(input$log2fc),
                    fc.lines = isolate(input$ma.fcline), sig.thresh = isolate(input$fdr), h.id = h.id,
                    sig.term = sig.term, gs = genes$ma, up.color = isolate(input$ma.up.color),
-                   down.color = isolate(input$ma.down.color), insig.color = isolate(input$ma.insig.color))
+                   down.color = isolate(input$ma.down.color), insig.color = isolate(input$ma.insig.color),
+                   opacity = isolate(input$ma.opa), label.size = isolate(input$ma.lab.size))
     })
 
     output$volcano_plot <- renderPlotly({
       req(genes)
       input$update
 
-      .make_volcano(res = res, xlim = isolate(input$vol.x), ylim = isolate(input$vol.y),
+      .make_volcano(res = ress(), xlim = isolate(input$vol.x), ylim = isolate(input$vol.y),
                     fc.thresh = isolate(input$log2fc), fc.lines = isolate(input$vol.fcline),
                     sig.thresh = isolate(input$fdr), sig.line = isolate(input$vol.sigline),
                     h.id = h.id, sig.term = sig.term, gs = genes$volc, up.color = isolate(input$vol.up.color),
-                    down.color = isolate(input$vol.down.color), insig.color = isolate(input$vol.insig.color))
+                    down.color = isolate(input$vol.down.color), insig.color = isolate(input$vol.insig.color),
+                    opacity = isolate(input$vol.opa), label.size = isolate(input$vol.lab.size))
     })
 
     output[["res_table_full"]] <- DT::renderDataTable({
-      df <- as.data.frame(res)
+      req(ress)
+      df <- as.data.frame(ress())
 
-      # Collect proper output columns..
+      # Collect proper output columns.
       if (sig.term == "svalue") {
         cnames <- "svalue"
-      } else if ("stat" %in% colnames(res)) {
+      } else if ("stat" %in% colnames(df)) {
         cnames <- c("padj", "pvalue", "stat")
       } else {
         cnames <- c("padj", "pvalue")
@@ -348,9 +390,11 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
         DT::formatStyle(1, target = "row", lineHeight = '40%')
     })
 
+    # Only remake heatmap on button click.
     observeEvent(input$update, {
+      req(ress)
       pdf(NULL)
-      ht <- .make_heatmap(mat, res, anno, baseMean_col_fun, log2fc_col_fun,
+      ht <- .make_heatmap(mat, ress(), anno, baseMean_col_fun, log2fc_col_fun,
                           fdr = as.numeric(input$fdr), base_mean = input$base_mean, log2fc = input$log2fc,
                         row.km = input$row.km, col.km = input$col.km)
       dev.off()
