@@ -23,7 +23,7 @@ the function will search for commonly used values ("padj", "FDR", "svalue", "adj
 \item{sig.thresh}{Number to be used as the significance threshold. Adjustable within the app.}
 
 \item{lfc.col}{String for the column name of the log2 fold change column, e.g. "log2FC". If not provided,
-the function will search for commonly used values ("log2FoldChange", "logFC") in the column names.}
+the function will search for commonly used values ("log2FoldChange", "logFC", "LFC") in the column names.}
 
 \item{gene.col}{String for the column name containing the gene identifier. If not provided, rownames will
 be used.}

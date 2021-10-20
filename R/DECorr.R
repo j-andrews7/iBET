@@ -26,7 +26,7 @@
 #'   the function will search for commonly used values ("padj", "FDR", "svalue", "adj.P.Val") in the column names.
 #' @param sig.thresh Number to be used as the significance threshold. Adjustable within the app.
 #' @param lfc.col String for the column name of the log2 fold change column, e.g. "log2FC". If not provided,
-#'   the function will search for commonly used values ("log2FoldChange", "logFC") in the column names.
+#'   the function will search for commonly used values ("log2FoldChange", "logFC", "LFC") in the column names.
 #' @param gene.col String for the column name containing the gene identifier. If not provided, rownames will
 #'   be used.
 #' @param expr.col Optional string for the column name containing average expression. If not provided,
@@ -51,32 +51,6 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
     stop("Results list must contain at least 2 elements")
   } else if (length(res) > 4) {
     stop("A maximum of 4 DE results can be provided")
-  }
-
-  res.names <- colnames(res[[1]])
-
-  if (is.null(sig.col)) {
-    if (!any(res.names %in% c("padj", "FDR", "svalue", "adj.P.Val"))) {
-      stop("Cannot determine significance column, please provide the column name to sig.col")
-    } else {
-      sig.col <- res.names[res.names %in% c("padj", "FDR", "svalue", "adj.P.Val")]
-    }
-  }
-
-  if (is.null(lfc.col)) {
-    if (!any(res.names %in% c("log2FoldChange", "logFC"))) {
-      stop("Cannot determine fold change column, please provide the column name to lfc.col")
-    } else {
-      lfc.col <- res.names[res.names %in% c("log2FoldChange", "logFC")]
-    }
-  }
-
-  if (is.null(expr.col)) {
-    if (!any(res.names %in% c("baseMean", "logCPM", "AveExpr"))) {
-      message("Cannot determine average expression column")
-    } else {
-      expr.col <- res.names[res.names %in% c("baseMean", "logCPM", "AveExpr")]
-    }
   }
 
   # Get all combinations and rows needed.
@@ -221,12 +195,15 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
         df1 <- res.comb[[1, my_n]]
         df2 <- res.comb[[2, my_n]]
 
+        df.vars <- .get_plot_vars(res[df1], res[df2], sig.col = sig.col,
+                                  lfc.col = lfc.col, expr.col = expr.col)
+
         output[[my_n]] <- renderPlotly({
           req(genes)
           input$update
-          .make_xyplot(res[df1], res[df2], sig.col = sig.col, lfc.col = lfc.col,
+          .make_xyplot(res[df1], res[df2], df.vars = df.vars,
                        sig.thresh = isolate(input$sig), lfc.thresh = isolate(input$log2fc),
-                       gene.col = gene.col, source = my_n, expr.col = expr.col,
+                       gene.col = gene.col, source = my_n,
                        regr = isolate(input$draw.reg), genes.labeled = genes[[my_n]],
                        res1.color = isolate(input$comp1.sig), res2.color = isolate(input$comp2.sig),
                        both.color = isolate(input$both.sig), insig.color = isolate(input$insig.color),

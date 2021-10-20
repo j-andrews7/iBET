@@ -1,5 +1,5 @@
-.make_xyplot <- function(res1, res2, res1.color, res2.color, both.color, insig.color, sig.col, lfc.col,
-                         sig.thresh, lfc.thresh, gene.col, expr.col, opacity,
+.make_xyplot <- function(res1, res2, res1.color, res2.color, both.color, insig.color,
+                         sig.thresh, lfc.thresh, gene.col, opacity, df.vars,
                          regr = TRUE, genes.labeled = NULL, ylim, xlim, show,
                          source, label.size) {
 
@@ -19,14 +19,14 @@
   }
 
   # Make column grabbing easier later.
-  comp1$lfc.x <- comp1[[lfc.col]]
-  comp2$lfc.y <- comp2[[lfc.col]]
+  comp1$lfc.x <- comp1[[df.vars$res1.lfc.col]]
+  comp2$lfc.y <- comp2[[df.vars$res2.lfc.col]]
 
-  comp1$sig.x <- comp1[[sig.col]]
-  comp2$sig.y <- comp2[[sig.col]]
+  comp1$sig.x <- comp1[[df.vars$res1.sig.col]]
+  comp2$sig.y <- comp2[[df.vars$res2.sig.col]]
 
-  comp1$exp.x <- comp1[[expr.col]]
-  comp2$exp.y <- comp2[[expr.col]]
+  comp1$exp.x <- comp1[[df.vars$res1.expr.col]]
+  comp2$exp.y <- comp2[[df.vars$res2.expr.col]]
 
   # Remove NAs.
   comp1 <- comp1[!is.na(comp1$lfc.x) & !is.na(comp1$sig.x),]
@@ -100,17 +100,17 @@
   full.df$lfc.x[full.df$lfc.x < -xlim] <- -xlim + 0.1
 
   full.df$hover.string <- paste("</br><b>Gene:</b> ", full.df$Gene,
-                                "</br><b>", paste0(comp1.name, " ", lfc.col), ":</b> ",
+                                "</br><b>", paste0(comp1.name, " ", df.vars$res1.lfc.col), ":</b> ",
                                 format(round(full.df$lfc.x, 4), nsmall = 4, scientific = FALSE),
-                                "</br><b>", paste0(comp2.name, " ", lfc.col), ":</b> ",
+                                "</br><b>", paste0(comp2.name, " ", df.vars$res2.lfc.col), ":</b> ",
                                 format(round(full.df$lfc.y, 4), nsmall = 4, scientific = FALSE),
-                                "</br><b>", paste0(comp1.name, " ", sig.col), ":</b> ",
+                                "</br><b>", paste0(comp1.name, " ", df.vars$res1.sig.col), ":</b> ",
                                 format(round(full.df$sig.x, 4), nsmall = 4),
-                                "</br><b>", paste0(comp2.name, " ", sig.col), ":</b> ",
+                                "</br><b>", paste0(comp2.name, " ", df.vars$res2.sig.col), ":</b> ",
                                 format(round(full.df$sig.y, 4), nsmall = 4),
-                                "</br><b>", paste0(comp1.name, " ", expr.col),":</b> ",
+                                "</br><b>", paste0(comp1.name, " ", df.vars$res1.expr.col),":</b> ",
                                 format(round(full.df$exp.x, 2), nsmall = 2),
-                                "</br><b>", paste0(comp2.name, " ", expr.col),":</b> ",
+                                "</br><b>", paste0(comp2.name, " ", df.vars$res2.expr.col),":</b> ",
                                 format(round(full.df$exp.y, 2), nsmall = 2))
 
   full.df <- as.data.frame(full.df)
@@ -122,7 +122,7 @@
     mirror = "ticks",
     linecolor = toRGB("black"),
     linewidth = 1,
-    title = paste0(comp2.name, "\n", lfc.col),
+    title = paste0(comp2.name, "\n", df.vars$res2.lfc.col),
     range = list(-ylim, ylim),
     showgrid = FALSE,
     layer = "below traces"
@@ -133,7 +133,7 @@
     mirror = "ticks",
     linecolor = toRGB("black"),
     linewidth = 1,
-    title = paste0(comp1.name, "\n", lfc.col),
+    title = paste0(comp1.name, "\n", df.vars$res1.lfc.col),
     range = list(-xlim, xlim),
     showgrid = FALSE,
     layer = "below traces"
@@ -185,4 +185,64 @@
   }
 
   fig
+}
+
+
+# Used to get column names that may differ between results.
+.get_plot_vars <- function(res1, res2, sig.col, lfc.col, expr.col) {
+  res1.names <- colnames(res1[[1]])
+  res2.names <- colnames(res2[[1]])
+
+  out <- list()
+  out$res1.sig.col <- sig.col
+  out$res2.sig.col <- sig.col
+  out$res1.lfc.col <- lfc.col
+  out$res2.lfc.col <- lfc.col
+  out$res1.expr.col <- expr.col
+  out$res2.expr.col <- expr.col
+
+  # If column names are provided, assume they're the same for all results dataframes.
+  if (is.null(sig.col)) {
+    if (!any(res1.names %in% c("padj", "FDR", "svalue", "adj.P.Val"))) {
+      stop("Cannot determine significance column, please provide the column name to sig.col")
+    } else {
+      out$res1.sig.col <- res1.names[res1.names %in% c("padj", "FDR", "svalue", "adj.P.Val")]
+    }
+
+    if (!any(res2.names %in% c("padj", "FDR", "svalue", "adj.P.Val"))) {
+      stop("Cannot determine significance column, please provide the column name to sig.col")
+    } else {
+      out$res2.sig.col <- res2.names[res2.names %in% c("padj", "FDR", "svalue", "adj.P.Val")]
+    }
+  }
+
+  if (is.null(lfc.col)) {
+    if (!any(res1.names %in% c("log2FoldChange", "logFC", "LFC"))) {
+      stop("Cannot determine fold change column, please provide the column name to lfc.col")
+    } else {
+      out$res1.lfc.col <- res1.names[res1.names %in% c("log2FoldChange", "logFC", "LFC")]
+    }
+
+    if (!any(res2.names %in% c("log2FoldChange", "logFC", "LFC"))) {
+      stop("Cannot determine fold change column, please provide the column name to lfc.col")
+    } else {
+      out$res2.lfc.col <- res2.names[res2.names %in% c("log2FoldChange", "logFC", "LFC")]
+    }
+  }
+
+  if (is.null(expr.col)) {
+    if (!any(res1.names %in% c("baseMean", "logCPM", "AveExpr"))) {
+      message("Cannot determine average expression column")
+    } else {
+      out$res1.expr.col <- res1.names[res1.names %in% c("baseMean", "logCPM", "AveExpr")]
+    }
+
+    if (!any(res2.names %in% c("baseMean", "logCPM", "AveExpr"))) {
+      message("Cannot determine average expression column")
+    } else {
+      out$res2.expr.col <- res2.names[res2.names %in% c("baseMean", "logCPM", "AveExpr")]
+    }
+  }
+
+  out
 }
