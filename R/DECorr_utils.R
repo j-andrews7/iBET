@@ -1,7 +1,8 @@
 .make_xyplot <- function(res1, res2, res1.color, res2.color, both.color, insig.color,
                          sig.thresh, lfc.thresh, gene.col, opacity, df.vars,
                          regr = TRUE, genes.labeled = NULL, ylim, xlim, show,
-                         source, label.size, webgl) {
+                         source, label.size, webgl, show.counts, counts.size,
+                         aggr.size) {
 
   comp1.name <- names(res1)
   comp1 <- res1[[1]]
@@ -47,6 +48,13 @@
                         ifelse(full.df$sig.y < sig.thresh & abs(full.df$lfc.y) >= lfc.thresh,
                                paste0(comp2.name, " Significant"), "Not Significant"))
 
+  # Get gene counts.
+  n.comp1.sig <- length(full.df$Sig[full.df$Sig == paste0(comp1.name, " Significant")])
+  n.comp2.sig <- length(full.df$Sig[full.df$Sig == paste0(comp2.name, " Significant")])
+  n.both.sig <- length(full.df$Sig[full.df$Sig == "Both Significant"])
+  n.not.sig <- length(full.df$Sig[full.df$Sig == "Not Significant"])
+  n.total <- nrow(full.df)
+
   # Drop not significant genes if needed.
   if (!("Both Significant" %in% show)) {
     full.df <- full.df[full.df$Sig != "Both Significant",]
@@ -89,7 +97,7 @@
 
     regr.anno <- paste0("R = ",
                   round(with(full.df, cor.test(lfc.x, lfc.y))$estimate, 2),
-                  "p = ",
+                  "\npval = ",
                   format(with(full.df, cor.test(lfc.x, lfc.y))$p.value, scientific = TRUE, digits = 3))
   }
 
@@ -170,7 +178,7 @@
         yref = "paper",
         text = regr.anno,
         showarrow = FALSE,
-        font = list(size = 10)
+        font = list(size = aggr.size)
       )
   }
 
@@ -184,6 +192,24 @@
   } else {
     fig <- fig %>% layout(xaxis = ax,
                    yaxis = ay, showlegend = FALSE, shapes = list(regr.line))
+  }
+
+  # Gene count annotations.
+  if (show.counts) {
+    fig <- fig %>%
+      add_annotations(
+        x= 1,
+        y= 1,
+        xref = "paper",
+        yref = "paper",
+        text = paste0(comp1.name, " sig.: ", n.comp1.sig,
+                      "\n", comp2.name, " sig.: ", n.comp2.sig,
+                      "\nBoth sig.: ", n.both.sig,
+                      "\nNot sig.: ", n.not.sig,
+                      "\nTotal: ", n.total),
+        showarrow = FALSE,
+        font = list(size = counts.size)
+      )
   }
 
   if (webgl) {

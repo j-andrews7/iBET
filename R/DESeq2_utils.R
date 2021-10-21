@@ -39,11 +39,15 @@
 
 .make_maplot <- function(res, ylim, fc.thresh, fc.lines, h.id, sig.term,
                          down.color, up.color, insig.color, sig.thresh = 0.05,
-                         gs = NULL, opacity, label.size, webgl) {
+                         gs = NULL, opacity, label.size, webgl, show.counts,
+                         counts.size) {
 
   res$col <- rep(insig.color, nrow(res))
   res$cex <- rep(3, nrow(res))
   res$order <- rep(0, nrow(res))
+
+  # Remove genes with NA padj/svalue due to low expression.
+  res <- res[!is.na(res[[sig.term]]),]
 
   # Significance filter.
   up.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange > 0
@@ -64,8 +68,10 @@
     res$order[fc.threshed] <- 0
   }
 
-  # Remove genes with NA padj/svalue due to low expression.
-  res <- res[!is.na(res[[sig.term]]),]
+  # Get gene numbers.
+  n.up.genes <- length(up.degs[up.degs == TRUE])
+  n.dn.genes <- length(dn.degs[dn.degs == TRUE])
+  n.genes <- nrow(res)
 
   res$x <- res$baseMean
   res$y <- res$log2FoldChange
@@ -151,6 +157,22 @@
                    shapes = list(fc.line1, fc.line2))
   }
 
+  # Gene count annotations.
+  if (show.counts) {
+    fig <- fig %>%
+      add_annotations(
+        x= 1,
+        y= -0,
+        xref = "paper",
+        yref = "paper",
+        text = paste0("Up-reg. genes: ", n.up.genes,
+                      "\nDown-reg. genes: ", n.dn.genes,
+                      "\nTotal genes: ", n.genes),
+        showarrow = FALSE,
+        font = list(size = counts.size)
+      )
+  }
+
   if (webgl) {
     fig <- fig %>% toWebGL()
   }
@@ -163,12 +185,15 @@
 .make_volcano <- function(res, xlim, ylim, fc.thresh, fc.lines,
                           sig.line, h.id, sig.term, down.color, up.color,
                           insig.color, sig.thresh = 0.05, gs = NULL,
-                          opacity, label.size, webgl) {
+                          opacity, label.size, webgl, show.counts, counts.size) {
 
   # Adjust for potential differences in the results table.
   res$col <- rep(insig.color, nrow(res))
   res$cex <- rep(3, nrow(res))
   res$order <- rep(0, nrow(res))
+
+  # Remove genes with NA padj/svalue due to low expression.
+  res <- res[!is.na(res[[sig.term]]),]
 
   # Significance filter.
   up.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange > 0
@@ -188,9 +213,6 @@
     res$cex[fc.threshed] <- 3
     res$order[fc.threshed] <- 0
   }
-
-  # Remove genes with NA padj/svalue due to low expression.
-  res <- res[!is.na(res[[sig.term]]),]
 
   res$x <- res$log2FoldChange
   res$y <- -log10(res[[sig.term]])
@@ -212,6 +234,11 @@
                             "</br><b>baseMean (avg. Expression):</b> ", format(round(res$baseMean, 2), nsmall = 2))
   res <- as.data.frame(res)
   res <- res[order(res$order),]
+
+  # Get gene numbers.
+  n.up.genes <- length(up.degs[up.degs == TRUE])
+  n.dn.genes <- length(dn.degs[dn.degs == TRUE])
+  n.genes <- nrow(res)
 
   # Add plot border.
   ay <- list(
@@ -286,6 +313,22 @@
                    yaxis = ay,
                    showlegend = FALSE,
                    shapes = list(sig.hline, fc.line1, fc.line2))
+  }
+
+  # Gene count annotations.
+  if (show.counts) {
+    fig <- fig %>%
+      add_annotations(
+        x= 1,
+        y= 1,
+        xref = "paper",
+        yref = "paper",
+        text = paste0("Up-reg. genes: ", n.up.genes,
+                      "\nDown-reg. genes: ", n.dn.genes,
+                      "\nTotal genes: ", n.genes),
+        showarrow = FALSE,
+        font = list(size = counts.size)
+      )
   }
 
   if (webgl) {

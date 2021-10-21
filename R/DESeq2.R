@@ -178,6 +178,10 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
               prettyCheckbox("ma.webgl", label = "Use webGL", TRUE, bigger = TRUE,
                              animation = "smooth", status = "success",
                              icon = icon("check"), width = "100%"),
+              prettyCheckbox("ma.counts", label = "Show counts", TRUE, bigger = TRUE,
+                             animation = "smooth", status = "success",
+                             icon = icon("check"), width = "100%"),
+              numericInput("ma.counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
               width = "300px", tooltip = tooltipOptions(title = "Click to change plot settings")
             ),
             withLoader(
@@ -206,6 +210,10 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
               prettyCheckbox("vol.webgl", label = "Use webGL", TRUE, bigger = TRUE,
                              animation = "smooth", status = "success",
                              icon = icon("check"), width = "100%"),
+              prettyCheckbox("vol.counts", label = "Show gene counts", TRUE, bigger = TRUE,
+                             animation = "smooth", status = "success",
+                             icon = icon("check"), width = "100%"),
+              numericInput("vol.counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
               circle = FALSE, label = strong("Volcano Plot"), status = "danger", size = "lg", icon = icon("gear"),
               width = "300px", tooltip = tooltipOptions(title = "Click to change plot settings")
             ),
@@ -235,10 +243,10 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
           hidden(div(id = "mres", selectInput("res.select", NULL, choices = names(res.list)))),
           hr(style="margin:2px; background-color: #737373;"),
           numericInput("fdr", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
-          numericInput("base_mean", label = "Minimal base mean:", value = 0, step = 1),
+          numericInput("base_mean", label = "Minimal baseMean:", value = 0, step = 1),
           numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
-          numericInput("row.km", label = "Number of row k-means groups:", value = 2, step = 1),
-          numericInput("col.km", label = "Number of column k-means groups:", value = 0, step = 1),
+          numericInput("row.km", label = "Row k-means groups:", value = 2, step = 1),
+          numericInput("col.km", label = "Column k-means groups:", value = 0, step = 1),
           div(actionButton("update", label = "Update Plots"), align = "center")
         ),
         body
@@ -355,7 +363,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                    sig.term = sig.term, gs = genes$ma, up.color = isolate(input$ma.up.color),
                    down.color = isolate(input$ma.down.color), insig.color = isolate(input$ma.insig.color),
                    opacity = isolate(input$ma.opa), label.size = isolate(input$ma.lab.size),
-                   webgl = isolate(input$ma.webgl))
+                   webgl = isolate(input$ma.webgl), show.counts = isolate(input$ma.counts))
     })
 
     output$volcano_plot <- renderPlotly({
@@ -368,7 +376,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                     h.id = h.id, sig.term = sig.term, gs = genes$volc, up.color = isolate(input$vol.up.color),
                     down.color = isolate(input$vol.down.color), insig.color = isolate(input$vol.insig.color),
                     opacity = isolate(input$vol.opa), label.size = isolate(input$vol.lab.size),
-                    webgl = isolate(input$vol.webgl))
+                    webgl = isolate(input$vol.webgl), show.counts = isolate(input$vol.counts))
     })
 
     output[["res_table_full"]] <- DT::renderDataTable({

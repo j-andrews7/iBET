@@ -90,8 +90,10 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
         sidebarPanel(
           width = 2,
           h3("Plot Settings"),
-          numericInput("sig", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
-          numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
+          splitLayout(
+            numericInput("sig", label = "Signif thres.:", value = 0.05, step = 0.001, min = 0.0001),
+            numericInput("log2fc", label = "log2FC thresh.:", value = 0, step = 0.1, min = 0)
+          ),
           splitLayout(
             numericInput("ylim", label = "Y-axis limit:", value = 10, step = 0.1, min = 0),
             numericInput("xlim", label = "X-axis limit:", value = 10, step = 0.1, min = 0)
@@ -100,17 +102,28 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                                                                    "Y-axis Significant", "Not Significant"),
                       selected = c("Both Significant", "X-axis Significant",
                                    "Y-axis Significant"), multiple = TRUE),
-          prettyCheckbox("draw.reg", strong("Draw regression line"), TRUE, bigger = TRUE,
-                         animation = "smooth", status = "success",
-                         icon = icon("check"), width = "100%"),
-          prettyCheckbox("webgl", strong("Use webGL"), TRUE, bigger = TRUE,
-                         animation = "smooth", status = "success",
-                         icon = icon("check"), width = "100%"),
+          fluidRow(
+            column(width = 6,
+              prettyCheckbox("draw.reg", strong("Draw regr."), TRUE, bigger = TRUE,
+                             animation = "smooth", status = "success",
+                             icon = icon("check"), width = "100%"),
+              prettyCheckbox("webgl", strong("Use webGL"), TRUE, bigger = TRUE,
+                             animation = "smooth", status = "success",
+                             icon = icon("check"), width = "100%"),
+              prettyCheckbox("counts", strong("Show counts"), TRUE, bigger = TRUE,
+                             animation = "smooth", status = "success",
+                             icon = icon("check"), width = "100%")
+            ),
+            column(width = 6,
+              numericInput("aggr.size", label = "Corr. size:", value = 8, step = 0.1, min = 0),
+              numericInput("counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0)
+            )
+          ),
           hr(),
           h4("Point Aesthetics"),
           fluidRow(
             column(6, numericInput("lab.size", label = "Label Size:", value = 10, step = 0.5, min = 1)),
-            column(6, numericInput("opa", label = "Opacity:", value = 1, step = 0.05, min = 0))
+            column(6, numericInput("opa", label = "Opacity:", value = 1, step = 0.05, min = 0, max = 1))
           ),
           fluidRow(
             column(6, colourInput("comp1.sig", "X-axis Signif", value = "#E69F00")),
@@ -212,7 +225,8 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                        both.color = isolate(input$both.sig), insig.color = isolate(input$insig.color),
                        xlim = isolate(input$xlim), ylim = isolate(input$ylim), show = isolate(input$show),
                        opacity = isolate(input$opa), label.size = isolate(input$lab.size),
-                       webgl = isolate(input$webgl))
+                       webgl = isolate(input$webgl), show.counts = isolate(input$counts),
+                       counts.size = isolate(input$counts.size), aggr.size = isolate(input$aggr.size))
         })
       })
     }
