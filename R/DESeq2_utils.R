@@ -39,7 +39,7 @@
 
 .make_maplot <- function(res, ylim, fc.thresh, fc.lines, h.id, sig.term,
                          down.color, up.color, insig.color, sig.thresh = 0.05,
-                         gs = NULL, opacity, label.size) {
+                         gs = NULL, opacity, label.size, webgl) {
 
   res$col <- rep(insig.color, nrow(res))
   res$cex <- rep(3, nrow(res))
@@ -86,24 +86,28 @@
   # Add plot border.
   ay <- list(
     showline = TRUE,
-    mirror = "ticks",
+    mirror = TRUE,
     linecolor = toRGB("black"),
-    linewidth = 1,
+    linewidth = 0.5,
     title = "log2(fold change)",
     range = list(-ylim, ylim),
     showgrid = FALSE,
-    layer = "below traces"
+    layer = "below traces",
+    ticks = "outside",
+    zerolinewidth = 0.5
   )
 
   ax <- list(
     showline = TRUE,
-    mirror = "ticks",
+    mirror = TRUE,
     linecolor = toRGB("black"),
-    linewidth = 1,
+    linewidth = 0.5,
     title = "log10(baseMean)",
     showgrid = FALSE,
     layer = "below traces",
-    zeroline = FALSE
+    zeroline = FALSE,
+    ticks = "outside",
+    zerolinewidth = 0.5
   )
 
   # Create vertical and horizontal lines.
@@ -129,23 +133,29 @@
                  source = paste0(h.id, "_ma")) %>%
     config(edits = list(annotationPosition = TRUE,
                         annotationTail = TRUE),
-           toImageButtonOptions = list(format = "svg"))
+           toImageButtonOptions = list(format = "svg"),
+           displaylogo = FALSE)
 
   if (!is.null(gs)) {
-    fig %>%
+    fig <- fig %>%
       layout(xaxis = ax,
              yaxis = ay,
              showlegend = FALSE,
              shapes = list(fc.line1, fc.line2)) %>%
       add_annotations(x = gs$x, y = gs$y, text = gs$customdata,
-                      font = list(size = label.size, family = "Arial"), arrowside = "none") %>%
-      toWebGL()
+                      font = list(size = label.size, family = "Arial"), arrowside = "none")
   } else {
-    fig %>% layout(xaxis = ax,
+    fig <- fig %>% layout(xaxis = ax,
                    yaxis = ay,
                    showlegend = FALSE,
-                   shapes = list(fc.line1, fc.line2)) %>% toWebGL()
+                   shapes = list(fc.line1, fc.line2))
   }
+
+  if (webgl) {
+    fig <- fig %>% toWebGL()
+  }
+
+  fig
 }
 
 
@@ -153,7 +163,7 @@
 .make_volcano <- function(res, xlim, ylim, fc.thresh, fc.lines,
                           sig.line, h.id, sig.term, down.color, up.color,
                           insig.color, sig.thresh = 0.05, gs = NULL,
-                          opacity, label.size) {
+                          opacity, label.size, webgl) {
 
   # Adjust for potential differences in the results table.
   res$col <- rep(insig.color, nrow(res))
@@ -206,25 +216,29 @@
   # Add plot border.
   ay <- list(
     showline = TRUE,
-    mirror = "ticks",
+    mirror = TRUE,
     linecolor = toRGB("black"),
-    linewidth = 1,
+    linewidth = 0.5,
     title = paste0("-log10(", sig.term, ")"),
     range = list(0, ylim),
     showgrid = FALSE,
     layer = "below traces",
-    zeroline = FALSE
+    zeroline = FALSE,
+    ticks = "outside",
+    zerolinewidth = 0.5
   )
 
   ax <- list(
     showline = TRUE,
-    mirror = "ticks",
+    mirror = TRUE,
     linecolor = toRGB("black"),
-    linewidth = 1,
+    linewidth = 0.5,
     title = "log2(fold change)",
     range = list(-xlim, xlim),
     showgrid = FALSE,
-    layer = "below traces"
+    layer = "below traces",
+    ticks = "outside",
+    zerolinewidth = 0.5
   )
 
   # Create vertical and horizontal lines.
@@ -256,23 +270,29 @@
                  source = paste0(h.id, "_volc")) %>%
     config(edits = list(annotationPosition = TRUE,
                         annotationTail = TRUE),
-           toImageButtonOptions = list(format = "svg"))
+           toImageButtonOptions = list(format = "svg"),
+           displaylogo = FALSE)
 
   if (!is.null(gs)) {
-    fig %>%
+    fig <- fig %>%
       layout(xaxis = ax,
              yaxis = ay,
              showlegend = FALSE,
              shapes = list(sig.hline, fc.line1, fc.line2)) %>%
       add_annotations(x = gs$x, y = gs$y, text = gs$customdata,
-                      font = list(size = label.size, family = "Arial"), arrowside = "none") %>%
-      toWebGL()
+                      font = list(size = label.size, family = "Arial"), arrowside = "none")
   } else {
-    fig %>% layout(xaxis = ax,
+    fig <- fig %>% layout(xaxis = ax,
                    yaxis = ay,
                    showlegend = FALSE,
-                   shapes = list(sig.hline, fc.line1, fc.line2)) %>% toWebGL()
+                   shapes = list(sig.hline, fc.line1, fc.line2))
   }
+
+  if (webgl) {
+    fig <- fig %>% toWebGL()
+  }
+
+  fig
 }
 
 # Determine columns in results table and adjust output appropriately.

@@ -175,6 +175,9 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
               prettyCheckbox("ma.fcline", label = "Show MAplot FC Threshold", value = TRUE,
                             animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
               circle = FALSE, label = strong("MA-Plot"), status = "danger", size = "lg", icon = icon("gear"),
+              prettyCheckbox("ma.webgl", label = "Use webGL", TRUE, bigger = TRUE,
+                             animation = "smooth", status = "success",
+                             icon = icon("check"), width = "100%"),
               width = "300px", tooltip = tooltipOptions(title = "Click to change plot settings")
             ),
             withLoader(
@@ -200,6 +203,9 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                              animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
               prettyCheckbox("vol.sigline", label = "Show Volcano Signficance Threshold", value = TRUE,
                              animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
+              prettyCheckbox("vol.webgl", label = "Use webGL", TRUE, bigger = TRUE,
+                             animation = "smooth", status = "success",
+                             icon = icon("check"), width = "100%"),
               circle = FALSE, label = strong("Volcano Plot"), status = "danger", size = "lg", icon = icon("gear"),
               width = "300px", tooltip = tooltipOptions(title = "Click to change plot settings")
             ),
@@ -348,7 +354,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                    fc.lines = isolate(input$ma.fcline), sig.thresh = isolate(input$fdr), h.id = h.id,
                    sig.term = sig.term, gs = genes$ma, up.color = isolate(input$ma.up.color),
                    down.color = isolate(input$ma.down.color), insig.color = isolate(input$ma.insig.color),
-                   opacity = isolate(input$ma.opa), label.size = isolate(input$ma.lab.size))
+                   opacity = isolate(input$ma.opa), label.size = isolate(input$ma.lab.size),
+                   webgl = isolate(input$ma.webgl))
     })
 
     output$volcano_plot <- renderPlotly({
@@ -360,7 +367,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                     sig.thresh = isolate(input$fdr), sig.line = isolate(input$vol.sigline),
                     h.id = h.id, sig.term = sig.term, gs = genes$volc, up.color = isolate(input$vol.up.color),
                     down.color = isolate(input$vol.down.color), insig.color = isolate(input$vol.insig.color),
-                    opacity = isolate(input$vol.opa), label.size = isolate(input$vol.lab.size))
+                    opacity = isolate(input$vol.opa), label.size = isolate(input$vol.lab.size),
+                    webgl = isolate(input$vol.webgl))
     })
 
     output[["res_table_full"]] <- DT::renderDataTable({

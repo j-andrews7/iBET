@@ -1,7 +1,7 @@
 .make_xyplot <- function(res1, res2, res1.color, res2.color, both.color, insig.color,
                          sig.thresh, lfc.thresh, gene.col, opacity, df.vars,
                          regr = TRUE, genes.labeled = NULL, ylim, xlim, show,
-                         source, label.size) {
+                         source, label.size, webgl) {
 
   comp1.name <- names(res1)
   comp1 <- res1[[1]]
@@ -85,11 +85,11 @@
   regr.line <- NULL
   if (regr) {
     full.df$fv <- lm(lfc.y ~ lfc.x, data = full.df) %>% fitted.values()
-    regr.line <- .fitline(full.df)
+    regr.line <- .fitline(full.df, width = 0.5)
 
     regr.anno <- paste0("R = ",
                   round(with(full.df, cor.test(lfc.x, lfc.y))$estimate, 2),
-                  ", p = ",
+                  "p = ",
                   format(with(full.df, cor.test(lfc.x, lfc.y))$p.value, scientific = TRUE, digits = 3))
   }
 
@@ -119,24 +119,28 @@
   # Add plot border.
   ay <- list(
     showline = TRUE,
-    mirror = "ticks",
+    mirror = TRUE,
     linecolor = toRGB("black"),
-    linewidth = 1,
+    linewidth = 0.5,
     title = paste0(comp2.name, "\n", df.vars$res2.lfc.col),
     range = list(-ylim, ylim),
     showgrid = FALSE,
-    layer = "below traces"
+    layer = "below traces",
+    ticks = "outside",
+    zerolinewidth = 0.5
   )
 
   ax <- list(
     showline = TRUE,
-    mirror = "ticks",
+    mirror = TRUE,
     linecolor = toRGB("black"),
-    linewidth = 1,
+    linewidth = 0.5,
     title = paste0(comp1.name, "\n", df.vars$res1.lfc.col),
     range = list(-xlim, xlim),
     showgrid = FALSE,
-    layer = "below traces"
+    layer = "below traces",
+    ticks = "outside",
+    zerolinewidth = 0.5
   )
 
   fig <- plot_ly(full.df, x = ~lfc.x,
@@ -154,9 +158,8 @@
                  source = source) %>%
     config(edits = list(annotationPosition = TRUE,
                         annotationTail = TRUE),
-           toImageButtonOptions = list(
-             format = "svg"
-           ))
+           toImageButtonOptions = list(format = "svg"),
+           displaylogo = FALSE)
 
   if (regr) {
     fig <- fig %>%
@@ -167,7 +170,7 @@
         yref = "paper",
         text = regr.anno,
         showarrow = FALSE,
-        font = list(size = 8)
+        font = list(size = 10)
       )
   }
 
@@ -177,11 +180,14 @@
              yaxis = ay,
              showlegend = FALSE, shapes = list(regr.line)) %>%
       add_annotations(x = genes.labeled$x, y = genes.labeled$y, text = genes.labeled$customdata,
-                      font = list(size = label.size, family = "Arial"), arrowside = "none") %>%
-      toWebGL()
+                      font = list(size = label.size, family = "Arial"), arrowside = "none")
   } else {
     fig <- fig %>% layout(xaxis = ax,
-                   yaxis = ay, showlegend = FALSE, shapes = list(regr.line)) %>% toWebGL()
+                   yaxis = ay, showlegend = FALSE, shapes = list(regr.line))
+  }
+
+  if (webgl) {
+    fig <- fig %>% toWebGL()
   }
 
   fig

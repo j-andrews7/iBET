@@ -103,6 +103,9 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
           prettyCheckbox("draw.reg", strong("Draw regression line"), TRUE, bigger = TRUE,
                          animation = "smooth", status = "success",
                          icon = icon("check"), width = "100%"),
+          prettyCheckbox("webgl", strong("Use webGL"), TRUE, bigger = TRUE,
+                         animation = "smooth", status = "success",
+                         icon = icon("check"), width = "100%"),
           hr(),
           h4("Point Aesthetics"),
           fluidRow(
@@ -208,7 +211,8 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                        res1.color = isolate(input$comp1.sig), res2.color = isolate(input$comp2.sig),
                        both.color = isolate(input$both.sig), insig.color = isolate(input$insig.color),
                        xlim = isolate(input$xlim), ylim = isolate(input$ylim), show = isolate(input$show),
-                       opacity = isolate(input$opa), label.size = isolate(input$lab.size))
+                       opacity = isolate(input$opa), label.size = isolate(input$lab.size),
+                       webgl = isolate(input$webgl))
         })
       })
     }
