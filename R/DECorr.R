@@ -20,6 +20,7 @@
 #' @importFrom colourpicker colourInput
 #' @importFrom utils combn
 #' @importFrom stats lm fitted.values
+#' @importFrom shinyBS bsCollapse bsCollapsePanel
 #'
 #' @param res A named list of data.frames containing differential expression analysis results.
 #' @param sig.col String for the column name of the significance value, e.g. "padj". If not provided,
@@ -85,26 +86,38 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
     dashboardHeader(disable = TRUE),
     dashboardSidebar(disable = TRUE),
     dashboardBody(
+      tags$head(
+        # Note the wrapping of the string in HTML()
+        tags$style(HTML("
+          .panel-body {
+            padding: 5px;
+          }
+          .form-group {
+            margin-bottom: 5px;
+          }
+          .well {
+            padding: 5px;
+            margin-bottom: 10px;
+          }
+        "))
+      ),
       shinyDashboardThemes(theme = "onenote"),
       sidebarLayout(
         sidebarPanel(
           width = 2,
-          h3("Plot Settings"),
-          splitLayout(
-            numericInput("sig", label = "Signif thres.:", value = 0.05, step = 0.001, min = 0.0001),
-            numericInput("log2fc", label = "log2FC thresh.:", value = 0, step = 0.1, min = 0)
-          ),
-          splitLayout(
-            numericInput("ylim", label = "Y-axis limit:", value = 10, step = 0.1, min = 0),
-            numericInput("xlim", label = "X-axis limit:", value = 10, step = 0.1, min = 0)
-          ),
-          pickerInput("show", label = "Display genes:", choices = c("Both Significant", "X-axis Significant",
-                                                                   "Y-axis Significant", "Not Significant"),
-                      selected = c("Both Significant", "X-axis Significant",
-                                   "Y-axis Significant"), multiple = TRUE),
-          fluidRow(
-            column(width = 6,
-              prettyCheckbox("draw.reg", strong("Draw regr."), TRUE, bigger = TRUE,
+          bsCollapse(open = "settings",
+            bsCollapsePanel(title = span(icon("plus"), "Plot Settings"), value = "settings", style = "info",
+              numericInput("sig", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
+              numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
+              splitLayout(
+                numericInput("ylim", label = "Y-axis limit:", value = 10, step = 0.1, min = 0),
+                numericInput("xlim", label = "X-axis limit:", value = 10, step = 0.1, min = 0)
+              ),
+              pickerInput("show", label = "Display genes:", choices = c("Both Significant", "X-axis Significant",
+                                                                       "Y-axis Significant", "Not Significant"),
+                          selected = c("Both Significant", "X-axis Significant",
+                                       "Y-axis Significant"), multiple = TRUE),
+              prettyCheckbox("draw.reg", strong("Draw regression line"), TRUE, bigger = TRUE,
                              animation = "smooth", status = "success",
                              icon = icon("check"), width = "100%"),
               prettyCheckbox("webgl", strong("Use webGL"), TRUE, bigger = TRUE,
@@ -112,26 +125,29 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                              icon = icon("check"), width = "100%"),
               prettyCheckbox("counts", strong("Show counts"), TRUE, bigger = TRUE,
                              animation = "smooth", status = "success",
-                             icon = icon("check"), width = "100%")
+                             icon = icon("check"), width = "100%"),
+              numericInput("aggr.size", label = "Correlation stats size:", value = 8, step = 0.1, min = 0),
+              numericInput("counts.size", label = "Gene counts size:", value = 8, step = 0.1, min = 0)
             ),
-            column(width = 6,
-              numericInput("aggr.size", label = "Corr. size:", value = 8, step = 0.1, min = 0),
-              numericInput("counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0)
+            bsCollapsePanel(title = span(icon("plus"), "Point Aesthetics"), style = "info",
+              numericInput("lab.size", label = "Label Size:", value = 10, step = 0.5, min = 1),
+              fluidRow(
+                column(6,
+                       numericInput("x.opa", label = "X-sig opacity:", value = 1, step = 0.05, min = 0),
+                       numericInput("y.opa", label = "Y-sig opacity:", value = 1, step = 0.05, min = 0),
+                       numericInput("x.size", label = "X-sig pt size:", value = 5, step = 0.1, min = 0),
+                       numericInput("y.size", label = "Y-sig pt size:", value = 5, step = 0.1, min = 0),
+                       colourInput("comp1.sig", "X-axis Signif", value = "#E69F00"),
+                       colourInput("both.sig", "Both Signif", value = "#009E73")),
+                column(6,
+                       numericInput("both.opa", label = "Both opacity:", value = 1, step = 0.05, min = 0),
+                       numericInput("insig.opa", label = "Insig opacity:", value = 1, step = 0.05, min = 0),
+                       numericInput("both.size", label = "Both pt size:", value = 5, step = 0.1, min = 0),
+                       numericInput("insig.size", label = "Insig pt size:", value = 3, step = 0.1, min = 0),
+                       colourInput("comp2.sig", "Y-axis Signif", value = "#56B4E9"),
+                       colourInput("insig.color", "Insignificant", value = "#666666"))
+              )
             )
-          ),
-          hr(),
-          h4("Point Aesthetics"),
-          fluidRow(
-            column(6, numericInput("lab.size", label = "Label Size:", value = 10, step = 0.5, min = 1)),
-            column(6, numericInput("opa", label = "Opacity:", value = 1, step = 0.05, min = 0, max = 1))
-          ),
-          fluidRow(
-            column(6, colourInput("comp1.sig", "X-axis Signif", value = "#E69F00")),
-            column(6, colourInput("comp2.sig", "Y-axis Signif", value = "#56B4E9"))
-          ),
-          fluidRow(
-            column(6, colourInput("both.sig", "Both Signif", value = "#009E73")),
-            column(6, colourInput("insig.color", "Insignificant", value = "#666666"))
           ),
           div(actionButton("update", "Update Plots"), align = "center")
         ),
@@ -217,16 +233,34 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
         output[[my_n]] <- renderPlotly({
           req(genes)
           input$update
-          .make_xyplot(res[df1], res[df2], df.vars = df.vars,
-                       sig.thresh = isolate(input$sig), lfc.thresh = isolate(input$log2fc),
-                       gene.col = gene.col, source = my_n,
-                       regr = isolate(input$draw.reg), genes.labeled = genes[[my_n]],
-                       res1.color = isolate(input$comp1.sig), res2.color = isolate(input$comp2.sig),
-                       both.color = isolate(input$both.sig), insig.color = isolate(input$insig.color),
-                       xlim = isolate(input$xlim), ylim = isolate(input$ylim), show = isolate(input$show),
-                       opacity = isolate(input$opa), label.size = isolate(input$lab.size),
-                       webgl = isolate(input$webgl), show.counts = isolate(input$counts),
-                       counts.size = isolate(input$counts.size), aggr.size = isolate(input$aggr.size))
+          .make_xyplot(res[df1], res[df2],
+                       df.vars = df.vars,
+                       sig.thresh = isolate(input$sig),
+                       lfc.thresh = isolate(input$log2fc),
+                       gene.col = gene.col,
+                       source = my_n,
+                       regr = isolate(input$draw.reg),
+                       genes.labeled = genes[[my_n]],
+                       res1.color = isolate(input$comp1.sig),
+                       res2.color = isolate(input$comp2.sig),
+                       both.color = isolate(input$both.sig),
+                       insig.color = isolate(input$insig.color),
+                       xlim = isolate(input$xlim),
+                       ylim = isolate(input$ylim),
+                       show = isolate(input$show),
+                       label.size = isolate(input$lab.size),
+                       webgl = isolate(input$webgl),
+                       show.counts = isolate(input$counts),
+                       counts.size = isolate(input$counts.size),
+                       aggr.size = isolate(input$aggr.size),
+                       res1.size = isolate(input$x.size),
+                       res2.size = isolate(input$y.size),
+                       both.size = isolate(input$both.size),
+                       insig.size = isolate(input$insig.size),
+                       res1.opac = isolate(input$x.opa),
+                       res2.opac = isolate(input$y.opa),
+                       both.opac = isolate(input$both.opa),
+                       insig.opac = isolate(input$insig.opa))
         })
       })
     }

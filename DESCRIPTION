@@ -40,7 +40,8 @@ Imports:
     matrixStats,
     colourpicker,
     shinyjs,
-    methods
+    methods,
+    shinyBS
 Suggests:
     airway,
     magrittr,

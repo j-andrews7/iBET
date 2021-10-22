@@ -1,8 +1,9 @@
 .make_xyplot <- function(res1, res2, res1.color, res2.color, both.color, insig.color,
-                         sig.thresh, lfc.thresh, gene.col, opacity, df.vars,
+                         sig.thresh, lfc.thresh, gene.col, df.vars,
                          regr = TRUE, genes.labeled = NULL, ylim, xlim, show,
                          source, label.size, webgl, show.counts, counts.size,
-                         aggr.size) {
+                         aggr.size, res1.size, res2.size, both.size, insig.size,
+                         res1.opac, res2.opac, both.opac, insig.opac) {
 
   comp1.name <- names(res1)
   comp1 <- res1[[1]]
@@ -73,14 +74,20 @@
   }
 
   full.df$col <- rep(insig.color, nrow(full.df))
-  full.df$cex <- rep(3, nrow(full.df))
   full.df$order <- rep(0, nrow(full.df))
 
   # Styling.
   full.df$col[full.df$Sig == paste0(comp1.name, " Significant")] <- res1.color
   full.df$col[full.df$Sig == paste0(comp2.name, " Significant")] <- res2.color
   full.df$col[full.df$Sig == "Both Significant"] <- both.color
-  full.df$cex[full.df$Sig != "Not Significant"] <- 5
+  full.df$cex[full.df$Sig == "Not Significant"] <- insig.size
+  full.df$cex[full.df$Sig == "Both Significant"] <- both.size
+  full.df$cex[full.df$Sig == paste0(comp1.name, " Significant")] <- res1.size
+  full.df$cex[full.df$Sig == paste0(comp2.name, " Significant")] <- res2.size
+  full.df$opacity[full.df$Sig == "Not Significant"] <- insig.opac
+  full.df$opacity[full.df$Sig == "Both Significant"] <- both.opac
+  full.df$opacity[full.df$Sig == paste0(comp1.name, " Significant")] <- res1.opac
+  full.df$opacity[full.df$Sig == paste0(comp2.name, " Significant")] <- res2.opac
   full.df$order[full.df$Sig != "Not Significant"] <- 1
   full.df$order[full.df$Sig == "Both Significant"] <- 2
 
@@ -124,7 +131,7 @@
   full.df <- as.data.frame(full.df)
   full.df <- full.df[order(full.df$order),]
 
-  # Add plot border.
+  # Add plot border, add ticks, set axis labels.
   ay <- list(
     showline = TRUE,
     mirror = TRUE,
@@ -160,7 +167,7 @@
                                size = ~cex,
                                symbol = ~sh,
                                line = list(color = ~col),
-                               opacity = opacity),
+                               opacity = ~opacity),
                  text = ~hover.string,
                  hoverinfo = "text",
                  source = source) %>%
@@ -186,12 +193,12 @@
     fig <- fig %>%
       layout(xaxis = ax,
              yaxis = ay,
-             showlegend = FALSE, shapes = list(regr.line)) %>%
+             showlegend = FALSE, shapes = list(regr.line), margin = list(b = 75)) %>%
       add_annotations(x = genes.labeled$x, y = genes.labeled$y, text = genes.labeled$customdata,
                       font = list(size = label.size, family = "Arial"), arrowside = "none")
   } else {
     fig <- fig %>% layout(xaxis = ax,
-                   yaxis = ay, showlegend = FALSE, shapes = list(regr.line))
+                   yaxis = ay, showlegend = FALSE, shapes = list(regr.line), margin = list(b = 75))
   }
 
   # Gene count annotations.
