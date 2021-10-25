@@ -185,7 +185,8 @@
         yref = "paper",
         text = regr.anno,
         showarrow = FALSE,
-        font = list(size = aggr.size)
+        font = list(size = aggr.size),
+        align = "left"
       )
   }
 
@@ -195,7 +196,8 @@
              yaxis = ay,
              showlegend = FALSE, shapes = list(regr.line), margin = list(b = 75)) %>%
       add_annotations(x = genes.labeled$x, y = genes.labeled$y, text = genes.labeled$customdata,
-                      font = list(size = label.size, family = "Arial"), arrowside = "none")
+                      font = list(size = label.size, family = "Arial"), arrowside = "none",
+                      arrowwidth = "0.5")
   } else {
     fig <- fig %>% layout(xaxis = ax,
                    yaxis = ay, showlegend = FALSE, shapes = list(regr.line), margin = list(b = 75))
@@ -215,7 +217,8 @@
                       "\nNot sig.: ", n.not.sig,
                       "\nTotal: ", n.total),
         showarrow = FALSE,
-        font = list(size = counts.size)
+        font = list(size = counts.size),
+        align = "left"
       )
   }
 
