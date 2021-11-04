@@ -24,7 +24,8 @@ shinyDESeq2(
 or a named list of such results. If a named list is provided, users will be
 able to choose between the provided results and \code{coef} will be ignored.
 
-If not provided, it will be generated from the \code{dds} object via \code{\link[DESeq2]{lfcShrink}} and \code{coef}.}
+If not provided, it will be generated from the \code{dds} object via \code{\link[DESeq2]{lfcShrink}}
+or \code{\link[DESeq2]{results}} and \code{coef}.}
 
 \item{coef}{A string indicating the coefficient name for which results will be generated.
 If not provided and \code{res} is \code{NULL}, the first non-intercept coefficient

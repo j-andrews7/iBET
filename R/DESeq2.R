@@ -36,7 +36,8 @@
 #'   or a named list of such results. If a named list is provided, users will be
 #'   able to choose between the provided results and \code{coef} will be ignored.
 #'
-#'   If not provided, it will be generated from the \code{dds} object via \code{\link[DESeq2]{lfcShrink}} and \code{coef}.
+#'   If not provided, it will be generated from the \code{dds} object via \code{\link[DESeq2]{lfcShrink}}
+#'   or \code{\link[DESeq2]{results}} and \code{coef}.
 #' @param coef A string indicating the coefficient name for which results will be generated.
 #'   If not provided and \code{res} is \code{NULL}, the first non-intercept coefficient
 #'   provided by \code{\link[DESeq2]{resultsNames}} will be used.
@@ -178,6 +179,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
               prettyCheckbox("ma.webgl", label = "Use webGL", TRUE, bigger = TRUE,
                              animation = "smooth", status = "success",
                              icon = icon("check"), width = "100%"),
+              numericInput("ma.webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1),
               prettyCheckbox("ma.counts", label = "Show counts", TRUE, bigger = TRUE,
                              animation = "smooth", status = "success",
                              icon = icon("check"), width = "100%"),
@@ -210,6 +212,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
               prettyCheckbox("vol.webgl", label = "Use webGL", TRUE, bigger = TRUE,
                              animation = "smooth", status = "success",
                              icon = icon("check"), width = "100%"),
+              numericInput("vol.webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1),
               prettyCheckbox("vol.counts", label = "Show gene counts", TRUE, bigger = TRUE,
                              animation = "smooth", status = "success",
                              icon = icon("check"), width = "100%"),
@@ -363,7 +366,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                    sig.term = sig.term, gs = genes$ma, up.color = isolate(input$ma.up.color),
                    down.color = isolate(input$ma.down.color), insig.color = isolate(input$ma.insig.color),
                    opacity = isolate(input$ma.opa), label.size = isolate(input$ma.lab.size),
-                   webgl = isolate(input$ma.webgl), show.counts = isolate(input$ma.counts))
+                   webgl = isolate(input$ma.webgl), webgl.ratio = isolate(input$ma.webgl.ratio),
+                   show.counts = isolate(input$ma.counts), counts.size = isolate(input$ma.counts.size))
     })
 
     output$volcano_plot <- renderPlotly({
@@ -376,7 +380,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                     h.id = h.id, sig.term = sig.term, gs = genes$volc, up.color = isolate(input$vol.up.color),
                     down.color = isolate(input$vol.down.color), insig.color = isolate(input$vol.insig.color),
                     opacity = isolate(input$vol.opa), label.size = isolate(input$vol.lab.size),
-                    webgl = isolate(input$vol.webgl), show.counts = isolate(input$vol.counts))
+                    webgl = isolate(input$vol.webgl), webgl.ratio = isolate(input$vol.webgl.ratio),
+                    show.counts = isolate(input$vol.counts), counts.size = isolate(input$vol.counts.size))
     })
 
     output[["res_table_full"]] <- DT::renderDataTable({

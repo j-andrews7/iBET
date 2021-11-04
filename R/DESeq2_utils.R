@@ -39,7 +39,7 @@
 
 .make_maplot <- function(res, ylim, fc.thresh, fc.lines, h.id, sig.term,
                          down.color, up.color, insig.color, sig.thresh = 0.05,
-                         gs = NULL, opacity, label.size, webgl, show.counts,
+                         gs = NULL, opacity, label.size, webgl, webgl.ratio, show.counts,
                          counts.size) {
 
   res$col <- rep(insig.color, nrow(res))
@@ -124,6 +124,7 @@
     fc.line2 <- .hline(y = -fc.thresh, color = "#999999", width = 1, dash = "longdash")
   }
 
+  # Figure generation.
   fig <- plot_ly(res, x = ~log10(x),
                  y = ~y,
                  customdata = ~Gene,
@@ -140,7 +141,8 @@
     config(edits = list(annotationPosition = TRUE,
                         annotationTail = TRUE),
            toImageButtonOptions = list(format = "svg"),
-           displaylogo = FALSE)
+           displaylogo = FALSE,
+           plotGlPixelRatio = webgl.ratio)
 
   if (!is.null(gs)) {
     fig <- fig %>%
@@ -185,7 +187,7 @@
 .make_volcano <- function(res, xlim, ylim, fc.thresh, fc.lines,
                           sig.line, h.id, sig.term, down.color, up.color,
                           insig.color, sig.thresh = 0.05, gs = NULL,
-                          opacity, label.size, webgl, show.counts, counts.size) {
+                          opacity, label.size, webgl, webgl.ratio, show.counts, counts.size) {
 
   # Adjust for potential differences in the results table.
   res$col <- rep(insig.color, nrow(res))
@@ -282,6 +284,7 @@
     fc.line2 <- .vline(x = -fc.thresh, color = "#999999", width = 1, dash = "longdash")
   }
 
+  # Figure generation.
   fig <- plot_ly(res, x = ~x,
                  y = ~y,
                  customdata = ~Gene,
@@ -298,7 +301,8 @@
     config(edits = list(annotationPosition = TRUE,
                         annotationTail = TRUE),
            toImageButtonOptions = list(format = "svg"),
-           displaylogo = FALSE)
+           displaylogo = FALSE,
+           plotGlPixelRatio = webgl.ratio)
 
   if (!is.null(gs)) {
     fig <- fig %>%

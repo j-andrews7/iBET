@@ -1,7 +1,7 @@
 .make_xyplot <- function(res1, res2, res1.color, res2.color, both.color, insig.color,
                          sig.thresh, lfc.thresh, gene.col, df.vars,
                          regr = TRUE, genes.labeled = NULL, ylim, xlim, show,
-                         source, label.size, webgl, show.counts, counts.size,
+                         source, label.size, webgl, webgl.ratio, show.counts, counts.size,
                          aggr.size, res1.size, res2.size, both.size, insig.size,
                          res1.opac, res2.opac, both.opac, insig.opac) {
 
@@ -158,6 +158,7 @@
     zerolinewidth = 0.5
   )
 
+  # Figure creation.
   fig <- plot_ly(full.df, x = ~lfc.x,
                  y = ~lfc.y,
                  customdata = ~Gene,
@@ -174,7 +175,8 @@
     config(edits = list(annotationPosition = TRUE,
                         annotationTail = TRUE),
            toImageButtonOptions = list(format = "svg"),
-           displaylogo = FALSE)
+           displaylogo = FALSE,
+           plotGlPixelRatio = webgl.ratio)
 
   if (regr) {
     fig <- fig %>%
