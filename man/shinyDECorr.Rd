@@ -11,6 +11,7 @@ shinyDECorr(
   lfc.col = NULL,
   gene.col = NULL,
   expr.col = NULL,
+  genesets = NULL,
   height = 800
 )
 }
@@ -31,11 +32,14 @@ be used.}
 \item{expr.col}{Optional string for the column name containing average expression. If not provided,
 the function will search for commonly used values ("baseMean", "logCPM", "AveExpr") in the column names.}
 
+\item{genesets}{Optional named list containing genesets that can be interactively highlighted on the plots.
+The elements of the list should each be a geneset with gene identifiers matching those used in the results.}
+
 \item{height}{Number indicating height of app in pixels.}
 }
 \value{
 A Shiny app containing scatter plots comparing all combinations of the DE results to each other,
-along with a line of best fit and correlation testing.
+along with a line of best fit, correlation testing, gene and geneset highlighting, and movable annotations.
 }
 \description{
 This shiny app generates scatter plots for every combination of DE results fed to it. It is useful for
