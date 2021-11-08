@@ -32,16 +32,18 @@
 #'   be used.
 #' @param expr.col Optional string for the column name containing average expression. If not provided,
 #'   the function will search for commonly used values ("baseMean", "logCPM", "AveExpr") in the column names.
+#' @param genesets Optional named list containing genesets that can be interactively highlighted on the plots.
+#'   The elements of the list should each be a geneset with gene identifiers matching those used in the results.
 #' @param height Number indicating height of app in pixels.
 #'
 #' @return A Shiny app containing scatter plots comparing all combinations of the DE results to each other,
-#' along with a line of best fit and correlation testing.
+#' along with a line of best fit, correlation testing, gene and geneset highlighting, and movable annotations.
 #'
 #'
 #' @author Jared Andrews
 #' @export
 shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
-                        gene.col = NULL, expr.col = NULL, height = 800) {
+                        gene.col = NULL, expr.col = NULL, genesets = NULL, height = 800) {
 
   # Parameter validation.
   if (is.null(names(res))) {
@@ -52,6 +54,14 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
     stop("Results list must contain at least 2 elements")
   } else if (length(res) > 4) {
     stop("A maximum of 4 DE results can be provided")
+  }
+
+  if (!is.null(genesets)) {
+    if (is.null(names(genesets))) {
+      stop("Genesets list must be named")
+    } else if (!is(genesets, "list")) {
+      stop("Genesets must be provided as a named list")
+    }
   }
 
   # Get all combinations and rows needed.
@@ -123,6 +133,7 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
               prettyCheckbox("webgl", strong("Use webGL"), TRUE, bigger = TRUE,
                              animation = "smooth", status = "success",
                              icon = icon("check"), width = "100%"),
+              numericInput("webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1),
               prettyCheckbox("counts", strong("Show counts"), TRUE, bigger = TRUE,
                              animation = "smooth", status = "success",
                              icon = icon("check"), width = "100%"),
@@ -146,6 +157,27 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                        numericInput("insig.size", label = "Insig pt size:", value = 3, step = 0.1, min = 0),
                        colourInput("comp2.sig", "Y-axis Signif", value = "#56B4E9"),
                        colourInput("insig.color", "Insignificant", value = "#666666"))
+              )
+            ),
+            bsCollapsePanel(title = span(icon("plus"), "Highlight Gene(sets)"), style = "info",
+              textAreaInput("hl.genes", "Highlight Genes:", value = "", rows = 4,
+                            placeholder = "Enter space, comma, or newline delimited genes"),
+              pickerInput("hl.genesets", "Highlight Genesets:", choices = c("", names(genesets)),
+                          multiple = TRUE, options = list(`live-search` = TRUE,
+                                                          `actions-box` = TRUE)),
+              fluidRow(
+                column(6,
+                  numericInput("hl.genes.opa", label = "Genes opacity:", value = 1, step = 0.05, min = 0),
+                  numericInput("hl.genes.size", label = "Genes pt size:", value = 7, step = 0.1, min = 0),
+                  numericInput("hl.genes.lw", label = "Genes border width:", value = 0.5, step = 0.05, min = 0),
+                  colourInput("hl.genes.col", "Genes color:", value = "#6602A8"),
+                  colourInput("hl.genes.lcol", "Genes border:", value = "#000000")),
+                column(6,
+                  numericInput("hl.genesets.opa", label = "Sets opacity:", value = 1, step = 0.05, min = 0),
+                  numericInput("hl.genesets.size", label = "Sets pt size:", value = 7, step = 0.1, min = 0),
+                  numericInput("hl.genesets.lw", label = "Sets border width:", value = 0.5, step = 0.05, min = 0),
+                  colourInput("hl.genesets.col", "Sets color:", value = "#56B4E9"),
+                  colourInput("hl.genesets.lcol", "Sets border:", value = "#000000"))
               )
             )
           ),
@@ -250,6 +282,7 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                        show = isolate(input$show),
                        label.size = isolate(input$lab.size),
                        webgl = isolate(input$webgl),
+                       webgl.ratio = isolate(input$webgl.ratio),
                        show.counts = isolate(input$counts),
                        counts.size = isolate(input$counts.size),
                        aggr.size = isolate(input$aggr.size),
@@ -260,7 +293,20 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                        res1.opac = isolate(input$x.opa),
                        res2.opac = isolate(input$y.opa),
                        both.opac = isolate(input$both.opa),
-                       insig.opac = isolate(input$insig.opa))
+                       insig.opac = isolate(input$insig.opa),
+                       highlight.genesets = isolate(input$hl.genesets),
+                       highlight.genes = isolate(input$hl.genes),
+                       genesets = genesets,
+                       highlight.genes.color = isolate(input$hl.genes.col),
+                       highlight.genes.size = isolate(input$hl.genes.size),
+                       highlight.genes.opac = isolate(input$hl.genes.opa),
+                       highlight.genes.linecolor = isolate(input$hl.genes.lcol),
+                       highlight.genes.linewidth = isolate(input$hl.genes.lw),
+                       highlight.genesets.color = isolate(input$hl.genesets.col),
+                       highlight.genesets.size = isolate(input$hl.genesets.size),
+                       highlight.genesets.opac = isolate(input$hl.genesets.opa),
+                       highlight.genesets.linecolor = isolate(input$hl.genesets.lcol),
+                       highlight.genesets.linewidth = isolate(input$hl.genesets.lw))
         })
       })
     }

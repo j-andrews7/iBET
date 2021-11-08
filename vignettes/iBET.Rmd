@@ -63,9 +63,22 @@ shh(library("iBET"))
 shh(library("DEFormats"))
 shh(library("edgeR"))
 shh(library("airway"))
+shh(library("msigdbr"))
+shh(library("org.Hs.eg.db"))
 
 data("airway")
 airway$dex <- relevel(airway$dex, ref = "untrt")
+
+# Swap ensemble IDs to gene symbols.
+ens <- rownames(airway)
+symbols <- mapIds(org.Hs.eg.db, keys = ens,
+  column = c('SYMBOL'), keytype = 'ENSEMBL')
+symbols <- symbols[!is.na(symbols)]
+symbols <- symbols[match(rownames(airway), names(symbols))]
+rownames(airway) <- symbols
+keep <- !is.na(rownames(airway))
+airway <- airway[keep,]
+
 dds <- DESeqDataSet(airway, design = ~ cell)
 dds <- DESeq(dds)
 vst <- assay(vst(dds))
@@ -160,6 +173,23 @@ res <- list("comp1" = as.data.frame(edgeR.res1), "comp2" = as.data.frame(edgeR.r
             "comp3" = as.data.frame(edgeR.res3), "comp4" = as.data.frame(edgeR.res4))
 shinyDECorr(res, height = 800)
 ```
+
+## Aesthetics and Convenience Functions
+
+Plots are fully customizable from within the widget. Movable gene labels can be added to points by clicking on them. Specific user-defined gene sets can be highlighted within plots easily. 
+
+### Gene set labeling
+
+Gene sets can be passed as a named list to highlight said genes on plots.
+
+```{r}
+# Retrieve MSigDB Hallmark gene sets and convert to a named list.
+hs.msig <- msigdbr(species = "Homo sapiens", category = "H")
+hs.msig <- hs.msig %>% split(x = .$gene_symbol, f = .$gs_name)
+
+shinyDECorr(res, genesets = hs.msig, height = 800)
+```
+
 
 # SessionInfo
 

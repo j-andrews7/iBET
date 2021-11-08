@@ -39,28 +39,53 @@
 
 .make_maplot <- function(res, ylim, fc.thresh, fc.lines, h.id, sig.term,
                          down.color, up.color, insig.color, sig.thresh = 0.05,
-                         gs = NULL, opacity, label.size, webgl, show.counts,
-                         counts.size) {
+                         gs = NULL, sig.opacity, insig.opacity, label.size, webgl, webgl.ratio, show.counts,
+                         counts.size, highlight.genesets, highlight.genes, genesets,
+                         highlight.genes.color, highlight.genes.size, highlight.genes.opac,
+                         highlight.genes.linecolor, highlight.genes.linewidth,
+                         highlight.genesets.color, highlight.genesets.size, highlight.genesets.opac,
+                         highlight.genesets.linecolor, highlight.genesets.linewidth) {
 
   res$col <- rep(insig.color, nrow(res))
   res$cex <- rep(3, nrow(res))
   res$order <- rep(0, nrow(res))
+  res$lcol <- res$col
+  res$lw <- 0
+  res$opacity <- insig.opacity
 
   # Remove genes with NA padj/svalue due to low expression.
   res <- res[!is.na(res[[sig.term]]),]
 
-  # Significance filter.
+  # Get all gene IDs or symbols to be highlighted.
+  highlight <- NULL
+  if (!is.null(highlight.genes) & highlight.genes != "") {
+    highlight.genes <- strsplit(highlight.genes, ",|\\s|,\\s")[[1]]
+    highlight <- highlight.genes[highlight.genes != ""]
+  }
+
+  highlight.gs <- NULL
+  if (!is.null(highlight.genesets)) {
+    for (geneset in highlight.genesets) {
+      highlight.gs <- c(highlight.gs, genesets[[geneset]])
+    }
+  }
+
+  # Styling.
   up.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange > 0
   res$col[up.degs] <- up.color
   res$cex[up.degs] <- 5
   res$order[up.degs] <- 1
+  res$opacity[up.degs] <- sig.opacity
 
   dn.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange < 0
   res$col[dn.degs] <- down.color
   res$cex[dn.degs] <- 5
   res$order[dn.degs] <- 1
+  res$opacity[dn.degs] <- sig.opacity
 
-  # LFC filter.
+  res$lcol <- res$col
+  res$lw <- 0
+
   if(fc.thresh > 0) {
     fc.threshed <- abs(res$log2FoldChange) < fc.thresh
     res$col[fc.threshed] <- insig.color
@@ -80,6 +105,30 @@
   res$y[res$y > ylim] <- ylim - 0.05
   res$y[res$y < -ylim] <- -ylim + 0.05
   res$Gene <- rownames(res)
+
+  # Gene/geneset highlighting.
+  if (!is.null(highlight.gs)) {
+    highlight.gs <- highlight.gs[highlight.gs %in% res$Gene]
+
+    res$col[res$Gene %in% highlight.gs] <- highlight.genesets.color
+    res$cex[res$Gene %in% highlight.gs] <- highlight.genesets.size
+    res$opacity[res$Gene %in% highlight.gs] <- highlight.genesets.opac
+    res$lcol[res$Gene %in% highlight.gs] <- highlight.genesets.linecolor
+    res$lw[res$Gene %in% highlight.gs] <- highlight.genesets.linewidth
+    res$order[res$Gene %in% highlight.gs] <- 2
+  }
+
+  # Want these to have precedence over the genesets in case entries are in both.
+  if (!is.null(highlight)) {
+    highlight <- highlight[highlight %in% res$Gene]
+
+    res$col[res$Gene %in% highlight] <- highlight.genes.color
+    res$cex[res$Gene %in% highlight] <- highlight.genes.size
+    res$opacity[res$Gene %in% highlight] <- highlight.genes.opac
+    res$lcol[res$Gene %in% highlight] <- highlight.genes.linecolor
+    res$lw[res$Gene %in% highlight] <- highlight.genes.linewidth
+    res$order[res$Gene %in% highlight] <- 3
+  }
 
   res$hover.string <- paste("</br><b>Gene:</b> ", res$Gene,
                             "</br><b>log2 Fold Change:</b> ", format(round(res$log2FoldChange, 4), nsmall = 4),
@@ -124,6 +173,7 @@
     fc.line2 <- .hline(y = -fc.thresh, color = "#999999", width = 1, dash = "longdash")
   }
 
+  # Figure generation.
   fig <- plot_ly(res, x = ~log10(x),
                  y = ~y,
                  customdata = ~Gene,
@@ -132,15 +182,16 @@
                  marker = list(color = ~col,
                                size = ~cex,
                                symbol = ~sh,
-                               line = list(color = ~col),
-                               opacity = opacity),
+                               line = list(color = ~lcol, width = ~lw),
+                               opacity = ~opacity),
                  text = ~hover.string,
                  hoverinfo = "text",
                  source = paste0(h.id, "_ma")) %>%
     config(edits = list(annotationPosition = TRUE,
                         annotationTail = TRUE),
            toImageButtonOptions = list(format = "svg"),
-           displaylogo = FALSE)
+           displaylogo = FALSE,
+           plotGlPixelRatio = webgl.ratio)
 
   if (!is.null(gs)) {
     fig <- fig %>%
@@ -185,26 +236,50 @@
 .make_volcano <- function(res, xlim, ylim, fc.thresh, fc.lines,
                           sig.line, h.id, sig.term, down.color, up.color,
                           insig.color, sig.thresh = 0.05, gs = NULL,
-                          opacity, label.size, webgl, show.counts, counts.size) {
+                          sig.opacity, insig.opacity, label.size, webgl, webgl.ratio, show.counts,
+                          counts.size, highlight.genesets, highlight.genes, genesets,
+                          highlight.genes.color, highlight.genes.size, highlight.genes.opac,
+                          highlight.genes.linecolor, highlight.genes.linewidth,
+                          highlight.genesets.color, highlight.genesets.size, highlight.genesets.opac,
+                          highlight.genesets.linecolor, highlight.genesets.linewidth) {
 
-  # Adjust for potential differences in the results table.
+  # Styling.
   res$col <- rep(insig.color, nrow(res))
   res$cex <- rep(3, nrow(res))
   res$order <- rep(0, nrow(res))
+  res$lcol <- res$col
+  res$lw <- 0
+  res$opacity <- insig.opacity
 
   # Remove genes with NA padj/svalue due to low expression.
   res <- res[!is.na(res[[sig.term]]),]
+
+  # Get all gene IDs or symbols to be highlighted.
+  highlight <- NULL
+  if (!is.null(highlight.genes) & highlight.genes != "") {
+    highlight.genes <- strsplit(highlight.genes, ",|\\s|,\\s")[[1]]
+    highlight <- highlight.genes[highlight.genes != ""]
+  }
+
+  highlight.gs <- NULL
+  if (!is.null(highlight.genesets)) {
+    for (geneset in highlight.genesets) {
+      highlight.gs <- c(highlight.gs, genesets[[geneset]])
+    }
+  }
 
   # Significance filter.
   up.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange > 0
   res$col[up.degs] <- up.color
   res$cex[up.degs] <- 5
   res$order[up.degs] <- 1
+  res$opacity[up.degs] <- sig.opacity
 
   dn.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange < 0
   res$col[dn.degs] <- down.color
   res$cex[dn.degs] <- 5
   res$order[dn.degs] <- 1
+  res$opacity[dn.degs] <- sig.opacity
 
   # LFC filter.
   if(fc.thresh > 0) {
@@ -227,6 +302,30 @@
   res$x[res$x > xlim] <- xlim - 0.05
   res$x[res$x < -xlim] <- -xlim + 0.05
   res$Gene <- rownames(res)
+
+  # Gene/geneset highlighting.
+  if (!is.null(highlight.gs)) {
+    highlight.gs <- highlight.gs[highlight.gs %in% res$Gene]
+
+    res$col[res$Gene %in% highlight.gs] <- highlight.genesets.color
+    res$cex[res$Gene %in% highlight.gs] <- highlight.genesets.size
+    res$opacity[res$Gene %in% highlight.gs] <- highlight.genesets.opac
+    res$lcol[res$Gene %in% highlight.gs] <- highlight.genesets.linecolor
+    res$lw[res$Gene %in% highlight.gs] <- highlight.genesets.linewidth
+    res$order[res$Gene %in% highlight.gs] <- 2
+  }
+
+  # Want these to have precedence over the genesets in case entries are in both.
+  if (!is.null(highlight)) {
+    highlight <- highlight[highlight %in% res$Gene]
+
+    res$col[res$Gene %in% highlight] <- highlight.genes.color
+    res$cex[res$Gene %in% highlight] <- highlight.genes.size
+    res$opacity[res$Gene %in% highlight] <- highlight.genes.opac
+    res$lcol[res$Gene %in% highlight] <- highlight.genes.linecolor
+    res$lw[res$Gene %in% highlight] <- highlight.genes.linewidth
+    res$order[res$Gene %in% highlight] <- 3
+  }
 
   res$hover.string <- paste("</br><b>Gene:</b> ", res$Gene,
                             "</br><b>log2 Fold Change:</b> ", format(round(res$log2FoldChange, 4), nsmall = 4),
@@ -282,6 +381,7 @@
     fc.line2 <- .vline(x = -fc.thresh, color = "#999999", width = 1, dash = "longdash")
   }
 
+  # Figure generation.
   fig <- plot_ly(res, x = ~x,
                  y = ~y,
                  customdata = ~Gene,
@@ -290,15 +390,16 @@
                  marker = list(color = ~col,
                                size = ~cex,
                                symbol = ~sh,
-                               line = list(color = ~col),
-                               opacity = opacity),
+                               line = list(color = ~lcol, width = ~lw),
+                               opacity = ~opacity),
                  text = ~hover.string,
                  hoverinfo = "text",
                  source = paste0(h.id, "_volc")) %>%
     config(edits = list(annotationPosition = TRUE,
                         annotationTail = TRUE),
            toImageButtonOptions = list(format = "svg"),
-           displaylogo = FALSE)
+           displaylogo = FALSE,
+           plotGlPixelRatio = webgl.ratio)
 
   if (!is.null(gs)) {
     fig <- fig %>%

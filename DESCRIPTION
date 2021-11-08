@@ -48,4 +48,5 @@ Suggests:
     scRNAseq,
     scater,
     scran,
-    scuttle
+    scuttle,
+    org.Hs.eg.db

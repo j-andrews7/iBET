@@ -1,9 +1,14 @@
 .make_xyplot <- function(res1, res2, res1.color, res2.color, both.color, insig.color,
                          sig.thresh, lfc.thresh, gene.col, df.vars,
                          regr = TRUE, genes.labeled = NULL, ylim, xlim, show,
-                         source, label.size, webgl, show.counts, counts.size,
+                         source, label.size, webgl, webgl.ratio, show.counts, counts.size,
                          aggr.size, res1.size, res2.size, both.size, insig.size,
-                         res1.opac, res2.opac, both.opac, insig.opac) {
+                         res1.opac, res2.opac, both.opac, insig.opac,
+                         highlight.genesets, highlight.genes, genesets,
+                         highlight.genes.color, highlight.genes.size, highlight.genes.opac,
+                         highlight.genes.linecolor, highlight.genes.linewidth,
+                         highlight.genesets.color, highlight.genesets.size, highlight.genesets.opac,
+                         highlight.genesets.linecolor, highlight.genesets.linewidth) {
 
   comp1.name <- names(res1)
   comp1 <- res1[[1]]
@@ -36,6 +41,20 @@
 
   # Create final plotting df.
   full.df <- merge(comp1, comp2, by = "Gene")
+
+  # Get all gene IDs or symbols to be highlighted.
+  highlight <- NULL
+  if (!is.null(highlight.genes) & highlight.genes != "") {
+    highlight.genes <- strsplit(highlight.genes, ",|\\s|,\\s")[[1]]
+    highlight <- highlight.genes[highlight.genes != ""]
+  }
+
+  highlight.gs <- NULL
+  if (!is.null(highlight.genesets)) {
+    for (gs in highlight.genesets) {
+      highlight.gs <- c(highlight.gs, genesets[[gs]])
+    }
+  }
 
   # Set significance status.
   full.df$Sig <- "Not Significant"
@@ -80,6 +99,8 @@
   full.df$col[full.df$Sig == paste0(comp1.name, " Significant")] <- res1.color
   full.df$col[full.df$Sig == paste0(comp2.name, " Significant")] <- res2.color
   full.df$col[full.df$Sig == "Both Significant"] <- both.color
+  full.df$lcol <- full.df$col
+  full.df$lw <- 0
   full.df$cex[full.df$Sig == "Not Significant"] <- insig.size
   full.df$cex[full.df$Sig == "Both Significant"] <- both.size
   full.df$cex[full.df$Sig == paste0(comp1.name, " Significant")] <- res1.size
@@ -95,6 +116,29 @@
                        ifelse(full.df$lfc.y < -ylim, "triangle-down-open",
                           ifelse(full.df$lfc.x < -xlim, "triangle-left-open",
                             ifelse(full.df$lfc.x > xlim, "triangle-right-open", 0))))
+
+  if (!is.null(highlight.gs)) {
+    highlight.gs <- highlight.gs[highlight.gs %in% full.df$Gene]
+
+    full.df$col[full.df$Gene %in% highlight.gs] <- highlight.genesets.color
+    full.df$cex[full.df$Gene %in% highlight.gs] <- highlight.genesets.size
+    full.df$opacity[full.df$Gene %in% highlight.gs] <- highlight.genesets.opac
+    full.df$lcol[full.df$Gene %in% highlight.gs] <- highlight.genesets.linecolor
+    full.df$lw[full.df$Gene %in% highlight.gs] <- highlight.genesets.linewidth
+    full.df$order[full.df$Gene %in% highlight.gs] <- 4
+  }
+
+  # Want these to have precedence over the genesets in case entries are in both.
+  if (!is.null(highlight)) {
+    highlight <- highlight[highlight %in% full.df$Gene]
+
+    full.df$col[full.df$Gene %in% highlight] <- highlight.genes.color
+    full.df$cex[full.df$Gene %in% highlight] <- highlight.genes.size
+    full.df$opacity[full.df$Gene %in% highlight] <- highlight.genes.opac
+    full.df$lcol[full.df$Gene %in% highlight] <- highlight.genes.linecolor
+    full.df$lw[full.df$Gene %in% highlight] <- highlight.genes.linewidth
+    full.df$order[full.df$Gene %in% highlight] <- 3
+  }
 
   # Calculate regression line if needed, prior to change values due to axis limits.
   regr.line <- NULL
@@ -158,6 +202,7 @@
     zerolinewidth = 0.5
   )
 
+  # Figure creation.
   fig <- plot_ly(full.df, x = ~lfc.x,
                  y = ~lfc.y,
                  customdata = ~Gene,
@@ -166,7 +211,7 @@
                  marker = list(color = ~col,
                                size = ~cex,
                                symbol = ~sh,
-                               line = list(color = ~col),
+                               line = list(color = ~lcol, width = ~lw),
                                opacity = ~opacity),
                  text = ~hover.string,
                  hoverinfo = "text",
@@ -174,7 +219,8 @@
     config(edits = list(annotationPosition = TRUE,
                         annotationTail = TRUE),
            toImageButtonOptions = list(format = "svg"),
-           displaylogo = FALSE)
+           displaylogo = FALSE,
+           plotGlPixelRatio = webgl.ratio)
 
   if (regr) {
     fig <- fig %>%

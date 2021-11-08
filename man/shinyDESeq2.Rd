@@ -14,6 +14,7 @@ shinyDESeq2(
   use.vst = TRUE,
   samples.use = NULL,
   h.id = "ht1",
+  genesets = NULL,
   height = 800
 )
 }
@@ -24,7 +25,8 @@ shinyDESeq2(
 or a named list of such results. If a named list is provided, users will be
 able to choose between the provided results and \code{coef} will be ignored.
 
-If not provided, it will be generated from the \code{dds} object via \code{\link[DESeq2]{lfcShrink}} and \code{coef}.}
+If not provided, it will be generated from the \code{dds} object via \code{\link[DESeq2]{lfcShrink}}
+or \code{\link[DESeq2]{results}} and \code{coef}.}
 
 \item{coef}{A string indicating the coefficient name for which results will be generated.
 If not provided and \code{res} is \code{NULL}, the first non-intercept coefficient
@@ -49,6 +51,9 @@ Must be the same length as the number of samples in the \code{dds} object.}
 
 \item{h.id}{String indicating unique ID for interactive heatmaps.
 Required if multiple apps are run within the same Rmd file.}
+
+\item{genesets}{Optional named list containing genesets that can be interactively highlighted on the plots.
+The elements of the list should each be a geneset with gene identifiers matching those used in the results.}
 
 \item{height}{Number indicating height of app in pixels.}
 }
