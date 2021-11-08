@@ -14,6 +14,7 @@ shinyDESeq2(
   use.vst = TRUE,
   samples.use = NULL,
   h.id = "ht1",
+  genesets = NULL,
   height = 800
 )
 }
@@ -50,6 +51,9 @@ Must be the same length as the number of samples in the \code{dds} object.}
 
 \item{h.id}{String indicating unique ID for interactive heatmaps.
 Required if multiple apps are run within the same Rmd file.}
+
+\item{genesets}{Optional named list containing genesets that can be interactively highlighted on the plots.
+The elements of the list should each be a geneset with gene identifiers matching those used in the results.}
 
 \item{height}{Number indicating height of app in pixels.}
 }

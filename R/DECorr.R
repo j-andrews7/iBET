@@ -160,25 +160,25 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
               )
             ),
             bsCollapsePanel(title = span(icon("plus"), "Highlight Gene(sets)"), style = "info",
-                            textAreaInput("hl.genes", "Highlight Genes:", value = "", rows = 4,
-                                          placeholder = "Enter space, comma, or newline delimited genes"),
-                            pickerInput("hl.genesets", "Highlight Genesets:", choices = c("", names(genesets)),
-                                        multiple = TRUE, options = list(`live-search` = TRUE,
-                                                                        `actions-box` = TRUE)),
-                            fluidRow(
-                              column(6,
-                                     numericInput("hl.genes.opa", label = "Genes opacity:", value = 1, step = 0.05, min = 0),
-                                     numericInput("hl.genes.size", label = "Genes pt size:", value = 7, step = 0.1, min = 0),
-                                     numericInput("hl.genes.lw", label = "Genes border width:", value = 0.5, step = 0.05, min = 0),
-                                     colourInput("hl.genes.col", "Genes color:", value = "#6602A8"),
-                                     colourInput("hl.genes.lcol", "Genes border:", value = "#000000")),
-                              column(6,
-                                     numericInput("hl.genesets.opa", label = "Sets opacity:", value = 1, step = 0.05, min = 0),
-                                     numericInput("hl.genesets.size", label = "Sets pt size:", value = 7, step = 0.1, min = 0),
-                                     numericInput("hl.genesets.lw", label = "Sets border width:", value = 0.5, step = 0.05, min = 0),
-                                     colourInput("hl.genesets.col", "Sets color:", value = "#56B4E9"),
-                                     colourInput("hl.genesets.lcol", "Sets border:", value = "#000000"))
-                            )
+              textAreaInput("hl.genes", "Highlight Genes:", value = "", rows = 4,
+                            placeholder = "Enter space, comma, or newline delimited genes"),
+              pickerInput("hl.genesets", "Highlight Genesets:", choices = c("", names(genesets)),
+                          multiple = TRUE, options = list(`live-search` = TRUE,
+                                                          `actions-box` = TRUE)),
+              fluidRow(
+                column(6,
+                  numericInput("hl.genes.opa", label = "Genes opacity:", value = 1, step = 0.05, min = 0),
+                  numericInput("hl.genes.size", label = "Genes pt size:", value = 7, step = 0.1, min = 0),
+                  numericInput("hl.genes.lw", label = "Genes border width:", value = 0.5, step = 0.05, min = 0),
+                  colourInput("hl.genes.col", "Genes color:", value = "#6602A8"),
+                  colourInput("hl.genes.lcol", "Genes border:", value = "#000000")),
+                column(6,
+                  numericInput("hl.genesets.opa", label = "Sets opacity:", value = 1, step = 0.05, min = 0),
+                  numericInput("hl.genesets.size", label = "Sets pt size:", value = 7, step = 0.1, min = 0),
+                  numericInput("hl.genesets.lw", label = "Sets border width:", value = 0.5, step = 0.05, min = 0),
+                  colourInput("hl.genesets.col", "Sets color:", value = "#56B4E9"),
+                  colourInput("hl.genesets.lcol", "Sets border:", value = "#000000"))
+              )
             )
           ),
           div(actionButton("update", "Update Plots"), align = "center")

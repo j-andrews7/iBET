@@ -55,6 +55,8 @@
 #'   Must be the same length as the number of samples in the \code{dds} object.
 #' @param h.id String indicating unique ID for interactive heatmaps.
 #'   Required if multiple apps are run within the same Rmd file.
+#' @param genesets Optional named list containing genesets that can be interactively highlighted on the plots.
+#'   The elements of the list should each be a geneset with gene identifiers matching those used in the results.
 #' @param height Number indicating height of app in pixels.
 #'
 #' @return A Shiny app containing interconnected InteractiveComplexHeatmap, MAplot, and volcano plots along with full DE results.
@@ -67,7 +69,7 @@
 #' @export
 shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                         use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE, samples.use = NULL,
-                        h.id = "ht1", height = 800) {
+                        h.id = "ht1", genesets = NULL, height = 800) {
 
   # Check is res is individual or named list.
   multi.res <- FALSE
@@ -79,6 +81,15 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       res <- res[[1]]
     } else {
       stop("Results list elements should be named.")
+    }
+  }
+
+  # Parameter validation.
+  if (!is.null(genesets)) {
+    if (is.null(names(genesets))) {
+      stop("Genesets list must be named")
+    } else if (!is(genesets, "list")) {
+      stop("Genesets must be provided as a named list")
     }
   }
 
@@ -167,23 +178,34 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
             br(),
             dropdownButton(
               tags$h3("Plot Settings"),
-              colourInput("ma.down.color", "Down-regulated genes colour", value = "#0026ff"),
-              colourInput("ma.up.color", "Up-regulated genes colour", value = "red"),
-              colourInput("ma.insig.color", "Insignificant genes colour", value = "black"),
-              numericInput("ma.y", label = "y-axis limits:", value = 5, step = 0.1, min = 0.1),
-              numericInput("ma.opa", label = "Opacity:", value = 1, step = 0.05, min = 0),
-              numericInput("ma.lab.size", label = "Label Size:", value = 10, step = 0.5, min = 1),
+              fluidRow(
+                column(width = 6,
+                  colourInput("ma.down.color", "Down-reg colour", value = "#0026ff"),
+                  colourInput("ma.up.color", "Up-reg colour", value = "red"),
+                  colourInput("ma.insig.color", "Insig colour", value = "black"),
+                  numericInput("ma.sig.opa", label = "Sig opacity:", value = 1, step = 0.05, min = 0)
+                ),
+                column(width = 6,
+                  numericInput("ma.y", label = "y-axis limits:", value = 5, step = 0.1, min = 0.1),
+                  numericInput("ma.lab.size", label = "Label Size:", value = 10, step = 0.5, min = 1),
+                  numericInput("ma.insig.opa", label = "Insig opacity:", value = 1, step = 0.05, min = 0)
+                )
+              ),
               prettyCheckbox("ma.fcline", label = "Show MAplot FC Threshold", value = TRUE,
                             animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
+              splitLayout(
+                prettyCheckbox("ma.webgl", label = "Use webGL", TRUE, bigger = TRUE,
+                               animation = "smooth", status = "success",
+                               icon = icon("check"), width = "100%"),
+                prettyCheckbox("ma.counts", label = "Show counts", TRUE, bigger = TRUE,
+                               animation = "smooth", status = "success",
+                               icon = icon("check"), width = "100%")
+              ),
+              splitLayout(
+                  numericInput("ma.webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1),
+                  numericInput("ma.counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0)
+              ),
               circle = FALSE, label = strong("MA-Plot"), status = "danger", size = "lg", icon = icon("gear"),
-              prettyCheckbox("ma.webgl", label = "Use webGL", TRUE, bigger = TRUE,
-                             animation = "smooth", status = "success",
-                             icon = icon("check"), width = "100%"),
-              numericInput("ma.webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1),
-              prettyCheckbox("ma.counts", label = "Show counts", TRUE, bigger = TRUE,
-                             animation = "smooth", status = "success",
-                             icon = icon("check"), width = "100%"),
-              numericInput("ma.counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
               width = "300px", tooltip = tooltipOptions(title = "Click to change plot settings")
             ),
             withLoader(
@@ -197,26 +219,37 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
             br(),
             dropdownButton(
               tags$h3("Plot Settings"),
-              colourInput("vol.down.color", "Down-regulated genes colour", value = "#0026ff"),
-              colourInput("vol.up.color", "Up-regulated genes colour", value = "red"),
-              colourInput("vol.insig.color", "Insignificant genes colour", value = "#A6A6A6"),
-              numericInput("vol.x", label = "x-axis limits:", value = 5, step = 0.1, min = 0.1),
-              numericInput("vol.y", label = "y-axis limits:", value = max(-log10(res[[sig.term]])),
-                           step = 0.5, min = 1),
-              numericInput("vol.opa", label = "Opacity:", value = 1, step = 0.05, min = 0),
-              numericInput("vol.lab.size", label = "Label Size:", value = 10, step = 0.5, min = 1),
+              fluidRow(
+                column(width = 6,
+                  colourInput("vol.down.color", "Down-regulated genes colour", value = "#0026ff"),
+                  colourInput("vol.up.color", "Up-regulated genes colour", value = "red"),
+                  colourInput("vol.insig.color", "Insignificant genes colour", value = "#A6A6A6"),
+                  numericInput("vol.sig.opa", label = "Sig opacity:", value = 1, step = 0.05, min = 0)
+                ),
+                column(width = 6,
+                  numericInput("vol.x", label = "x-axis limits:", value = 5, step = 0.1, min = 0.1),
+                  numericInput("vol.y", label = "y-axis limits:", value = max(-log10(res[[sig.term]])),
+                               step = 0.5, min = 1),
+                  numericInput("vol.lab.size", label = "Label Size:", value = 10, step = 0.5, min = 1),
+                  numericInput("vol.insig.opa", label = "Insig opacity:", value = 1, step = 0.05, min = 0)
+                )
+              ),
               prettyCheckbox("vol.fcline", label = "Show Volcano FC Threshold", value = TRUE,
                              animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
               prettyCheckbox("vol.sigline", label = "Show Volcano Signficance Threshold", value = TRUE,
                              animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-              prettyCheckbox("vol.webgl", label = "Use webGL", TRUE, bigger = TRUE,
-                             animation = "smooth", status = "success",
-                             icon = icon("check"), width = "100%"),
-              numericInput("vol.webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1),
-              prettyCheckbox("vol.counts", label = "Show gene counts", TRUE, bigger = TRUE,
-                             animation = "smooth", status = "success",
-                             icon = icon("check"), width = "100%"),
-              numericInput("vol.counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
+              splitLayout(
+                prettyCheckbox("vol.webgl", label = "Use webGL", TRUE, bigger = TRUE,
+                               animation = "smooth", status = "success",
+                               icon = icon("check"), width = "100%"),
+                prettyCheckbox("vol.counts", label = "Show counts", TRUE, bigger = TRUE,
+                               animation = "smooth", status = "success",
+                               icon = icon("check"), width = "100%")
+              ),
+              splitLayout(
+                numericInput("vol.counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
+                numericInput("vol.webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1)
+              ),
               circle = FALSE, label = strong("Volcano Plot"), status = "danger", size = "lg", icon = icon("gear"),
               width = "300px", tooltip = tooltipOptions(title = "Click to change plot settings")
             ),
@@ -236,20 +269,61 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     dashboardHeader(disable = TRUE),
     dashboardSidebar(disable = TRUE),
     dashboardBody(
+      tags$head(
+        # Note the wrapping of the string in HTML()
+        tags$style(HTML("
+          .panel-body {
+            padding: 5px;
+          }
+          .form-group {
+            margin-bottom: 5px;
+          }
+          .well {
+            padding: 5px;
+            margin-bottom: 10px;
+          }
+        "))
+      ),
       useShinyjs(),
       shinyDashboardThemes(
         theme = "onenote"
       ),
       sidebarLayout(
-        sidebarPanel(width = 2,
+        sidebarPanel(
+          width = 2,
           tags$label(HTML(qq("Comparison: <code style='font-weight:normal; font-size: 10px;'>@{paste(coef, collapse = ' ')}</code>")), class = "shiny-input-container", style = "font-size:1.2em;"),
           hidden(div(id = "mres", selectInput("res.select", NULL, choices = names(res.list)))),
           hr(style="margin:2px; background-color: #737373;"),
-          numericInput("fdr", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
-          numericInput("base_mean", label = "Minimal baseMean:", value = 0, step = 1),
-          numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
-          numericInput("row.km", label = "Row k-means groups:", value = 2, step = 1),
-          numericInput("col.km", label = "Column k-means groups:", value = 0, step = 1),
+          bsCollapse(open = "settings",
+            bsCollapsePanel(title = span(icon("plus"), "Plot Settings"), value = "settings", style = "info",
+              numericInput("fdr", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
+              numericInput("base_mean", label = "Minimal baseMean:", value = 0, step = 1),
+              numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
+              numericInput("row.km", label = "Row k-means groups:", value = 2, step = 1),
+              numericInput("col.km", label = "Column k-means groups:", value = 0, step = 1)
+            ),
+            bsCollapsePanel(title = span(icon("plus"), "Highlight Gene(sets)"), style = "info",
+              textAreaInput("hl.genes", "Highlight Genes:", value = "", rows = 4,
+                            placeholder = "Enter space, comma, or newline delimited genes"),
+              pickerInput("hl.genesets", "Highlight Genesets:", choices = c("", names(genesets)),
+                          multiple = TRUE, options = list(`live-search` = TRUE,
+                                                          `actions-box` = TRUE)),
+              fluidRow(
+                column(6,
+                  numericInput("hl.genes.opa", label = "Genes opacity:", value = 1, step = 0.05, min = 0),
+                  numericInput("hl.genes.size", label = "Genes pt size:", value = 7, step = 0.1, min = 0),
+                  numericInput("hl.genes.lw", label = "Genes border width:", value = 0.5, step = 0.05, min = 0),
+                  colourInput("hl.genes.col", "Genes color:", value = "#E69F00"),
+                  colourInput("hl.genes.lcol", "Genes border:", value = "#000000")),
+                column(6,
+                  numericInput("hl.genesets.opa", label = "Sets opacity:", value = 1, step = 0.05, min = 0),
+                  numericInput("hl.genesets.size", label = "Sets pt size:", value = 7, step = 0.1, min = 0),
+                  numericInput("hl.genesets.lw", label = "Sets border width:", value = 0.5, step = 0.05, min = 0),
+                  colourInput("hl.genesets.col", "Sets color:", value = "#009E73"),
+                  colourInput("hl.genesets.lcol", "Sets border:", value = "#000000"))
+              )
+            )
+          ),
           div(actionButton("update", label = "Update Plots"), align = "center")
         ),
         body
@@ -361,27 +435,76 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       req(genes)
       input$update
 
-      .make_maplot(res = ress(), ylim = isolate(input$ma.y), fc.thresh = isolate(input$log2fc),
-                   fc.lines = isolate(input$ma.fcline), sig.thresh = isolate(input$fdr), h.id = h.id,
-                   sig.term = sig.term, gs = genes$ma, up.color = isolate(input$ma.up.color),
-                   down.color = isolate(input$ma.down.color), insig.color = isolate(input$ma.insig.color),
-                   opacity = isolate(input$ma.opa), label.size = isolate(input$ma.lab.size),
-                   webgl = isolate(input$ma.webgl), webgl.ratio = isolate(input$ma.webgl.ratio),
-                   show.counts = isolate(input$ma.counts), counts.size = isolate(input$ma.counts.size))
+      .make_maplot(res = ress(),
+                   ylim = isolate(input$ma.y),
+                   fc.thresh = isolate(input$log2fc),
+                   fc.lines = isolate(input$ma.fcline),
+                   sig.thresh = isolate(input$fdr),
+                   h.id = h.id,
+                   sig.term = sig.term,
+                   gs = genes$ma,
+                   up.color = isolate(input$ma.up.color),
+                   down.color = isolate(input$ma.down.color),
+                   insig.color = isolate(input$ma.insig.color),
+                   sig.opacity = isolate(input$ma.sig.opa),
+                   insig.opacity = isolate(input$ma.insig.opa),
+                   label.size = isolate(input$ma.lab.size),
+                   webgl = isolate(input$ma.webgl),
+                   webgl.ratio = isolate(input$ma.webgl.ratio),
+                   show.counts = isolate(input$ma.counts),
+                   counts.size = isolate(input$ma.counts.size),
+                   highlight.genesets = isolate(input$hl.genesets),
+                   highlight.genes = isolate(input$hl.genes),
+                   genesets = genesets,
+                   highlight.genes.color = isolate(input$hl.genes.col),
+                   highlight.genes.size = isolate(input$hl.genes.size),
+                   highlight.genes.opac = isolate(input$hl.genes.opa),
+                   highlight.genes.linecolor = isolate(input$hl.genes.lcol),
+                   highlight.genes.linewidth = isolate(input$hl.genes.lw),
+                   highlight.genesets.color = isolate(input$hl.genesets.col),
+                   highlight.genesets.size = isolate(input$hl.genesets.size),
+                   highlight.genesets.opac = isolate(input$hl.genesets.opa),
+                   highlight.genesets.linecolor = isolate(input$hl.genesets.lcol),
+                   highlight.genesets.linewidth = isolate(input$hl.genesets.lw))
     })
 
     output$volcano_plot <- renderPlotly({
       req(genes)
       input$update
 
-      .make_volcano(res = ress(), xlim = isolate(input$vol.x), ylim = isolate(input$vol.y),
-                    fc.thresh = isolate(input$log2fc), fc.lines = isolate(input$vol.fcline),
-                    sig.thresh = isolate(input$fdr), sig.line = isolate(input$vol.sigline),
-                    h.id = h.id, sig.term = sig.term, gs = genes$volc, up.color = isolate(input$vol.up.color),
-                    down.color = isolate(input$vol.down.color), insig.color = isolate(input$vol.insig.color),
-                    opacity = isolate(input$vol.opa), label.size = isolate(input$vol.lab.size),
-                    webgl = isolate(input$vol.webgl), webgl.ratio = isolate(input$vol.webgl.ratio),
-                    show.counts = isolate(input$vol.counts), counts.size = isolate(input$vol.counts.size))
+      .make_volcano(res = ress(),
+                    xlim = isolate(input$vol.x),
+                    ylim = isolate(input$vol.y),
+                    fc.thresh = isolate(input$log2fc),
+                    fc.lines = isolate(input$vol.fcline),
+                    sig.thresh = isolate(input$fdr),
+                    sig.line = isolate(input$vol.sigline),
+                    h.id = h.id,
+                    sig.term = sig.term,
+                    gs = genes$volc,
+                    up.color = isolate(input$vol.up.color),
+                    down.color = isolate(input$vol.down.color),
+                    insig.color = isolate(input$vol.insig.color),
+                    sig.opacity = isolate(input$vol.sig.opa),
+                    insig.opacity = isolate(input$vol.insig.opa),
+                    label.size = isolate(input$vol.lab.size),
+                    webgl = isolate(input$vol.webgl),
+                    webgl.ratio = isolate(input$vol.webgl.ratio),
+                    show.counts = isolate(input$vol.counts),
+                    counts.size = isolate(input$vol.counts.size),
+                    highlight.genesets = isolate(input$hl.genesets),
+                    highlight.genes = isolate(input$hl.genes),
+                    genesets = genesets,
+                    highlight.genes.color = isolate(input$hl.genes.col),
+                    highlight.genes.size = isolate(input$hl.genes.size),
+                    highlight.genes.opac = isolate(input$hl.genes.opa),
+                    highlight.genes.linecolor = isolate(input$hl.genes.lcol),
+                    highlight.genes.linewidth = isolate(input$hl.genes.lw),
+                    highlight.genesets.color = isolate(input$hl.genesets.col),
+                    highlight.genesets.size = isolate(input$hl.genesets.size),
+                    highlight.genesets.opac = isolate(input$hl.genesets.opa),
+                    highlight.genesets.linecolor = isolate(input$hl.genesets.lcol),
+                    highlight.genesets.linewidth = isolate(input$hl.genesets.lw))
     })
 
     output[["res_table_full"]] <- DT::renderDataTable({

@@ -33,6 +33,4 @@
     x0 = df$lfc.x[df$fv == min(df$fv)],
     x1 = df$lfc.x[df$fv == max(df$fv)]
   )
-
-
 }
