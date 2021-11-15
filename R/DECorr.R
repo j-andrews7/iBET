@@ -117,8 +117,10 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
           width = 2,
           bsCollapse(open = "settings",
             bsCollapsePanel(title = span(icon("plus"), "Plot Settings"), value = "settings", style = "info",
-              numericInput("sig", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
-              numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
+              splitLayout(
+                numericInput("sig", label = "Sig. threshold:", value = 0.05, step = 0.001, min = 0.0001),
+                numericInput("log2fc", label = "log2FC theshold:", value = 0, step = 0.1, min = 0)
+              ),
               splitLayout(
                 numericInput("ylim", label = "Y-axis limit:", value = 10, step = 0.1, min = 0),
                 numericInput("xlim", label = "X-axis limit:", value = 10, step = 0.1, min = 0)
@@ -137,8 +139,13 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
               prettyCheckbox("counts", strong("Show counts"), TRUE, bigger = TRUE,
                              animation = "smooth", status = "success",
                              icon = icon("check"), width = "100%"),
-              numericInput("aggr.size", label = "Correlation stats size:", value = 8, step = 0.1, min = 0),
-              numericInput("counts.size", label = "Gene counts size:", value = 8, step = 0.1, min = 0)
+              prettyCheckbox("hl.counts", strong("Show highlight counts"), FALSE, bigger = TRUE,
+                             animation = "smooth", status = "success",
+                             icon = icon("check"), width = "100%"),
+              splitLayout(
+                numericInput("aggr.size", label = "Corr stats size:", value = 8, step = 0.1, min = 0),
+                numericInput("counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0)
+              )
             ),
             bsCollapsePanel(title = span(icon("plus"), "Point Aesthetics"), style = "info",
               numericInput("lab.size", label = "Label Size:", value = 10, step = 0.5, min = 1),
@@ -155,12 +162,12 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                        numericInput("insig.opa", label = "Insig opacity:", value = 1, step = 0.05, min = 0),
                        numericInput("both.size", label = "Both pt size:", value = 5, step = 0.1, min = 0),
                        numericInput("insig.size", label = "Insig pt size:", value = 3, step = 0.1, min = 0),
-                       colourInput("comp2.sig", "Y-axis Signif", value = "#56B4E9"),
+                       colourInput("comp2.sig", "Y-axis Signif", value = "#BC57EB"),
                        colourInput("insig.color", "Insignificant", value = "#666666"))
               )
             ),
             bsCollapsePanel(title = span(icon("plus"), "Highlight Gene(sets)"), style = "info",
-              textAreaInput("hl.genes", "Highlight Genes:", value = "", rows = 4,
+              textAreaInput("hl.genes", "Highlight Genes:", value = "", rows = 3,
                             placeholder = "Enter space, comma, or newline delimited genes"),
               pickerInput("hl.genesets", "Highlight Genesets:", choices = c("", names(genesets)),
                           multiple = TRUE, options = list(`live-search` = TRUE,
@@ -170,13 +177,13 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                   numericInput("hl.genes.opa", label = "Genes opacity:", value = 1, step = 0.05, min = 0),
                   numericInput("hl.genes.size", label = "Genes pt size:", value = 7, step = 0.1, min = 0),
                   numericInput("hl.genes.lw", label = "Genes border width:", value = 0.5, step = 0.05, min = 0),
-                  colourInput("hl.genes.col", "Genes color:", value = "#6602A8"),
+                  colourInput("hl.genes.col", "Genes color:", value = "#FFFF19"),
                   colourInput("hl.genes.lcol", "Genes border:", value = "#000000")),
                 column(6,
                   numericInput("hl.genesets.opa", label = "Sets opacity:", value = 1, step = 0.05, min = 0),
                   numericInput("hl.genesets.size", label = "Sets pt size:", value = 7, step = 0.1, min = 0),
                   numericInput("hl.genesets.lw", label = "Sets border width:", value = 0.5, step = 0.05, min = 0),
-                  colourInput("hl.genesets.col", "Sets color:", value = "#56B4E9"),
+                  colourInput("hl.genesets.col", "Sets color:", value = "#38FFF2"),
                   colourInput("hl.genesets.lcol", "Sets border:", value = "#000000"))
               )
             )
@@ -285,6 +292,7 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                        webgl.ratio = isolate(input$webgl.ratio),
                        show.counts = isolate(input$counts),
                        counts.size = isolate(input$counts.size),
+                       show.hl.counts = isolate(input$hl.counts),
                        aggr.size = isolate(input$aggr.size),
                        res1.size = isolate(input$x.size),
                        res2.size = isolate(input$y.size),

@@ -38,16 +38,16 @@
 
 
 .make_maplot <- function(res, ylim, fc.thresh, fc.lines, h.id, sig.term,
-                         down.color, up.color, insig.color, sig.thresh = 0.05,
+                         down.color, up.color, insig.color, sig.size, insig.size, sig.thresh = 0.05,
                          gs = NULL, sig.opacity, insig.opacity, label.size, webgl, webgl.ratio, show.counts,
-                         counts.size, highlight.genesets, highlight.genes, genesets,
+                         counts.size, show.hl.counts, highlight.genesets, highlight.genes, genesets,
                          highlight.genes.color, highlight.genes.size, highlight.genes.opac,
                          highlight.genes.linecolor, highlight.genes.linewidth,
                          highlight.genesets.color, highlight.genesets.size, highlight.genesets.opac,
                          highlight.genesets.linecolor, highlight.genesets.linewidth) {
 
   res$col <- rep(insig.color, nrow(res))
-  res$cex <- rep(3, nrow(res))
+  res$cex <- rep(insig.size, nrow(res))
   res$order <- rep(0, nrow(res))
   res$lcol <- res$col
   res$lw <- 0
@@ -73,23 +73,22 @@
   # Styling.
   up.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange > 0
   res$col[up.degs] <- up.color
-  res$cex[up.degs] <- 5
+  res$cex[up.degs] <- sig.size
   res$order[up.degs] <- 1
   res$opacity[up.degs] <- sig.opacity
 
   dn.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange < 0
   res$col[dn.degs] <- down.color
-  res$cex[dn.degs] <- 5
+  res$cex[dn.degs] <- sig.size
   res$order[dn.degs] <- 1
   res$opacity[dn.degs] <- sig.opacity
 
   res$lcol <- res$col
-  res$lw <- 0
 
   if(fc.thresh > 0) {
     fc.threshed <- abs(res$log2FoldChange) < fc.thresh
     res$col[fc.threshed] <- insig.color
-    res$cex[fc.threshed] <- 3
+    res$cex[fc.threshed] <- insig.size
     res$order[fc.threshed] <- 0
   }
 
@@ -102,13 +101,18 @@
   res$y <- res$log2FoldChange
   res$sh <- ifelse(res$log2FoldChange > ylim, "triangle-up-open",
                    ifelse(res$log2FoldChange < -ylim, "triangle-down-open", 0))
+  res$lw <- ifelse(res$sh != 0, 1, 0)
   res$y[res$y > ylim] <- ylim - 0.05
   res$y[res$y < -ylim] <- -ylim + 0.05
   res$Gene <- rownames(res)
 
   # Gene/geneset highlighting.
+  n.gs.hl <- 0
+  n.hl <- 0
+
   if (!is.null(highlight.gs)) {
     highlight.gs <- highlight.gs[highlight.gs %in% res$Gene]
+    n.gs.hl <- length(res$col[res$Gene %in% highlight.gs])
 
     res$col[res$Gene %in% highlight.gs] <- highlight.genesets.color
     res$cex[res$Gene %in% highlight.gs] <- highlight.genesets.size
@@ -121,6 +125,7 @@
   # Want these to have precedence over the genesets in case entries are in both.
   if (!is.null(highlight)) {
     highlight <- highlight[highlight %in% res$Gene]
+    n.hl <- length(res$col[res$Gene %in% highlight])
 
     res$col[res$Gene %in% highlight] <- highlight.genes.color
     res$cex[res$Gene %in% highlight] <- highlight.genes.size
@@ -213,12 +218,26 @@
     fig <- fig %>%
       add_annotations(
         x= 1,
-        y= -0,
+        y= 0,
         xref = "paper",
         yref = "paper",
         text = paste0("Up-reg. genes: ", n.up.genes,
                       "\nDown-reg. genes: ", n.dn.genes,
                       "\nTotal genes: ", n.genes),
+        showarrow = FALSE,
+        font = list(size = counts.size)
+      )
+  }
+
+  if (show.hl.counts) {
+    fig <- fig %>%
+      add_annotations(
+        x= 1,
+        y= 1,
+        xref = "paper",
+        yref = "paper",
+        text = paste0("Geneset genes: ", n.gs.hl,
+                      "\nHighlighted genes: ", n.hl),
         showarrow = FALSE,
         font = list(size = counts.size)
       )
@@ -232,12 +251,11 @@
 }
 
 
-# make the volcano plot with some genes highlighted
 .make_volcano <- function(res, xlim, ylim, fc.thresh, fc.lines,
                           sig.line, h.id, sig.term, down.color, up.color,
-                          insig.color, sig.thresh = 0.05, gs = NULL,
+                          insig.color, sig.thresh = 0.05, gs = NULL, sig.size, insig.size,
                           sig.opacity, insig.opacity, label.size, webgl, webgl.ratio, show.counts,
-                          counts.size, highlight.genesets, highlight.genes, genesets,
+                          show.hl.counts, counts.size, highlight.genesets, highlight.genes, genesets,
                           highlight.genes.color, highlight.genes.size, highlight.genes.opac,
                           highlight.genes.linecolor, highlight.genes.linewidth,
                           highlight.genesets.color, highlight.genesets.size, highlight.genesets.opac,
@@ -245,7 +263,7 @@
 
   # Styling.
   res$col <- rep(insig.color, nrow(res))
-  res$cex <- rep(3, nrow(res))
+  res$cex <- rep(insig.size, nrow(res))
   res$order <- rep(0, nrow(res))
   res$lcol <- res$col
   res$lw <- 0
@@ -271,13 +289,13 @@
   # Significance filter.
   up.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange > 0
   res$col[up.degs] <- up.color
-  res$cex[up.degs] <- 5
+  res$cex[up.degs] <- sig.size
   res$order[up.degs] <- 1
   res$opacity[up.degs] <- sig.opacity
 
   dn.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange < 0
   res$col[dn.degs] <- down.color
-  res$cex[dn.degs] <- 5
+  res$cex[dn.degs] <- sig.size
   res$order[dn.degs] <- 1
   res$opacity[dn.degs] <- sig.opacity
 
@@ -285,7 +303,7 @@
   if(fc.thresh > 0) {
     fc.threshed <- abs(res$log2FoldChange) < fc.thresh
     res$col[fc.threshed] <- insig.color
-    res$cex[fc.threshed] <- 3
+    res$cex[fc.threshed] <- insig.size
     res$order[fc.threshed] <- 0
   }
 
@@ -298,14 +316,20 @@
                ifelse(res$x < -xlim, "triangle-left-open",
                       ifelse(res$x > xlim, "triangle-right-open", 0)))
 
+  res$lw <- ifelse(res$sh != 0, 1, 0)
+
   res$y[res$y > ylim] <- ylim - 0.2
   res$x[res$x > xlim] <- xlim - 0.05
   res$x[res$x < -xlim] <- -xlim + 0.05
   res$Gene <- rownames(res)
 
   # Gene/geneset highlighting.
+  n.gs.hl <- 0
+  n.hl <- 0
+
   if (!is.null(highlight.gs)) {
     highlight.gs <- highlight.gs[highlight.gs %in% res$Gene]
+    n.gs.hl <- length(res$col[res$Gene %in% highlight.gs])
 
     res$col[res$Gene %in% highlight.gs] <- highlight.genesets.color
     res$cex[res$Gene %in% highlight.gs] <- highlight.genesets.size
@@ -318,6 +342,7 @@
   # Want these to have precedence over the genesets in case entries are in both.
   if (!is.null(highlight)) {
     highlight <- highlight[highlight %in% res$Gene]
+    n.hl <- length(res$col[res$Gene %in% highlight])
 
     res$col[res$Gene %in% highlight] <- highlight.genes.color
     res$cex[res$Gene %in% highlight] <- highlight.genes.size
@@ -427,6 +452,20 @@
         text = paste0("Up-reg. genes: ", n.up.genes,
                       "\nDown-reg. genes: ", n.dn.genes,
                       "\nTotal genes: ", n.genes),
+        showarrow = FALSE,
+        font = list(size = counts.size)
+      )
+  }
+
+  if (show.hl.counts) {
+    fig <- fig %>%
+      add_annotations(
+        x= 0,
+        y= 1,
+        xref = "paper",
+        yref = "paper",
+        text = paste0("Geneset genes: ", n.gs.hl,
+                      "\nHighlighted genes: ", n.hl),
         showarrow = FALSE,
         font = list(size = counts.size)
       )

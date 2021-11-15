@@ -1,7 +1,7 @@
 .make_xyplot <- function(res1, res2, res1.color, res2.color, both.color, insig.color,
                          sig.thresh, lfc.thresh, gene.col, df.vars,
                          regr = TRUE, genes.labeled = NULL, ylim, xlim, show,
-                         source, label.size, webgl, webgl.ratio, show.counts, counts.size,
+                         source, label.size, webgl, webgl.ratio, show.counts, show.hl.counts, counts.size,
                          aggr.size, res1.size, res2.size, both.size, insig.size,
                          res1.opac, res2.opac, both.opac, insig.opac,
                          highlight.genesets, highlight.genes, genesets,
@@ -100,7 +100,6 @@
   full.df$col[full.df$Sig == paste0(comp2.name, " Significant")] <- res2.color
   full.df$col[full.df$Sig == "Both Significant"] <- both.color
   full.df$lcol <- full.df$col
-  full.df$lw <- 0
   full.df$cex[full.df$Sig == "Not Significant"] <- insig.size
   full.df$cex[full.df$Sig == "Both Significant"] <- both.size
   full.df$cex[full.df$Sig == paste0(comp1.name, " Significant")] <- res1.size
@@ -117,8 +116,15 @@
                           ifelse(full.df$lfc.x < -xlim, "triangle-left-open",
                             ifelse(full.df$lfc.x > xlim, "triangle-right-open", 0))))
 
+  full.df$lw <- ifelse(full.df$sh != 0, 1, 0)
+
+  # Gene/geneset highlighting.
+  n.gs.hl <- 0
+  n.hl <- 0
+
   if (!is.null(highlight.gs)) {
     highlight.gs <- highlight.gs[highlight.gs %in% full.df$Gene]
+    n.gs.hl <- length(full.df$col[full.df$Gene %in% highlight.gs])
 
     full.df$col[full.df$Gene %in% highlight.gs] <- highlight.genesets.color
     full.df$cex[full.df$Gene %in% highlight.gs] <- highlight.genesets.size
@@ -131,6 +137,7 @@
   # Want these to have precedence over the genesets in case entries are in both.
   if (!is.null(highlight)) {
     highlight <- highlight[highlight %in% full.df$Gene]
+    n.hl <- length(full.df$col[full.df$Gene %in% highlight])
 
     full.df$col[full.df$Gene %in% highlight] <- highlight.genes.color
     full.df$cex[full.df$Gene %in% highlight] <- highlight.genes.size
@@ -265,6 +272,20 @@
         showarrow = FALSE,
         font = list(size = counts.size),
         align = "left"
+      )
+  }
+
+  if (show.hl.counts) {
+    fig <- fig %>%
+      add_annotations(
+        x= 0,
+        y= -1,
+        xref = "paper",
+        yref = "paper",
+        text = paste0("Geneset genes: ", n.gs.hl,
+                      "\nHighlighted genes: ", n.hl),
+        showarrow = FALSE,
+        font = list(size = counts.size)
       )
   }
 

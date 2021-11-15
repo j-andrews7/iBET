@@ -7,7 +7,7 @@ author:
 date: "September 20th, 2021"
 output: 
   html_document:
-    code_folding: show
+    code_folding: hide
     toc: true
     toc_depth: 5
     toc_float: true	 
@@ -40,7 +40,7 @@ div.main-container {
 
 ```{r, include=FALSE}
 library(BiocStyle)
-knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center", message = FALSE, warning = FALSE)
 ```
 
 # Introduction
@@ -59,7 +59,7 @@ First, let's load up some example data.
 shh <- suppressPackageStartupMessages
 shh(library("DESeq2"))
 shh(library("PCAtools"))
-shh(library("iBET"))
+#shh(library("iBET"))
 shh(library("DEFormats"))
 shh(library("edgeR"))
 shh(library("airway"))
@@ -79,7 +79,11 @@ rownames(airway) <- symbols
 keep <- !is.na(rownames(airway))
 airway <- airway[keep,]
 
-dds <- DESeqDataSet(airway, design = ~ cell)
+# Retrieve MSigDB Hallmark gene sets and convert to a named list.
+hs.msig <- msigdbr(species = "Homo sapiens", category = "H")
+hs.msig <- hs.msig %>% split(x = .$gene_symbol, f = .$gs_name)
+
+dds <- DESeqDataSet(airway, design = ~ dex)
 dds <- DESeq(dds)
 vst <- assay(vst(dds))
 ```
@@ -95,7 +99,7 @@ shinyPCAtools(vst, metadata = colData(dds), annot.by = c("cell", "dex"), color.b
 
 ### Larger (scRNA) Dataset
 
-Works well on larger datasets, though it takes significant time for the PCA to run. Removing a much greater percentage of features is highly recommended.
+`shinyPCAtools` works well on larger datasets, though it takes significant time for the PCA to run. Removing a much greater percentage of features is highly recommended.
 
 ```{r bigpca, message = FALSE, warning = FALSE, eval = FALSE}
 # Not run
@@ -118,10 +122,23 @@ shinyPCAtools(logcounts(data), metadata = colData(data), annot.by = c("Cell.Type
 
 This widget was heavily inspired by the `interactivate` function from the [InteractiveComplexHeatmap](https://bioconductor.org/packages/release/bioc/html/InteractiveComplexHeatmap.html) package. It wraps [DESeq2](https://bioconductor.org/packages/release/bioc/html/DESeq2.html) and will run differential expression analysis if not provided a results dataframe as well. 
 
-Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around, though adding labels will reset the position, so it's recommended to add all labels prior to re-positioning them.
+Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around, though adding labels will reset the position, so it's recommended to add all labels prior to re-positioning them. Gene sets can be highlighted easily if provided.
+
+Multiple comparisons can also be provided for switching between analyses quickly.
 
 ```{r de, message = FALSE, warning = FALSE}
-shinyDESeq2(dds, annot.by = c("cell", "dex"))
+deseq.res1 <- results(dds, contrast = c("dex", "trt", "untrt"))
+dds <- DESeqDataSet(airway, design = ~ cell)
+dds <- DESeq(dds)
+deseq.res2 <- results(dds, contrast = c("cell", "N080611", "N052611"))
+deseq.res3 <- results(dds, contrast = c("cell", "N61311", "N080611"))
+deseq.res4 <- results(dds, contrast = c("cell", "N080611", "N61311"))
+res <- list("trt v untrt" = as.data.frame(deseq.res1), 
+            "N080611vN052611" = as.data.frame(deseq.res2), 
+            "N61311vN080611" = as.data.frame(deseq.res3), 
+            "N080611vN61311" = as.data.frame(deseq.res4))
+
+shinyDESeq2(dds, res = res, genesets = hs.msig, annot.by = c("cell", "dex"))
 ```
 
 ## Correlating DE Results
@@ -131,65 +148,8 @@ This widget creates scatter plots for arbitrary combinations of DE results. It t
 Gene labels can be added to a plot by clicking a point. The labels can also be dragged around, though adding labels to a plot will reset the label positions for said plot, so it's recommended to add all labels prior to re-positioning them.
 
 ```{r}
-deseq.res1 <- results(dds, contrast = c("cell", "N61311", "N052611"))
-deseq.res2 <- results(dds, contrast = c("cell", "N080611", "N052611"))
-deseq.res3 <- results(dds, contrast = c("cell", "N61311", "N080611"))
-deseq.res4 <- results(dds, contrast = c("cell", "N080611", "N61311"))
-
-meta <- colData(dds)
-dge <- as.DGEList(dds)
-grp <- meta$cell
-design <- model.matrix(~0 + grp)
-colnames(design) <- levels(grp)
-contr1 <- makeContrasts(N61311 - N052611, levels = design)
-contr2 <- makeContrasts(N080611 - N052611, levels = design)
-contr3<- makeContrasts(N61311 - N080611, levels = design)
-contr4 <- makeContrasts(N080611 - N61311, levels = design)
-
-dge <- calcNormFactors(dge)
-keep <- filterByExpr(dge)
-dge <- dge[keep, , keep.lib.sizes=FALSE]
-dge <- estimateDisp(dge, design = design)
-
-fit <- glmQLFit(dge, design)
-qlf <- glmQLFTest(fit, contrast = contr1)
-edgeR.res1 <- topTags(qlf, n = nrow(dge))
-qlf <- glmQLFTest(fit, contrast = contr2)
-edgeR.res2 <- topTags(qlf, n = nrow(dge))
-qlf <- glmQLFTest(fit, contrast = contr3)
-edgeR.res3 <- topTags(qlf, n = nrow(dge))
-qlf <- glmQLFTest(fit, contrast = contr4)
-edgeR.res4 <- topTags(qlf, n = nrow(dge))
-```
-
-```{r}
-res <- list("comp1" = as.data.frame(deseq.res1), "comp2" = as.data.frame(deseq.res2), 
-            "comp3" = as.data.frame(deseq.res3), "comp4" = as.data.frame(deseq.res4))
-shinyDECorr(res, height = 800)
-```
-
-```{r}
-res <- list("comp1" = as.data.frame(edgeR.res1), "comp2" = as.data.frame(edgeR.res2), 
-            "comp3" = as.data.frame(edgeR.res3), "comp4" = as.data.frame(edgeR.res4))
-shinyDECorr(res, height = 800)
-```
-
-## Aesthetics and Convenience Functions
-
-Plots are fully customizable from within the widget. Movable gene labels can be added to points by clicking on them. Specific user-defined gene sets can be highlighted within plots easily. 
-
-### Gene set labeling
-
-Gene sets can be passed as a named list to highlight said genes on plots.
-
-```{r}
-# Retrieve MSigDB Hallmark gene sets and convert to a named list.
-hs.msig <- msigdbr(species = "Homo sapiens", category = "H")
-hs.msig <- hs.msig %>% split(x = .$gene_symbol, f = .$gs_name)
-
 shinyDECorr(res, genesets = hs.msig, height = 800)
 ```
-
 
 # SessionInfo
 
