@@ -16,7 +16,9 @@ shinyDECorr(
 )
 }
 \arguments{
-\item{res}{A named list of data.frames containing differential expression analysis results.}
+\item{res}{Either a named list of data.frames containing differential expression analysis results or a
+named list of such lists. The list of lists approach allows the user to choose between different comparison
+sets.}
 
 \item{sig.col}{String for the column name of the significance value, e.g. "padj". If not provided,
 the function will search for commonly used values ("padj", "FDR", "svalue", "adj.P.Val") in the column names.}

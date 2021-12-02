@@ -17,12 +17,15 @@
 #' @import dashboardthemes
 #' @importFrom shinyWidgets prettyCheckbox pickerInput tooltipOptions
 #' @importFrom shinyjqui jqui_resizable
+#' @importFrom shinyjs useShinyjs hide show hidden click
 #' @importFrom colourpicker colourInput
 #' @importFrom utils combn
 #' @importFrom stats lm fitted.values
 #' @importFrom shinyBS bsCollapse bsCollapsePanel
 #'
-#' @param res A named list of data.frames containing differential expression analysis results.
+#' @param res Either a named list of data.frames containing differential expression analysis results or a
+#'   named list of such lists. The list of lists approach allows the user to choose between different comparison
+#'   sets.
 #' @param sig.col String for the column name of the significance value, e.g. "padj". If not provided,
 #'   the function will search for commonly used values ("padj", "FDR", "svalue", "adj.P.Val") in the column names.
 #' @param sig.thresh Number to be used as the significance threshold. Adjustable within the app.
@@ -45,15 +48,31 @@
 shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                         gene.col = NULL, expr.col = NULL, genesets = NULL, height = 800) {
 
-  # Parameter validation.
-  if (is.null(names(res))) {
-    stop("Results list must be named")
+  # Parameter validation.TODO functionize this and move to utils.
+  if (is(res[[1]], "list")) {
+    multiset <- TRUE
+  } else {
+    multiset <- FALSE
   }
 
-  if (length(res) < 2) {
-    stop("Results list must contain at least 2 elements")
-  } else if (length(res) > 4) {
-    stop("A maximum of 4 DE results can be provided")
+  if (is.null(names(res))) {
+    if (multiset) {
+      stop("Dataset list must be named")
+    } else {
+      stop("Results lists must be named")
+    }
+  } else if (is.null(names(res[[1]])) & multiset) {
+    stop("Results lists must be named")
+  }
+
+  if (multiset) {
+    for (i in seq_along(res)) {
+      if (length(res[[i]]) < 2) {
+        stop("Results list must contain at least 2 elements")
+      } else if (length(res[[i]]) > 4) {
+        stop("A maximum of 4 DE results can be provided")
+      }
+    }
   }
 
   if (!is.null(genesets)) {
@@ -64,18 +83,6 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
     }
   }
 
-  # Get all combinations and rows needed.
-  res.comb <- combn(names(res), 2)
-  colnames(res.comb) <- apply(res.comb, 2, paste0, collapse = "")
-
-  if (ncol(res.comb) > 3) {
-    row1 <- colnames(res.comb)[1:3]
-    row2 <- colnames(res.comb)[4:ncol(res.comb)]
-  } else {
-    row1 <- colnames(res.comb)[1:ncol(res.comb)]
-    row2 <- NULL
-  }
-
   body <- mainPanel(width = 10,
     fluidRow(
       uiOutput("row1")
@@ -84,12 +91,6 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
       uiOutput("row2")
     )
   )
-
-  # For label tracking.
-  genes.init <- list()
-  for (n in colnames(res.comb)) {
-    genes.init[[n]] <- NULL
-  }
 
   # Side bar contains settings for certain cutoffs to select significant genes.
   ui <- dashboardPage(
@@ -111,15 +112,17 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
           }
         "))
       ),
+      useShinyjs(),
       shinyDashboardThemes(theme = "onenote"),
       sidebarLayout(
         sidebarPanel(
           width = 2,
           bsCollapse(open = "settings",
             bsCollapsePanel(title = span(icon("plus"), "Plot Settings"), value = "settings", style = "info",
+              hidden(pickerInput("comp.set", label = "Comparison Set:", choices = names(res))),
               splitLayout(
                 numericInput("sig", label = "Sig. threshold:", value = 0.05, step = 0.001, min = 0.0001),
-                numericInput("log2fc", label = "log2FC theshold:", value = 0, step = 0.1, min = 0)
+                numericInput("log2fc", label = "log2FC threshold:", value = 0, step = 0.1, min = 0)
               ),
               splitLayout(
                 numericInput("ylim", label = "Y-axis limit:", value = 10, step = 0.1, min = 0),
@@ -132,7 +135,7 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
               prettyCheckbox("draw.reg", strong("Draw regression line"), TRUE, bigger = TRUE,
                              animation = "smooth", status = "success",
                              icon = icon("check"), width = "100%"),
-              prettyCheckbox("webgl", strong("Use webGL"), TRUE, bigger = TRUE,
+              prettyCheckbox("webgl", strong("Use webGL"), FALSE, bigger = TRUE,
                              animation = "smooth", status = "success",
                              icon = icon("check"), width = "100%"),
               numericInput("webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1),
@@ -197,41 +200,90 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
 
   server <- function(input, output, session) {
 
+    if (multiset) {
+      shinyjs::show("comp.set")
+    }
+
+    # If multiple comparisons sets provided, grab the selected one.
+    rezzy <- reactive({
+      if (multiset) {
+        res[[input$comp.set]]
+      } else {
+        res
+      }
+    })
+
+    # Get all combinations and rows needed.
+    res.comb <- reactive({
+      req(rezzy)
+      rc <- combn(names(rezzy()), 2)
+      colnames(rc) <- apply(rc, 2, paste0, collapse = "")
+      rc
+    })
+
+    row1 <- reactiveVal()
+    row2 <- reactiveVal()
+
     # Keep track of which genes have been clicked
-    genes <- do.call("reactiveValues", genes.init)
+    genes <- reactiveValues()
+
+    # Track if plot clicks already have an observer made so that they aren't re-made.
+    click.obs <- reactiveVal()
 
     # On click, the key field of the event data contains the gene symbol
     # Add that gene to the set of all "selected" genes
-    lapply(1:length(colnames(res.comb)), FUN = function(x) {
-      n <- colnames(res.comb)[x]
-      observeEvent(event_data("plotly_click", source = n), {
-        gene <- event_data("plotly_click", source = n)
-        gene_old_new <- rbind(genes[[n]], gene)
-        keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
+    observe({
+      req(genes, res.comb, click.obs)
 
-        if (nrow(keep) == 0) {
-          genes[[n]] <- NULL
-        } else {
-          genes[[n]] <- keep
+      lapply(1:length(colnames(res.comb())), FUN = function(x) {
+        n <- colnames(res.comb())[x]
+        ev.obs <- paste0(input$comp.set, n)
+
+        if (!ev.obs %in% click.obs()) {
+          click.obs(c(click.obs(), ev.obs))
+          observeEvent(event_data("plotly_click", source = ev.obs, priority = "event"), {
+            gene <- event_data("plotly_click", source = ev.obs)
+            gene_old_new <- rbind(genes[[ev.obs]], gene)
+            keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
+
+            if (nrow(keep) == 0) {
+              genes[[ev.obs]] <- NULL
+            } else {
+              genes[[ev.obs]] <- keep
+            }
+          })
         }
       })
     })
 
+    # Track if plot double clicks already have an observer made so that they aren't re-made.
+    dclick.obs <- reactiveVal()
+
     # clear the set of genes when a double-click occurs
-    lapply(1:length(colnames(res.comb)), FUN = function(x) {
-      n <- colnames(res.comb)[x]
-      observeEvent(event_data("plotly_doubleclick", source = n), {
-        genes[[n]] <- NULL
+    observe({
+      req(genes)
+      req(res.comb)
+      lapply(1:length(colnames(res.comb())), FUN = function(x) {
+        n <- colnames(res.comb())[x]
+        ev.obs <- paste0(input$comp.set, n)
+        if (!ev.obs %in% dclick.obs()) {
+          dclick.obs(c(dclick.obs(), ev.obs))
+          observeEvent(event_data("plotly_doubleclick", source = ev.obs), {
+            genes[[ev.obs]] <- NULL
+          })
+        }
       })
     })
 
     output$row1 <- renderUI({
       req(genes)
+      req(row1)
+
       # dynamically allocate rows/columns based on number of plots
-      row1_plots <- lapply(1:length(row1), function(x) {
+      row1_plots <- lapply(1:length(row1()), function(x) {
         column(width = 4,
           jqui_resizable(
-            plotlyOutput(row1[x], height = "350px", width = "350px")
+            plotlyOutput(row1()[x], height = "350px", width = "350px")
           )
         )
       })
@@ -240,84 +292,116 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
       do.call(tagList, row1_plots)
     })
 
-    if (!is.null(row2)) {
+    observeEvent(input$comp.set, {
+      for (g in names(reactiveValuesToList(genes))) {
+        genes[[g]] <- NULL
+      }
 
-      output$row2 <- renderUI({
+      if (ncol(res.comb()) > 3) {
+        row1(colnames(res.comb())[1:3])
+        row2(colnames(res.comb())[4:ncol(res.comb())])
+      } else {
+        row1(colnames(res.comb())[1:ncol(res.comb())])
+        row2(NULL)
+      }
 
-        row2_plots <- lapply(1:length(row2), function(x) {
-          column(width = 4,
-            jqui_resizable(
-              plotlyOutput(row2[x], height = "350px", width = "350px")
+      if (!is.null(row2())) {
+        output$row2 <- renderUI({
+
+          row2_plots <- lapply(1:length(row2()), function(x) {
+            column(width = 4,
+              jqui_resizable(
+                plotlyOutput(row2()[x], height = "350px", width = "350px")
+              )
             )
-          )
-        })
+          })
 
-        # Necessary for the list of items to display properly
-        do.call(tagList, row2_plots)
-      })
-    } else {
-      output$row2 <- renderUI({div()})
-    }
+          # Necessary for the list of items to display properly
+          do.call(tagList, row2_plots)
+        })
+      } else {
+        output$row2 <- renderUI({div()})
+      }
+
+      shinyjs::click("update")
+    })
 
     # Iteratively make plots.
-    for (n in colnames(res.comb)) {
-      local({
-        my_n <- n
-        df1 <- res.comb[[1, my_n]]
-        df2 <- res.comb[[2, my_n]]
+    observeEvent(input$update,{
+      req(row1)
+      req(row2)
+      req(res.comb)
+      req(genes)
 
-        df.vars <- .get_plot_vars(res[df1], res[df2], sig.col = sig.col,
-                                  lfc.col = lfc.col, expr.col = expr.col)
+      for (n in colnames(res.comb())) {
+        local({
+          my_n <- n
+          rezzes <- rezzy()
+          df1 <- res.comb()
+          df2 <- res.comb()
 
-        output[[my_n]] <- renderPlotly({
-          req(genes)
-          input$update
-          .make_xyplot(res[df1], res[df2],
-                       df.vars = df.vars,
-                       sig.thresh = isolate(input$sig),
-                       lfc.thresh = isolate(input$log2fc),
-                       gene.col = gene.col,
-                       source = my_n,
-                       regr = isolate(input$draw.reg),
-                       genes.labeled = genes[[my_n]],
-                       res1.color = isolate(input$comp1.sig),
-                       res2.color = isolate(input$comp2.sig),
-                       both.color = isolate(input$both.sig),
-                       insig.color = isolate(input$insig.color),
-                       xlim = isolate(input$xlim),
-                       ylim = isolate(input$ylim),
-                       show = isolate(input$show),
-                       label.size = isolate(input$lab.size),
-                       webgl = isolate(input$webgl),
-                       webgl.ratio = isolate(input$webgl.ratio),
-                       show.counts = isolate(input$counts),
-                       counts.size = isolate(input$counts.size),
-                       show.hl.counts = isolate(input$hl.counts),
-                       aggr.size = isolate(input$aggr.size),
-                       res1.size = isolate(input$x.size),
-                       res2.size = isolate(input$y.size),
-                       both.size = isolate(input$both.size),
-                       insig.size = isolate(input$insig.size),
-                       res1.opac = isolate(input$x.opa),
-                       res2.opac = isolate(input$y.opa),
-                       both.opac = isolate(input$both.opa),
-                       insig.opac = isolate(input$insig.opa),
-                       highlight.genesets = isolate(input$hl.genesets),
-                       highlight.genes = isolate(input$hl.genes),
-                       genesets = genesets,
-                       highlight.genes.color = isolate(input$hl.genes.col),
-                       highlight.genes.size = isolate(input$hl.genes.size),
-                       highlight.genes.opac = isolate(input$hl.genes.opa),
-                       highlight.genes.linecolor = isolate(input$hl.genes.lcol),
-                       highlight.genes.linewidth = isolate(input$hl.genes.lw),
-                       highlight.genesets.color = isolate(input$hl.genesets.col),
-                       highlight.genesets.size = isolate(input$hl.genesets.size),
-                       highlight.genesets.opac = isolate(input$hl.genesets.opa),
-                       highlight.genesets.linecolor = isolate(input$hl.genesets.lcol),
-                       highlight.genesets.linewidth = isolate(input$hl.genesets.lw))
+          df1 <- df1[[1, my_n]]
+          df2 <- df2[[2, my_n]]
+
+          ev.obs <- paste0(input$comp.set, my_n)
+
+          df.vars <- .get_plot_vars(rezzes[df1], rezzes[df2], sig.col = sig.col,
+                                    lfc.col = lfc.col, expr.col = expr.col)
+
+          output[[my_n]] <- renderPlotly({
+            .make_xyplot(rezzes[df1], rezzes[df2],
+                         df.vars = df.vars,
+                         sig.thresh = isolate(input$sig),
+                         lfc.thresh = isolate(input$log2fc),
+                         gene.col = gene.col,
+                         source = ev.obs,
+                         regr = isolate(input$draw.reg),
+                         genes.labeled = genes[[ev.obs]],
+                         res1.color = isolate(input$comp1.sig),
+                         res2.color = isolate(input$comp2.sig),
+                         both.color = isolate(input$both.sig),
+                         insig.color = isolate(input$insig.color),
+                         xlim = isolate(input$xlim),
+                         ylim = isolate(input$ylim),
+                         show = isolate(input$show),
+                         label.size = isolate(input$lab.size),
+                         webgl = isolate(input$webgl),
+                         webgl.ratio = isolate(input$webgl.ratio),
+                         show.counts = isolate(input$counts),
+                         counts.size = isolate(input$counts.size),
+                         show.hl.counts = isolate(input$hl.counts),
+                         aggr.size = isolate(input$aggr.size),
+                         res1.size = isolate(input$x.size),
+                         res2.size = isolate(input$y.size),
+                         both.size = isolate(input$both.size),
+                         insig.size = isolate(input$insig.size),
+                         res1.opac = isolate(input$x.opa),
+                         res2.opac = isolate(input$y.opa),
+                         both.opac = isolate(input$both.opa),
+                         insig.opac = isolate(input$insig.opa),
+                         highlight.genesets = isolate(input$hl.genesets),
+                         highlight.genes = isolate(input$hl.genes),
+                         genesets = genesets,
+                         highlight.genes.color = isolate(input$hl.genes.col),
+                         highlight.genes.size = isolate(input$hl.genes.size),
+                         highlight.genes.opac = isolate(input$hl.genes.opa),
+                         highlight.genes.linecolor = isolate(input$hl.genes.lcol),
+                         highlight.genes.linewidth = isolate(input$hl.genes.lw),
+                         highlight.genesets.color = isolate(input$hl.genesets.col),
+                         highlight.genesets.size = isolate(input$hl.genesets.size),
+                         highlight.genesets.opac = isolate(input$hl.genesets.opa),
+                         highlight.genesets.linecolor = isolate(input$hl.genesets.lcol),
+                         highlight.genesets.linewidth = isolate(input$hl.genesets.lw))
+          })
         })
-      })
-    }
+      }
+    })
+
+    # Initialize plots by simulating button click once.
+    o <- observe({
+      shinyjs::click("update")
+      o$destroy
+    })
   }
 
   shinyApp(ui, server, options = list(height = height))
