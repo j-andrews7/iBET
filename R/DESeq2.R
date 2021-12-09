@@ -93,6 +93,12 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     }
   }
 
+  if (!is.null(annot.by)) {
+    if (!all(annot.by %in% names(SummarizedExperiment::colData(dds)))) {
+      stop("Annotation variables not found in object colData")
+    }
+  }
+
   # If gene dispersions not yet calculated, calculate them.
   if(is.null(body(dds@dispersionFunction))) {
     dds <- DESeq2::DESeq(dds)
@@ -120,20 +126,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
   # Filter samples.
   if (!is.null(samples.use)) {
     mat <- mat[,samples.use]
-    anno <- anno[samples.use,]
   }
-
-  # Get annotations. If none provided, use design variables.
-  anno <- SummarizedExperiment::colData(dds)
-
-  if (!is.null(annot.by)) {
-    anno <- anno[, annot.by, drop = FALSE]
-  } else {
-    anno <- anno[, all.vars(dds@design), drop = FALSE]
-  }
-
-  l <- sapply(anno, function(x) (is.factor(x) || is.character(x)) && !any(duplicated(x))) | sapply(anno, function(x) length(unique(x)) == 1)
-  anno <- anno[, !l, drop = FALSE]
 
   env <- new.env()
 
@@ -310,7 +303,10 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
               numericInput("base_mean", label = "Minimal baseMean:", value = 0, step = 1),
               numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
               numericInput("row.km", label = "Row k-means groups:", value = 2, step = 1),
-              numericInput("col.km", label = "Column k-means groups:", value = 0, step = 1)
+              numericInput("col.km", label = "Column k-means groups:", value = 0, step = 1),
+              pickerInput("anno.vars", "Annotate Heatmap by:", choices = c("", names(SummarizedExperiment::colData(dds))),
+                          multiple = TRUE, options = list(`live-search` = TRUE, `actions-box` = TRUE),
+                          selected = annot.by)
             ),
             bsCollapsePanel(title = span(icon("plus"), "Highlight Gene(sets)"), style = "info",
               textAreaInput("hl.genes", "Highlight Genes:", value = "", rows = 4,
@@ -347,6 +343,33 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       shinyjs::show("mres")
     }
 
+    # Get annotations. If none provided, use design variables.
+    anno <- reactiveVal()
+
+    observeEvent(input$anno.vars,{
+      annos <- SummarizedExperiment::colData(dds)
+
+      if (!is.null(input$anno.vars)) {
+        annos <- annos[, input$anno.vars, drop = FALSE]
+      } else {
+        annos <- NULL
+      }
+
+      l <- sapply(annos, function(x) (is.factor(x) || is.character(x))) | sapply(annos, function(x) length(unique(x)) == 1)
+      annos <- annos[, l, drop = FALSE]
+
+      # Filter samples.
+      if (!is.null(samples.use)) {
+        annos <- annos[samples.use,]
+      }
+
+      if (ncol(annos) == 0) {
+        annos <- NULL
+      }
+
+      anno(annos)
+    })
+
     # Keep track of which genes have been clicked
     genes <- reactiveValues(ma = NULL, volc = NULL)
 
@@ -354,11 +377,11 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
 
     # Get the selected results tables.
     observeEvent(input$res.select, {
-      req(ress)
+      req(ress, anno)
       ress(res.list[[input$res.select]])
 
       pdf(NULL)
-      ht <- .make_heatmap(mat, ress(), anno, baseMean_col_fun, log2fc_col_fun,
+      ht <- .make_heatmap(mat, ress(), anno(), baseMean_col_fun, log2fc_col_fun,
                           fdr = as.numeric(input$fdr), base_mean = input$base_mean, log2fc = input$log2fc,
                           row.km = input$row.km, col.km = input$col.km)
       dev.off()
@@ -552,9 +575,14 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
 
     # Only remake heatmap on button click.
     observeEvent(input$update, {
-      req(ress)
+      req(ress, anno)
+
+      if (is.null(input$anno.vars)) {
+        anno(NULL)
+      }
+
       pdf(NULL)
-      ht <- .make_heatmap(mat, ress(), anno, baseMean_col_fun, log2fc_col_fun,
+      ht <- .make_heatmap(mat, ress(), anno(), baseMean_col_fun, log2fc_col_fun,
                           fdr = as.numeric(input$fdr), base_mean = input$base_mean, log2fc = input$log2fc,
                         row.km = input$row.km, col.km = input$col.km)
       dev.off()
