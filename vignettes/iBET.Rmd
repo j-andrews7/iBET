@@ -59,7 +59,7 @@ First, let's load up some example data.
 shh <- suppressPackageStartupMessages
 shh(library("DESeq2"))
 shh(library("PCAtools"))
-#shh(library("iBET"))
+shh(library("iBET"))
 shh(library("DEFormats"))
 shh(library("edgeR"))
 shh(library("airway"))

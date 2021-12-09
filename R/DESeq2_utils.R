@@ -21,8 +21,28 @@
 
   env$row_index <- which(l)
 
+  # Sets color palatte to dittoSeq colors instead of random
+  if (!is.null(anno)) {
+    ds.colors <- dittoColors()
+    anno.colors <- list()
+    i <- 1
+
+    for (n in names(anno)) {
+      out <- list()
+
+      for (lev in unique(anno[[n]])) {
+        out[[lev]] <- ds.colors[i]
+        i <- i + 1
+      }
+
+      anno.colors[[n]] <- unlist(out)
+    }
+
+    anno <- HeatmapAnnotation(df = anno, col = anno.colors)
+  }
+
   ht <- Heatmap(m, name = "z-score",
-                top_annotation = HeatmapAnnotation(df = anno),
+                top_annotation = anno,
                 show_row_names = FALSE, show_column_names = FALSE,
                 row_km = row.km, column_km = col.km,
                 column_title_gp = gpar(fontsize = 10),
