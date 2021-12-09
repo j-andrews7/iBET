@@ -239,6 +239,7 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
         n <- colnames(res.comb())[x]
         ev.obs <- paste0(input$comp.set, n)
 
+        # Create new observer if not already made (e.g. comparison set switch back and forth)
         if (!ev.obs %in% click.obs()) {
           click.obs(c(click.obs(), ev.obs))
           observeEvent(event_data("plotly_click", source = ev.obs, priority = "event"), {
@@ -261,11 +262,13 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
 
     # clear the set of genes when a double-click occurs
     observe({
-      req(genes)
-      req(res.comb)
+      req(genes, res.comb)
+
       lapply(1:length(colnames(res.comb())), FUN = function(x) {
         n <- colnames(res.comb())[x]
         ev.obs <- paste0(input$comp.set, n)
+
+        # Create new observer if not already made (e.g. comparison set switch back and forth)
         if (!ev.obs %in% dclick.obs()) {
           dclick.obs(c(dclick.obs(), ev.obs))
           observeEvent(event_data("plotly_doubleclick", source = ev.obs), {
@@ -276,8 +279,7 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
     })
 
     output$row1 <- renderUI({
-      req(genes)
-      req(row1)
+      req(genes, row1)
 
       # dynamically allocate rows/columns based on number of plots
       row1_plots <- lapply(1:length(row1()), function(x) {
@@ -328,10 +330,7 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
 
     # Iteratively make plots.
     observeEvent(input$update,{
-      req(row1)
-      req(row2)
-      req(res.comb)
-      req(genes)
+      req(row1, row2, res.comb, genes)
 
       for (n in colnames(res.comb())) {
         local({

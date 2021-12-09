@@ -117,8 +117,6 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     mat <- as.matrix(DESeq2::counts(dds, normalized = TRUE))
   }
 
-  anno <- SummarizedExperiment::colData(dds)
-
   # Filter samples.
   if (!is.null(samples.use)) {
     mat <- mat[,samples.use]
@@ -126,6 +124,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
   }
 
   # Get annotations. If none provided, use design variables.
+  anno <- SummarizedExperiment::colData(dds)
+
   if (!is.null(annot.by)) {
     anno <- anno[, annot.by, drop = FALSE]
   } else {
