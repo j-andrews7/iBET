@@ -51,8 +51,6 @@
 #' @param use.vst Boolean indicating whether \code{\link[DESeq2]{vst}} transformed counts should be used for heatmap generation (recommended). If \code{FALSE},
 #'   normalized counts will be used. The variance stabilizing transformation helps to reduce increased variance seen for low counts in log space.
 #'   This generally results in a better looking heatmap with fewer outliers.
-#' @param samples.use Vector of Boolean values indicating which samples should be included in the visualizations.
-#'   Must be the same length as the number of samples in the \code{dds} object.
 #' @param h.id String indicating unique ID for interactive heatmaps.
 #'   Required if multiple apps are run within the same Rmd file.
 #' @param genesets Optional named list containing genesets that can be interactively highlighted on the plots.
@@ -68,7 +66,7 @@
 #' @author Jared Andrews, based on code by Zuguang Gu.
 #' @export
 shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
-                        use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE, samples.use = NULL,
+                        use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE,
                         h.id = "ht1", genesets = NULL, height = 800) {
 
   # Check is res is individual or named list.
@@ -121,11 +119,6 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     mat <- SummarizedExperiment::assay(DESeq2::vst(dds))
   } else{
     mat <- as.matrix(DESeq2::counts(dds, normalized = TRUE))
-  }
-
-  # Filter samples.
-  if (!is.null(samples.use)) {
-    mat <- mat[,samples.use]
   }
 
   env <- new.env()
@@ -261,8 +254,11 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
           )
         )
       ),
-      tabPanel("Full Results Table",
+      tabPanel("Full DE Results Table",
         div(DT::dataTableOutput("res_table_full"), style = "font-size:80%; margin:10px;")
+      ),
+      tabPanel("Sample Metadata (Filtering)",
+        div(DT::dataTableOutput("metadata"), style = "font-size:80%; margin:10px;")
       )
     )
   )
@@ -284,6 +280,15 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
           .well {
             padding: 5px;
             margin-bottom: 10px;
+          }
+          label {
+            font-size: 80%;
+          }
+          .form-control, .selectize-input{
+            padding-bottom: 2px !important;
+            padding-top: 2px !important;
+            font-size: 10px;
+            height: 24px;
           }
         "))
       ),
@@ -346,7 +351,10 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     # Get annotations. If none provided, use design variables.
     anno <- reactiveVal()
 
-    observeEvent(input$anno.vars,{
+    observe({
+      input$anno.vars
+      input$metadata_rows_all
+
       annos <- SummarizedExperiment::colData(dds)
 
       if (!is.null(input$anno.vars)) {
@@ -358,13 +366,13 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       l <- sapply(annos, function(x) (is.factor(x) || is.character(x))) | sapply(annos, function(x) length(unique(x)) == 1)
       annos <- annos[, l, drop = FALSE]
 
-      # Filter samples.
-      if (!is.null(samples.use)) {
-        annos <- annos[samples.use,]
-      }
-
       if (ncol(annos) == 0) {
         annos <- NULL
+      }
+
+      # Filter samples.
+      if (!is.null(input$metadata_rows_all)) {
+        annos <- annos[input$metadata_rows_all,]
       }
 
       anno(annos)
@@ -398,8 +406,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       }
     }, ignoreInit = TRUE)
 
-    # A self-defined action to respond brush event. It updates the MA-plot, the volcano plot
-    # and a table which contains DESeq2 results for the selected genes.
+    # A self-defined action to respond to heatmap selections to show them in a table.
     .brush_action <- function(df, input, output, session) {
 
       row_index <- unique(unlist(df$row_index))
@@ -573,12 +580,34 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
         DT::formatStyle(1, target = "row", lineHeight = '40%')
     })
 
+    # Metadata table.
+    output$metadata <- renderDT({
+      df <- as.data.frame(SummarizedExperiment::colData(dds))
+      DT::datatable(df,
+                    filter = "top",
+                    extensions = c("Buttons", "Scroller"),
+                    options = list(
+                      search = list(regex = TRUE),
+                      lengthMenu = list(c(10, 25, 50, -1), c("10", "25", "50", "all")),
+                      dom = 'Blfrtip',
+                      buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                      scrollX = TRUE,
+                      deferRender = TRUE,
+                      scrollY = 400,
+                      scroller = TRUE)
+      )
+    })
+
     # Only remake heatmap on button click.
     observeEvent(input$update, {
       req(ress, anno)
 
       if (is.null(input$anno.vars)) {
         anno(NULL)
+      }
+
+      if (!is.null(input$metadata_rows_all)) {
+        mat <- mat[,input$metadata_rows_all]
       }
 
       pdf(NULL)

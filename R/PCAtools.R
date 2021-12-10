@@ -39,6 +39,31 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
     dashboardHeader(disable = TRUE),
     dashboardSidebar(disable = TRUE),
     dashboardBody(
+      tags$head(
+        # Note the wrapping of the string in HTML()
+        tags$style(HTML("
+          .panel-body {
+            padding: 5px;
+          }
+          .form-group {
+            margin-bottom: 5px;
+          }
+          .well {
+            padding: 5px;
+            margin-bottom: 10px;
+          }
+          .form-control, .selectize-input {
+            padding-bottom: 2px !important;
+            padding-top: 2px !important;
+            font-size: 12px;
+            height: 28px;
+            min-height: 28px;
+          }
+          .pretty {
+            top: 0 !important;
+          }
+        "))
+      ),
       shinyDashboardThemes(
         theme = "onenote"
       ),
@@ -67,7 +92,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
         mainPanel(width = 10,
                   tabsetPanel(
                     tabPanel("Plot", div(plotlyOutput("main.plot"), align = "center", style = "height:700px;")),
-                    tabPanel("Metadata", div(br(), DTOutput("metadata"), style = "font-size:80%"))
+                    tabPanel("Metadata (Filtering)", div(br(), DTOutput("metadata"), style = "font-size:80%"))
                   )
         )
       )
