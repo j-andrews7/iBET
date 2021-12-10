@@ -12,7 +12,6 @@ shinyDESeq2(
   use.lfcShrink = TRUE,
   lfcThreshold = 0,
   use.vst = TRUE,
-  samples.use = NULL,
   h.id = "ht1",
   genesets = NULL,
   height = 800
@@ -45,9 +44,6 @@ Ignored if \code{res} is not \code{NULL}.}
 \item{use.vst}{Boolean indicating whether \code{\link[DESeq2]{vst}} transformed counts should be used for heatmap generation (recommended). If \code{FALSE},
 normalized counts will be used. The variance stabilizing transformation helps to reduce increased variance seen for low counts in log space.
 This generally results in a better looking heatmap with fewer outliers.}
-
-\item{samples.use}{Vector of Boolean values indicating which samples should be included in the visualizations.
-Must be the same length as the number of samples in the \code{dds} object.}
 
 \item{h.id}{String indicating unique ID for interactive heatmaps.
 Required if multiple apps are run within the same Rmd file.}
