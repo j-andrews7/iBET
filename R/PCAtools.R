@@ -5,7 +5,7 @@
 #' @rawNamespace import(shiny, except = c(dataTableOutput, renderDataTable))
 #' @import DT
 #' @import PCAtools
-#' @importFrom plotly ggplotly plotlyOutput renderPlotly toWebGL layout plot_ly
+#' @importFrom plotly ggplotly plotlyOutput renderPlotly toWebGL layout plot_ly add_segments add_annotations
 #' @import ggplot2
 #' @import shinydashboard
 #' @import dashboardthemes
@@ -27,7 +27,8 @@
 #' @return A Shiny app wrapped around most PCAtools functions and plots.
 #'
 #' @seealso
-#' \code{\link[PCAtools]{pca}}, \code{\link[PCAtools]{screeplot}}, \code{\link[PCAtools]{biplot}}, \code{\link[PCAtools]{pairsplot}}.
+#' \code{\link[PCAtools]{pca}}, \code{\link[PCAtools]{screeplot}},
+#' \code{\link[PCAtools]{biplot}}, \code{\link[PCAtools]{pairsplot}}.
 #'
 #' @author Jared Andrews
 #' @export
@@ -59,9 +60,6 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
             height: 28px;
             min-height: 28px;
           }
-          .pretty {
-            top: 0 !important;
-          }
         "))
       ),
       shinyDashboardThemes(
@@ -73,21 +71,26 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                      uiOutput("pca.comps"),
                      selectInput("color", "Color by:", choices = c("", colnames(metadata)), selected = color.by),
                      selectInput("shape", "Shape by:", choices = c("", colnames(metadata)), selected = shape.by),
-                     prettyCheckbox("meta.filt", strong("Limit via metadata table"), TRUE, bigger = TRUE,
+                     prettyCheckbox("meta.filt", strong("Limit via metadata table"), TRUE, bigger = FALSE,
                                     animation = "smooth", status = "success",
                                     icon = icon("check"), width = "100%"),
                      h3("PCA Parameters"),
                      numericInput("var.remove", "Remove this proportion of genes based on low variance:",
                                   min = 0, max = 1, step = 0.01, value = removeVar),
-                     prettyCheckbox("center", strong("Center data"), center, bigger = TRUE,
+                     prettyCheckbox("center", strong("Center data"), center, bigger = FALSE,
                                     animation = "smooth", status = "success",
                                     icon = icon("check"), width = "100%"),
-                     prettyCheckbox("scale", strong("Scale data"), scale, bigger = TRUE,
+                     prettyCheckbox("scale", strong("Scale data"), scale, bigger = FALSE,
                                     animation = "smooth", status = "success",
                                     icon = icon("check"), width = "100%"),
-                     prettyCheckbox("twod", strong("Limit to 2D"), FALSE, bigger = TRUE,
+                     prettyCheckbox("twod", strong("Limit to 2D"), FALSE, bigger = FALSE,
                                     animation = "smooth", status = "success",
                                     icon = icon("check"), width = "100%"),
+                     prettyCheckbox("loadings", strong("Plot Loadings"), FALSE, bigger = FALSE,
+                                    animation = "smooth", status = "success",
+                                    icon = icon("check"), width = "100%"),
+                     numericInput("n.loadings", "Loadings to Plot:",
+                                  min = 0, max = 100, step = 1, value = 5)
         ),
         mainPanel(width = 10,
                   tabsetPanel(
@@ -99,7 +102,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
     )
   )
 
-  server = function(input, output, session) {
+  server <- function(input, output, session) {
 
     pc <- reactive({
       matty <- mat
@@ -145,7 +148,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       ) %>% DT::formatStyle(0, target = "row", lineHeight = '40%')
     })
 
-    output$main.plot = renderPlotly({
+    output$main.plot <- renderPlotly({
       req(pc)
 
       pc.res <- pc()
@@ -202,7 +205,34 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                                              " (", format(round(pc.res$variance[input$dim2], 2), nsmall = 2),"%)")))
 
         fig <- fig %>% toWebGL()
-        fig
+
+        # Plot loadings.
+        if (input$loadings) {
+          lengthLoadingsArrowsFactor <- 1.5
+
+          # Get number of loadings to display.
+          xidx <- order(abs(pc.res$loadings[,input$dim1]), decreasing = TRUE)
+          yidx <- order(abs(pc.res$loadings[,input$dim2]), decreasing = TRUE)
+          vars <- unique(c(
+            rownames(pc.res$loadings)[xidx][seq_len(input$n.loadings)],
+            rownames(pc.res$loadings)[yidx][seq_len(input$n.loadings)]))
+
+          # get scaling parameter to match between variable loadings and rotated loadings
+          # This is cribbed almost verbatim from PCAtools code.
+          r <- min(
+            (max(pc.res$rotated[,input$dim1]) - min(pc.res$rotated[,input$dim1]) /
+               (max(pc.res$loadings[,input$dim1]) - min(pc.res$loadings[,input$dim1]))),
+            (max(pc.res$rotated[,input$dim2]) - min(pc.res$rotated[,input$dim2]) /
+               (max(pc.res$loadings[,input$dim2]) - min(pc.res$loadings[,input$dim2]))))
+
+          fig <- fig %>%
+            add_segments(x = 0, xend = pc.res$loadings[vars,input$dim1] * r * lengthLoadingsArrowsFactor,
+                         y = 0, yend = pc.res$loadings[vars,input$dim2] * r * lengthLoadingsArrowsFactor,
+                         line = list(color = 'black'), inherit = FALSE, showlegend = FALSE, hoverinfo = "text") %>%
+            add_annotations(x = pc.res$loadings[vars,input$dim1] * r * lengthLoadingsArrowsFactor,
+                            y = pc.res$loadings[vars,input$dim2] * r * lengthLoadingsArrowsFactor,
+                            ax = 0, ay = 0, text = vars, xanchor = 'center', yanchor= 'bottom')
+        }
       } else {
 
         # Generate plot.
@@ -222,9 +252,15 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
             xaxis = list(title = paste0(input$dim1, " (", format(round(pc.res$variance[input$dim1], 2), nsmall = 2),"%)")),
             yaxis = list(title = paste0(input$dim2, " (", format(round(pc.res$variance[input$dim2], 2), nsmall = 2),"%)")),
             zaxis = list(title = paste0(input$dim3, " (", format(round(pc.res$variance[input$dim3], 2), nsmall = 2),"%)"))))
-
-        fig
       }
+      fig <- fig %>%
+        config(edits = list(annotationPosition = TRUE,
+                            annotationTail = FALSE),
+               toImageButtonOptions = list(format = "svg"),
+               displaylogo = FALSE,
+               plotGlPixelRatio = 7)
+
+      fig
     })
   }
   shinyApp(ui, server, options = list(height = height))

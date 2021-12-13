@@ -66,7 +66,8 @@ vst <- assay(vst(dds))
 [PCAtools](https://bioconductor.org/packages/release/bioc/html/PCAtools.html) is a straight-forward package for principle component analysis.
 
 ```
-shinyPCAtools(vst, metadata = colData(dds), annot.by = c("cell", "dex"), color.by = "dex", shape.by = "cell", scale = TRUE, height = 850)
+shinyPCAtools(vst, metadata = colData(dds), annot.by = c("cell", "dex"), 
+              color.by = "dex", shape.by = "cell", scale = TRUE, height = 850)
 ```
 
 
@@ -87,35 +88,40 @@ data <- computeSumFactors(data, cluster = quickCluster(data))
 data <- logNormCounts(data)
 data$Cell.Type <- factor(data$level1class)
 
-shinyPCAtools(logcounts(data), metadata = colData(data), annot.by = c("Cell.Type", "tissue", "age"), color.by = "Cell.Type", removeVar = 0.9, scale = TRUE)
+shinyPCAtools(logcounts(data), metadata = colData(data), annot.by = c("Cell.Type", "tissue", "age"), 
+              color.by = "Cell.Type", removeVar = 0.9, scale = TRUE)
 ```
 
-### Interactive Differential Expression via `DESeq2`
+## Interactive Differential Expression via `DESeq2`
 
-This widget was heavily inspired by the `interactivate` function from the [InteractiveComplexHeatmap](https://bioconductor.org/packages/release/bioc/html/InteractiveComplexHeatmap.html) package. It wraps [DESeq2](https://bioconductor.org/packages/release/bioc/html/DESeq2.html) and will run differential expression analysis if not provided a results dataframe as well.
+This widget was heavily inspired by the `interactivate` function from the [InteractiveComplexHeatmap](https://bioconductor.org/packages/release/bioc/html/InteractiveComplexHeatmap.html) package. It wraps [DESeq2](https://bioconductor.org/packages/release/bioc/html/DESeq2.html) and will run differential expression analysis if not provided a results dataframe as well. 
 
-Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around, though adding labels will reset the position, so it's recommended to add all labels prior to re-positioning them.
+Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around, though adding labels will reset the position, so it's recommended to add all labels prior to re-positioning them. Gene sets can be highlighted easily if provided.
+
+Multiple comparisons can also be provided for switching between analyses quickly.
+
+```{r de, message = FALSE, warning = FALSE}
+deseq.res1 <- results(dds, contrast = c("dex", "trt", "untrt"))
+dds <- DESeqDataSet(airway, design = ~ cell)
+dds <- DESeq(dds)
+deseq.res2 <- results(dds, contrast = c("cell", "N080611", "N052611"))
+deseq.res3 <- results(dds, contrast = c("cell", "N61311", "N080611"))
+deseq.res4 <- results(dds, contrast = c("cell", "N080611", "N61311"))
+res <- list("trt v untrt" = as.data.frame(deseq.res1), 
+            "N080611vN052611" = as.data.frame(deseq.res2), 
+            "N61311vN080611" = as.data.frame(deseq.res3), 
+            "N080611vN61311" = as.data.frame(deseq.res4))
+
+shinyDESeq2(dds, res = res, genesets = hs.msig, annot.by = c("cell", "dex"))
 ```
-shinyDESeq2(dds, coef = "dex_trt_vs_untrt", annot.by = c("cell", "dex"))
-```
 
-### Correlating DE Results
+## Correlating DE Results
 
 This widget creates scatter plots for arbitrary combinations of DE results. It takes a named list of dataframes as input and will plot scatter plots of log2 Fold Change values for each gene. It accepts up to 4 results dataframes and will generate plots for all combinations of them along with a regression line and correlation testing. Points are colored by significance in each DE analysis. Results dataframes from edgeR, limma, and DESeq2 will automatically have the appropriate columns used for plotting, but users can also provide the column names for their significance value or fold change column as necessary.
-
-This function is ideal for investigating things like drug treatments between cohorts.
 
 Gene labels can be added to a plot by clicking a point. The labels can also be dragged around, though adding labels to a plot will reset the label positions for said plot, so it's recommended to add all labels prior to re-positioning them.
 
 ```{r}
-deseq.res1 <- results(dds, contrast = c("cell", "N61311", "N052611"))
-deseq.res2 <- results(dds, contrast = c("cell", "N080611", "N052611"))
-deseq.res3 <- results(dds, contrast = c("cell", "N61311", "N080611"))
-deseq.res4 <- results(dds, contrast = c("cell", "N080611", "N61311"))
-
-res <- list("comp1" = as.data.frame(deseq.res1), "comp2" = as.data.frame(deseq.res2), 
-            "comp3" = as.data.frame(deseq.res3), "comp4" = as.data.frame(deseq.res4))
-            
-shinyDECorr(res, height = 800)
+shinyDECorr(res, genesets = hs.msig, height = 800)
 ```
 

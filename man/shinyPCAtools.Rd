@@ -46,7 +46,8 @@ Create an interactive Shiny app for PCAtools analysis and results exploration
 Features with no variation will be removed prior to \code{\link[PCAtools]{pca}} being run.
 }
 \seealso{
-\code{\link[PCAtools]{pca}}, \code{\link[PCAtools]{screeplot}}, \code{\link[PCAtools]{biplot}}, \code{\link[PCAtools]{pairsplot}}.
+\code{\link[PCAtools]{pca}}, \code{\link[PCAtools]{screeplot}},
+\code{\link[PCAtools]{biplot}}, \code{\link[PCAtools]{pairsplot}}.
 }
 \author{
 Jared Andrews

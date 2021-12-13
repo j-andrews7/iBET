@@ -110,9 +110,6 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
             padding: 5px;
             margin-bottom: 10px;
           }
-          label {
-            font-size: 80%;
-          }
           .form-control, .selectize-input{
             padding-bottom: 2px !important;
             padding-top: 2px !important;
