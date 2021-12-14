@@ -335,7 +335,7 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
     })
 
     # Iteratively make plots.
-    observeEvent(input$update,{
+    observeEvent(input$update, {
       req(row1, row2, res.comb, genes)
 
       for (n in colnames(res.comb())) {
