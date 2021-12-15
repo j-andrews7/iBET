@@ -83,7 +83,7 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
     }
   }
 
-  body <- mainPanel(width = 10,
+  body <- mainPanel(width = 9,
     fluidRow(
       uiOutput("row1")
     ),
@@ -122,7 +122,7 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
       shinyDashboardThemes(theme = "onenote"),
       sidebarLayout(
         sidebarPanel(
-          width = 2,
+          width = 3,
           bsCollapse(open = "settings",
             bsCollapsePanel(title = span(icon("plus"), "Plot Settings"), value = "settings", style = "info",
               hidden(pickerInput("comp.set", label = "Comparison Set:", choices = names(res))),
