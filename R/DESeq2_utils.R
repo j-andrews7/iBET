@@ -41,6 +41,12 @@
     anno <- HeatmapAnnotation(df = anno, col = anno.colors)
   }
 
+  basem_df <- log10(res$baseMean[l]+1)
+  names(basem_df) <- rownames(m)
+
+  lfc_df <- res$log2FoldChange[l]
+  names(lfc_df) <- rownames(m)
+
   ht <- Heatmap(m, name = "z-score",
                 top_annotation = anno,
                 show_row_names = FALSE, show_column_names = FALSE,
@@ -48,9 +54,9 @@
                 column_title_gp = gpar(fontsize = 10),
                 column_title = paste0(sum(l), " significant genes \nwith ", sig.term," < ", fdr),
                 show_row_dend = FALSE) +
-    Heatmap(log10(res$baseMean[l]+1), show_row_names = FALSE, width = unit(5, "mm"),
+    Heatmap(basem_df, show_row_names = FALSE, width = unit(5, "mm"),
             name = "log10(baseMean+1)", col = bm.col.func, show_column_names = FALSE) +
-    Heatmap(res$log2FoldChange[l], show_row_names = FALSE, width = unit(5, "mm"),
+    Heatmap(lfc_df, show_row_names = FALSE, width = unit(5, "mm"),
             name = "log2FoldChange", col = lfc.col.func, show_column_names = FALSE)
   ht <- draw(ht, merge_legend = TRUE)
   ht
