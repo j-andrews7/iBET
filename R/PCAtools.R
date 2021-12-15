@@ -67,7 +67,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
         theme = "onenote"
       ),
       sidebarLayout(
-        sidebarPanel(width = 2,
+        sidebarPanel(width = 3,
           bsCollapse(open = "biplot.settings",
             bsCollapsePanel(title = span(icon("plus"), "PCA Settings"), value = "pca.settings", style = "info",
               numericInput("var.remove", "Remove this proportion of features ranked by variance:",
@@ -114,7 +114,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
           ),
           div(actionButton("update", "Update Plots"), align = "center")
         ),
-        mainPanel(width = 10,
+        mainPanel(width = 9,
                   tabsetPanel(
                     tabPanel("biplot", div(plotlyOutput("biplot"), align = "center", style = "height:700px;")),
                     tabPanel("screeplot", div(jqui_resizable(plotlyOutput("screeplot")), align = "center")),
