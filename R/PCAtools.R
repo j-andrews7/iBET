@@ -69,12 +69,24 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       sidebarLayout(
         sidebarPanel(width = 3,
           bsCollapse(open = "biplot.settings",
-            bsCollapsePanel(title = span(icon("plus"), "PCA Settings"), value = "pca.settings", style = "info",
-              numericInput("var.remove", "Remove this proportion of features ranked by variance:",
-                           min = 0, max = 1, step = 0.01, value = removeVar),
+            bsCollapsePanel(
+              title = span(icon("plus"), "PCA Settings"), value = "pca.settings", style = "info",
+              conditionalPanel(
+                condition = "input['keep.top.n'] == false",
+                numericInput("var.remove", "Remove this proportion of features ranked by variance:",
+                             min = 0, max = 1, step = 0.01, value = removeVar)
+              ),
+              conditionalPanel(
+                condition = "input['keep.top.n'] == true",
+                numericInput("var.n.keep", "Number of features to retain by variance:",
+                            min = 0, max = Inf, step = 1, value = 500)
+              ),
               fluidRow(
                 column(6,
                        prettyCheckbox("center", strong("Center data"), center, bigger = FALSE,
+                                      animation = "smooth", status = "success",
+                                      icon = icon("check"), width = "100%"),
+                       prettyCheckbox("keep.top.n", strong("Limit by top N features"), FALSE, bigger = FALSE,
                                       animation = "smooth", status = "success",
                                       icon = icon("check"), width = "100%")
                 ),
@@ -116,7 +128,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
         ),
         mainPanel(width = 9,
                   tabsetPanel(
-                    tabPanel("biplot", div(plotlyOutput("biplot"), align = "center", style = "height:700px;")),
+                    tabPanel("biplot", div(jqui_resizable(plotlyOutput("biplot")), align = "center", height = "750px")),
                     tabPanel("screeplot", div(jqui_resizable(plotlyOutput("screeplot")), align = "center")),
                     tabPanel("Metadata (Filtering)", div(br(), DTOutput("metadata"), style = "font-size:80%"))
                   )
@@ -135,7 +147,18 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       }
 
       # Remove features with no variance.
-      matt[rowVars(matt) > 0,]
+      matt <- matt[rowVars(matt) > 0,]
+
+      # If necessary, limit to top N features by variance.
+      if (input$keep.top.n) {
+        matt <- matt[order(rowVars(matt), decreasing = TRUE),]
+
+        if (input$var.n.keep < nrow(matt)) {
+          matt <- matt[1:input$var.n.keep,]
+        }
+      }
+
+      matt
     })
 
     pc <- reactive({
@@ -146,7 +169,14 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
         meta <- metadata[input$metadata_rows_all,]
       }
 
-      pca(matty(), metadata = meta, removeVar = input$var.remove, scale = input$scale, center = input$center)
+      # If input to use top N features instead rather than percent-based feature removal, account for that
+      if (input$keep.top.n) {
+        var.remove <- 0
+      } else {
+        var.remove <- input$var.remove
+      }
+
+      pca(matty(), metadata = meta, removeVar = var.remove, scale = input$scale, center = input$center)
     })
 
     # Populate UI with all PCs.
@@ -232,7 +262,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                 symbols = c("circle", "square", "diamond", "cross",
                             "diamond-open", "circle-open", "square-open", "x"),
                 text = hov.text,
-                width = 900, height = 710, hoverinfo = "text") %>%
+                hoverinfo = "text") %>%
           layout(xaxis = list(showgrid = FALSE, showline = TRUE, mirror = TRUE, zeroline = FALSE,
                               title = paste0(isolate(input$dim1),
                                              " (", format(round(pc.res$variance[isolate(input$dim1)], 2), nsmall = 2),"%)")),
@@ -283,7 +313,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                 symbols = c("circle", "square", "diamond", "cross", "diamond-open",
                             "circle-open", "square-open", "x"),
                 text = hov.text,
-                width = 1000, height = 710, hoverinfo = "text") %>%
+                hoverinfo = "text") %>%
           layout(scene = list(
             xaxis = list(title = paste0(isolate(input$dim1), " (",
                                         format(round(pc.res$variance[isolate(input$dim1)], 2), nsmall = 2),"%)")),
