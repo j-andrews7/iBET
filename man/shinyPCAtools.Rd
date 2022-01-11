@@ -47,7 +47,7 @@ Features with no variation will be removed prior to \code{\link[PCAtools]{pca}} 
 }
 \seealso{
 \code{\link[PCAtools]{pca}}, \code{\link[PCAtools]{screeplot}},
-\code{\link[PCAtools]{biplot}}, \code{\link[PCAtools]{pairsplot}}.
+\code{\link[PCAtools]{biplot}}, \code{\link[PCAtools]{pairsplot}}, \code{\link[PCAtools]{eigencorplot}}.
 }
 \author{
 Jared Andrews
