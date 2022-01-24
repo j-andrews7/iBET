@@ -93,7 +93,8 @@ vst <- assay(vst(dds))
 [PCAtools](https://bioconductor.org/packages/release/bioc/html/PCAtools.html) is a straight-forward package for principle component analysis. Note that filtering samples in the Metadata tab will re-run and re-plot the PCA.
 
 ```{r pca, message = FALSE, warning = FALSE}
-shinyPCAtools(vst, metadata = colData(dds), annot.by = c("cell", "dex"), color.by = "dex", shape.by = "cell", scale = TRUE, height = 850)
+shinyPCAtools(vst, metadata = colData(dds), annot.by = c("cell", "dex"), 
+              color.by = "dex", shape.by = "cell", scale = TRUE, height = 850)
 ```
 
 
@@ -115,7 +116,8 @@ data <- computeSumFactors(data, cluster = quickCluster(data))
 data <- logNormCounts(data)
 data$Cell.Type <- factor(data$level1class)
 
-shinyPCAtools(logcounts(data), metadata = colData(data), annot.by = c("Cell.Type", "tissue", "age"), color.by = "Cell.Type", removeVar = 0.9, scale = TRUE)
+shinyPCAtools(logcounts(data), metadata = colData(data), annot.by = c("Cell.Type", "tissue", "age"), 
+              color.by = "Cell.Type", removeVar = 0.9, scale = TRUE)
 ```
 
 ## Interactive Differential Expression via `DESeq2`

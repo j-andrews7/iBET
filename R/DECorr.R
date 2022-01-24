@@ -83,7 +83,7 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
     }
   }
 
-  body <- mainPanel(width = 10,
+  body <- mainPanel(width = 9,
     fluidRow(
       uiOutput("row1")
     ),
@@ -110,9 +110,6 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
             padding: 5px;
             margin-bottom: 10px;
           }
-          label {
-            font-size: 80%;
-          }
           .form-control, .selectize-input{
             padding-bottom: 2px !important;
             padding-top: 2px !important;
@@ -125,7 +122,7 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
       shinyDashboardThemes(theme = "onenote"),
       sidebarLayout(
         sidebarPanel(
-          width = 2,
+          width = 3,
           bsCollapse(open = "settings",
             bsCollapsePanel(title = span(icon("plus"), "Plot Settings"), value = "settings", style = "info",
               hidden(pickerInput("comp.set", label = "Comparison Set:", choices = names(res))),
@@ -338,7 +335,7 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
     })
 
     # Iteratively make plots.
-    observeEvent(input$update,{
+    observeEvent(input$update, {
       req(row1, row2, res.comb, genes)
 
       for (n in colnames(res.comb())) {
