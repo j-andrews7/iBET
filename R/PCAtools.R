@@ -15,8 +15,9 @@
 #' @importFrom shinycustomloader withLoader
 #' @importFrom shinyjqui jqui_resizable
 #' @importFrom matrixStats rowVars
-#' @importFrom stats as.formula p.adjust p.adjust.methods
+#' @importFrom stats as.formula p.adjust p.adjust.methods dist
 #' @importFrom shinyBS bsCollapse bsCollapsePanel
+#' @importFrom ComplexHeatmap pheatmap Heatmap HeatmapAnnotation
 #'
 #' @param mat A matrix with features as rows and samples as columns.
 #' @param metadata A dataframe containing sample metadata. The rownames must match the column names of the matrix.
@@ -195,7 +196,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                   numericInput("eig.corr.cex", "Corr values size:", value = 1, min = 0.01, step = 0.1),
                   selectInput("eig.corr.style", "Corr values style:",
                               choices = list("plain", "bold", "italic"),
-                              ),
+                              selected = "plain"),
                   colourInput("eig.corr.col", "Corr values color:", value = "#000000")
                 ),
                 column(6,
@@ -217,15 +218,39 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                               choices = list("right", "left", "top", "bottom"))
                 )
               )
+            ),
+            bsCollapsePanel(title = span(icon("plus"), "Distance Matrix Settings"), value = "dist.settings", style = "info",
+              fluidRow(
+                column(6,
+                  colourInput("dist.min.col", "Min color:", value = "darkblue"),
+                  colourInput("dist.max.col", "Max color:", value = "#FFFFFF"),
+                  numericInput("dist.row.cex", "Row font size:", value = 10, min = 1, step = 0.25),
+                  selectInput("dist.top.anno", "Top annotation:", choices = c("", colnames(metadata)), multiple = TRUE),
+                  selectInput("dist.bot.anno", "Bottom annotation:", choices = c("", colnames(metadata)), multiple = TRUE)
+                ),
+                column(6,
+                  selectInput("dist.method", "Method:",
+                              choices = c("euclidean", "maximum", "manhattan", "canberra", "minkowski"),
+                              selected = "euclidean"),
+                  prettyCheckbox("dist.rownames", label = "Show row names", value = TRUE,
+                                 animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
+                  prettyCheckbox("dist.colnames", label = "Show column names", value = FALSE,
+                                 animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
+                  numericInput("dist.col.cex", "Col font size:", value = 10, min = 1, step = 0.25),
+                  selectInput("dist.left.anno", "Left annotation:", choices = c("", colnames(metadata)), multiple = TRUE),
+                  selectInput("dist.right.anno", "Right annotation:", choices = c("", colnames(metadata)), multiple = TRUE)
+                )
+              )
             )
           ),
           div(actionButton("update", "Update Plots"), align = "center")
         ),
         mainPanel(width = 9,
           tabsetPanel(
-            tabPanel("biplot", div(jqui_resizable(plotlyOutput("biplot")), align = "center", height = "750px")),
+            tabPanel("biplot", div(jqui_resizable(plotlyOutput("biplot", height = "700px", width = "1000px")), align = "center")),
             tabPanel("screeplot", div(jqui_resizable(plotlyOutput("screeplot")), align = "center")),
             tabPanel("eigencorplot", div(jqui_resizable(plotOutput("eigencorplot")), align = "center")),
+            tabPanel("Distance Matrix", div(jqui_resizable(plotOutput("distmatrix")), align = "center")),
             tabPanel("Metadata (Filtering)", div(br(), DTOutput("metadata"), style = "font-size:80%"))
           )
         )
@@ -432,7 +457,8 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
             yaxis = list(title = paste0(isolate(input$dim2), " (",
                                         format(round(pc.res$variance[isolate(input$dim2)], 2), nsmall = 2),"%)")),
             zaxis = list(title = paste0(isolate(input$dim3), " (",
-                                        format(round(pc.res$variance[isolate(input$dim3)], 2), nsmall = 2),"%)"))))
+                                        format(round(pc.res$variance[isolate(input$dim3)], 2), nsmall = 2),"%)")),
+            camera = list(eye = list(x=1.5, y = 1.8, z = 0.4))))
       }
       fig <- fig %>%
         config(edits = list(annotationPosition = TRUE,
@@ -551,6 +577,139 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
         grid.newpage()
         grid.text("Select at least two numeric metadata values.")
       }
+    })
+
+    output$distmatrix <- renderPlot({
+      req(matty)
+      input$update
+
+      ds.colors <- dittoColors()
+
+      # Get metadata for samples remaining.
+      meta <- metadata[isolate(input$metadata_rows_all),]
+      left.anno <- NULL
+      right.anno <- NULL
+      top.anno <- NULL
+      bot.anno <- NULL
+
+      if (!is.null(isolate(input$dist.left.anno))) {
+
+        anno <- meta[, input$dist.left.anno]
+
+        # Sets color palette to dittoSeq colors instead of random
+        if (!is.null(anno)) {
+          anno.colors <- list()
+          i <- 1
+
+          for (n in names(anno)) {
+            out <- list()
+
+            for (lev in unique(anno[[n]])) {
+              out[[lev]] <- ds.colors[i]
+              i <- i + 1
+            }
+
+            anno.colors[[n]] <- unlist(out)
+          }
+
+          left.anno <- HeatmapAnnotation(df = anno, col = anno.colors, which = "row")
+        }
+      }
+
+      if (!is.null(isolate(input$dist.right.anno))) {
+
+        anno <- meta[, input$dist.right.anno]
+
+        # Sets color palette to dittoSeq colors instead of random
+        if (!is.null(anno)) {
+          anno.colors <- list()
+          i <- 1
+
+          for (n in names(anno)) {
+            out <- list()
+
+            for (lev in unique(anno[[n]])) {
+              out[[lev]] <- ds.colors[i]
+              i <- i + 1
+            }
+
+            anno.colors[[n]] <- unlist(out)
+          }
+
+          right.anno <- HeatmapAnnotation(df = anno, col = anno.colors, which = "row")
+        }
+      }
+
+      if (!is.null(isolate(input$dist.top.anno))) {
+
+        anno <- meta[, input$dist.top.anno]
+
+        # Sets color palette to dittoSeq colors instead of random
+        if (!is.null(anno)) {
+          anno.colors <- list()
+          i <- 1
+
+          for (n in names(anno)) {
+            out <- list()
+
+            for (lev in unique(anno[[n]])) {
+              out[[lev]] <- ds.colors[i]
+              i <- i + 1
+            }
+
+            anno.colors[[n]] <- unlist(out)
+          }
+
+          top.anno <- HeatmapAnnotation(df = anno, col = anno.colors, which = "column")
+        }
+      }
+
+      if (!is.null(isolate(input$dist.bot.anno))) {
+
+        anno <- meta[, input$dist.bot.anno]
+
+        # Sets color palette to dittoSeq colors instead of random
+        if (!is.null(anno)) {
+          anno.colors <- list()
+          i <- 1
+
+          for (n in names(anno)) {
+            out <- list()
+
+            for (lev in unique(anno[[n]])) {
+              out[[lev]] <- ds.colors[i]
+              i <- i + 1
+            }
+
+            anno.colors[[n]] <- unlist(out)
+          }
+
+          bot.anno <- HeatmapAnnotation(df = anno, col = anno.colors, which = "column")
+        }
+      }
+
+      browser()
+
+      dists <- dist(t(matty()), method = isolate(input$dist.method))
+      sampleDistMatrix <- as.matrix(dists)
+
+      colors <- c(isolate(input$dist.min.col), isolate(input$dist.max.col))
+
+      ComplexHeatmap::pheatmap(sampleDistMatrix,
+               clustering_distance_rows=dists,
+               clustering_distance_cols=dists,
+               col=colors,
+               row_km = isolate(input$dist.row.km),
+               column_km = isolate(input$dist.col.km),
+               fontsize_row = isolate(input$dist.row.cex),
+               fontsize_col = isolate(input$dist.col.cex),
+               show_colnames = isolate(input$dist.colnames),
+               show_rownames = isolate(input$dist.rownames),
+               left_annotation = left.anno,
+               right_annotation = right.anno,
+               top_annotation = top.anno,
+               bottom_annotation = bot.anno,
+               heatmap_legend_param = list(title = paste0(isolate(input$dist.method), " Distance")))
     })
 
     # Initialize plots by simulating button click once.
