@@ -224,9 +224,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                 column(6,
                   colourInput("dist.min.col", "Min color:", value = "darkblue"),
                   colourInput("dist.max.col", "Max color:", value = "#FFFFFF"),
-                  numericInput("dist.row.cex", "Row font size:", value = 10, min = 1, step = 0.25),
-                  selectInput("dist.top.anno", "Top annotation:", choices = c("", colnames(metadata)), multiple = TRUE),
-                  selectInput("dist.bot.anno", "Bottom annotation:", choices = c("", colnames(metadata)), multiple = TRUE)
+                  numericInput("dist.row.cex", "Row font size:", value = 10, min = 1, step = 0.25)
                 ),
                 column(6,
                   selectInput("dist.method", "Method:",
@@ -236,10 +234,11 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                                  animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
                   prettyCheckbox("dist.colnames", label = "Show column names", value = FALSE,
                                  animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-                  numericInput("dist.col.cex", "Col font size:", value = 10, min = 1, step = 0.25),
-                  selectInput("dist.left.anno", "Left annotation:", choices = c("", colnames(metadata)), multiple = TRUE),
-                  selectInput("dist.right.anno", "Right annotation:", choices = c("", colnames(metadata)), multiple = TRUE)
+                  numericInput("dist.col.cex", "Col font size:", value = 10, min = 1, step = 0.25)
                 )
+              ),
+              fluidRow(
+                uiOutput("dist.anno.opts")
               )
             )
           ),
@@ -298,6 +297,31 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       }
 
       pca(matty(), metadata = meta, removeVar = var.remove, scale = input$scale, center = input$center)
+    })
+
+    nonnum_vars <- reactive({
+      req(pc)
+
+      pcs <- pc()
+      pcs$metadata[,!unlist(lapply(pcs$metadata, is.numeric))]
+    })
+
+    output$dist.anno.opts <- renderUI({
+      req(nonnum_vars)
+      local({
+        nonnum_var <- nonnum_vars()
+
+        tagList(
+          column(6,
+                 selectInput("dist.top.anno", "Top annotation:", choices = c("", names(nonnum_var)), multiple = TRUE),
+                 selectInput("dist.bot.anno", "Bottom annotation:", choices = c("", names(nonnum_var)), multiple = TRUE)
+          ),
+          column(6,
+                 selectInput("dist.right.anno", "Right annotation:", choices = c("", names(nonnum_var)), multiple = TRUE),
+                 selectInput("dist.left.anno", "Left annotation:", choices = c("", names(nonnum_var)), multiple = TRUE)
+          )
+        )
+      })
     })
 
     # Populate UI with all PCs.
@@ -586,109 +610,31 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       ds.colors <- dittoColors()
 
       # Get metadata for samples remaining.
-      meta <- metadata[isolate(input$metadata_rows_all),]
+      meta <- metadata
+      if (!is.null(isolate(input$metadata_rows_all))) {
+        meta <- metadata[isolate(input$metadata_rows_all),]
+      }
+
       left.anno <- NULL
       right.anno <- NULL
       top.anno <- NULL
       bot.anno <- NULL
 
       if (!is.null(isolate(input$dist.left.anno))) {
-
-        anno <- meta[, input$dist.left.anno]
-
-        # Sets color palette to dittoSeq colors instead of random
-        if (!is.null(anno)) {
-          anno.colors <- list()
-          i <- 1
-
-          for (n in names(anno)) {
-            out <- list()
-
-            for (lev in unique(anno[[n]])) {
-              out[[lev]] <- ds.colors[i]
-              i <- i + 1
-            }
-
-            anno.colors[[n]] <- unlist(out)
-          }
-
-          left.anno <- HeatmapAnnotation(df = anno, col = anno.colors, which = "row")
-        }
+        left.anno <- .create_anno(input$dist.left.anno, meta, ds.colors, anno_type = "row", side = "top")
       }
 
       if (!is.null(isolate(input$dist.right.anno))) {
-
-        anno <- meta[, input$dist.right.anno]
-
-        # Sets color palette to dittoSeq colors instead of random
-        if (!is.null(anno)) {
-          anno.colors <- list()
-          i <- 1
-
-          for (n in names(anno)) {
-            out <- list()
-
-            for (lev in unique(anno[[n]])) {
-              out[[lev]] <- ds.colors[i]
-              i <- i + 1
-            }
-
-            anno.colors[[n]] <- unlist(out)
-          }
-
-          right.anno <- HeatmapAnnotation(df = anno, col = anno.colors, which = "row")
-        }
+        right.anno <- .create_anno(input$dist.right.anno, meta, ds.colors, anno_type = "row", side = "bottom")
       }
 
       if (!is.null(isolate(input$dist.top.anno))) {
-
-        anno <- meta[, input$dist.top.anno]
-
-        # Sets color palette to dittoSeq colors instead of random
-        if (!is.null(anno)) {
-          anno.colors <- list()
-          i <- 1
-
-          for (n in names(anno)) {
-            out <- list()
-
-            for (lev in unique(anno[[n]])) {
-              out[[lev]] <- ds.colors[i]
-              i <- i + 1
-            }
-
-            anno.colors[[n]] <- unlist(out)
-          }
-
-          top.anno <- HeatmapAnnotation(df = anno, col = anno.colors, which = "column")
-        }
+        top.anno <- .create_anno(input$dist.top.anno, meta, ds.colors, anno_type = "column", side = "right")
       }
 
       if (!is.null(isolate(input$dist.bot.anno))) {
-
-        anno <- meta[, input$dist.bot.anno]
-
-        # Sets color palette to dittoSeq colors instead of random
-        if (!is.null(anno)) {
-          anno.colors <- list()
-          i <- 1
-
-          for (n in names(anno)) {
-            out <- list()
-
-            for (lev in unique(anno[[n]])) {
-              out[[lev]] <- ds.colors[i]
-              i <- i + 1
-            }
-
-            anno.colors[[n]] <- unlist(out)
-          }
-
-          bot.anno <- HeatmapAnnotation(df = anno, col = anno.colors, which = "column")
-        }
+        bot.anno <- .create_anno(input$dist.bot.anno, meta, ds.colors, anno_type = "column", side = "left")
       }
-
-      browser()
 
       dists <- dist(t(matty()), method = isolate(input$dist.method))
       sampleDistMatrix <- as.matrix(dists)
@@ -696,9 +642,9 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       colors <- c(isolate(input$dist.min.col), isolate(input$dist.max.col))
 
       ComplexHeatmap::pheatmap(sampleDistMatrix,
-               clustering_distance_rows=dists,
-               clustering_distance_cols=dists,
-               col=colors,
+               clustering_distance_rows = dists,
+               clustering_distance_cols = dists,
+               col = colors,
                row_km = isolate(input$dist.row.km),
                column_km = isolate(input$dist.col.km),
                fontsize_row = isolate(input$dist.row.cex),
