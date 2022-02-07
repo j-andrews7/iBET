@@ -21,7 +21,7 @@
 
   env$row_index <- which(l)
 
-  # Sets color palatte to dittoSeq colors instead of random
+  # Sets color palette to dittoSeq colors instead of random
   if (!is.null(anno)) {
     ds.colors <- dittoColors()
     anno.colors <- list()
