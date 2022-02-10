@@ -99,7 +99,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
               conditionalPanel(
                 condition = "input['keep.top.n'] == true",
                 numericInput("var.n.keep", "Number of features to retain by variance:",
-                            min = 0, max = Inf, step = 1, value = 500)
+                            min = 2, max = Inf, step = 1, value = 500)
               ),
               fluidRow(
                 column(6,
@@ -284,6 +284,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
     pc <- reactive({
       req(input$var.remove)
       meta <- metadata
+      mat <- matty()
 
       if (!is.null(input$metadata_rows_all) & input$meta.filt) {
         meta <- metadata[input$metadata_rows_all,]
@@ -292,11 +293,13 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       # If input to use top N features instead rather than percent-based feature removal, account for that
       if (input$keep.top.n) {
         var.remove <- 0
+        mat <- mat[order(rowVars(mat), decreasing = TRUE),]
+        mat <- mat[1:input$keep.top.n,]
       } else {
         var.remove <- input$var.remove
       }
 
-      pca(matty(), metadata = meta, removeVar = var.remove, scale = input$scale, center = input$center)
+      pca(mat, metadata = meta, removeVar = var.remove, scale = input$scale, center = input$center)
     })
 
     nonnum_vars <- reactive({
@@ -325,6 +328,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
     })
 
     # Populate UI with all PCs.
+    # To do: Write check for only 2 PCs.
     output$pca.comps <- renderUI({
       req(pc)
       local({
