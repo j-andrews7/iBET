@@ -17,7 +17,7 @@
 #' @importFrom htmltools tags
 #' @importFrom shinycustomloader withLoader
 #' @importFrom shinyjqui jqui_resizable
-#' @importFrom shinyjs show useShinyjs hidden disable
+#' @importFrom shinyjs show useShinyjs hidden disable click
 #' @importFrom colourpicker colourInput
 #' @importFrom MAGeCKFlute BarView MapRatesView VolcanoView ScatterView
 #' @importFrom PCAtools pca
@@ -65,6 +65,8 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
         return(NULL)
       }
     )
+  } else {
+    depmap.gene <- NULL
   }
   
   ui <- navbarPage(
@@ -223,49 +225,61 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                      prettyCheckbox("dep.crispr.sel", label = "Remove DepMap CRISPR selective genes", value = FALSE,
                                     animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
                      prettyCheckbox("dep.rnai.sel", label = "Remove DepMap RNAi selective genes", value = FALSE,
+                                    animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
+                     prettyCheckbox("highlight.common", label = "Highlight common hits", value = FALSE,
                                     animation = "smooth", status = "success", bigger = TRUE, icon = icon("check"))
                    )
                  ),
-                 bsCollapse(open = "vol.settings",
+                 bsCollapse(open = "com.settings",
+                    bsCollapsePanel(
+                      title = span(icon("plus"), "Common Plot Settings"), value = "com.settings", style = "info",
+                      fluidRow(
+                        column(width = 6,
+                               colourInput("down.color", "Down colour", value = "#0026ff"),
+                               colourInput("up.color", "Up colour", value = "red"),
+                               colourInput("insig.color", "Insig colour", value = "#A6A6A6"),
+                               numericInput("sig.opa", label = "Sig opacity:", value = 1, step = 0.05, min = 0)
+                        ),
+                        column(width = 6,
+                               numericInput("sig.size", label = "Sig pt size:", value = 6, step = 0.1, min = 0),
+                               numericInput("lab.size", label = "Label size:", value = 10, step = 0.5, min = 1),
+                               numericInput("insig.opa", label = "Insig opacity:", value = 0.5, step = 0.05, min = 0),
+                               numericInput("insig.size", label = "Insig pt size:", value = 5, step = 0.1, min = 0)
+                        )
+                      ),
+                      splitLayout(
+                        prettyCheckbox("counts", label = "Show counts", TRUE, bigger = TRUE,
+                                       animation = "smooth", status = "success",
+                                       icon = icon("check"), width = "100%"),
+                        prettyCheckbox("webgl", label = "Use webGL", FALSE, bigger = TRUE,
+                                       animation = "smooth", status = "success",
+                                       icon = icon("check"), width = "100%")
+                      ),
+                      splitLayout(
+                        prettyCheckbox("hl.counts", label = "Show highlight counts", FALSE, bigger = TRUE,
+                                       animation = "smooth", status = "success",
+                                       icon = icon("check"), width = "100%")
+                      ),
+                      splitLayout(
+                        numericInput("counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
+                        numericInput("webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1)
+                      )
+                    ),
                     bsCollapsePanel(
                       title = span(icon("plus"), "Volcano Plot Settings"), value = "vol.settings", style = "info",
                       fluidRow(
                         column(width = 6,
-                               colourInput("vol.down.color", "Down colour", value = "#0026ff"),
-                               colourInput("vol.up.color", "Up colour", value = "red"),
-                               colourInput("vol.insig.color", "Insig colour", value = "#A6A6A6"),
-                               numericInput("vol.sig.opa", label = "Sig opacity:", value = 1, step = 0.05, min = 0),
-                               numericInput("vol.sig.size", label = "Sig pt size:", value = 6, step = 0.1, min = 0)
+                               numericInput("vol.x", label = "x-axis limits:", value = 5, step = 0.1, min = 0.1)
                         ),
                         column(width = 6,
-                               numericInput("vol.x", label = "x-axis limits:", value = 5, step = 0.1, min = 0.1),
-                               numericInput("vol.y", label = "y-axis limits:", value = 5, step = 0.5, min = 1),
-                               numericInput("vol.lab.size", label = "Label size:", value = 10, step = 0.5, min = 1),
-                               numericInput("vol.insig.opa", label = "Insig opacity:", value = 0.5, step = 0.05, min = 0),
-                               numericInput("vol.insig.size", label = "Insig pt size:", value = 5, step = 0.1, min = 0)
+                               numericInput("vol.y", label = "y-axis limits:", value = 5, step = 0.5, min = 1)
                         )
                       ),
                       splitLayout(
                         prettyCheckbox("vol.fcline", label = "Show FC threshold", value = TRUE,
                                        animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-                        prettyCheckbox("vol.hl.counts", label = "Show highlight counts", value = FALSE,
-                                       animation = "smooth", status = "success", bigger = TRUE, icon = icon("check"))
-                      ),
-                      splitLayout(
                         prettyCheckbox("vol.sigline", label = "Show Sig. threshold", value = TRUE,
                                        animation = "smooth", status = "success", bigger = TRUE, icon = icon("check"))
-                      ),
-                      splitLayout(
-                        prettyCheckbox("vol.counts", label = "Show counts", TRUE, bigger = TRUE,
-                                       animation = "smooth", status = "success",
-                                       icon = icon("check"), width = "100%"),
-                        prettyCheckbox("vol.webgl", label = "Use webGL", FALSE, bigger = TRUE,
-                                       animation = "smooth", status = "success",
-                                       icon = icon("check"), width = "100%")
-                      ),
-                      splitLayout(
-                        numericInput("vol.counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
-                        numericInput("vol.webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1)
                       ),
                       div(actionButton("vol.update", "Update Volcano Plots"), align = "center")
                     ),
@@ -274,71 +288,21 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                       fluidRow(
                         column(width = 6,
                                numericInput("rank.y.max", label = "y-axis max:", value = 2, step = 0.5),
-                               colourInput("rank.down.color", "Down colour", value = "#0026ff"),
-                               colourInput("rank.up.color", "Up colour", value = "red"),
-                               colourInput("rank.insig.color", "Insig colour", value = "#A6A6A6"),
-                               numericInput("rank.sig.opa", label = "Sig opacity:", value = 1, step = 0.05, min = 0),
                                prettyCheckbox("rank.fcline", label = "Show FC threshold", value = TRUE,
                                               animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
                         ),
                         column(width = 6,
                                numericInput("rank.y.min", label = "y-axis min:", value = -10, step = 0.5, min = 1),
-                               numericInput("rank.lab.size", label = "Label size:", value = 10, step = 0.5, min = 1),
-                               numericInput("rank.insig.opa", label = "Insig opacity:", value = 0.5, step = 0.05, min = 0),
-                               numericInput("rank.insig.size", label = "Insig pt size:", value = 5, step = 0.1, min = 0),
-                               numericInput("rank.sig.size", label = "Sig pt size:", value = 6, step = 0.1, min = 0),
-                               prettyCheckbox("rank.hl.counts", label = "Show highlight counts", value = FALSE,
-                                              animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
                         )
-                      ),
-                      splitLayout(
-                        prettyCheckbox("rank.counts", label = "Show counts", TRUE, bigger = TRUE,
-                                       animation = "smooth", status = "success",
-                                       icon = icon("check"), width = "100%"),
-                        prettyCheckbox("rank.webgl", label = "Use webGL", FALSE, bigger = TRUE,
-                                       animation = "smooth", status = "success",
-                                       icon = icon("check"), width = "100%")
-                      ),
-                      splitLayout(
-                        numericInput("rank.counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
-                        numericInput("rank.webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1)
                       ),
                       div(actionButton("rank.update", "Update Rank Plots"), align = "center")
                     ),
                     bsCollapsePanel(
                       title = span(icon("plus"), "Lawn Plot Settings"), value = "lawn.settings", style = "info",
-                      fluidRow(
-                        column(width = 6,
-                               colourInput("lawn.down.color", "Down colour", value = "#0026ff"),
-                               colourInput("lawn.up.color", "Up colour", value = "red"),
-                               colourInput("lawn.insig.color", "Insig colour", value = "#A6A6A6"),
-                               numericInput("lawn.sig.opa", label = "Sig opacity:", value = 1, step = 0.05, min = 0),
-                               numericInput("lawn.sig.size", label = "Sig pt size:", value = 6, step = 0.1, min = 0)
-                        ),
-                        column(width = 6,
-                               numericInput("lawn.y", label = "y-axis limits:", value = 5, step = 0.5, min = 1),
-                               numericInput("lawn.lab.size", label = "Label size:", value = 10, step = 0.5, min = 1),
-                               numericInput("lawn.insig.opa", label = "Insig opacity:", value = 0.5, step = 0.05, min = 0),
-                               numericInput("lawn.insig.size", label = "Insig pt size:", value = 5, step = 0.1, min = 0)
-                        )
-                      ),
                       splitLayout(
-                        prettyCheckbox("lawn.hl.counts", label = "Show highlight counts", value = FALSE,
-                                       animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
                         prettyCheckbox("lawn.sigline", label = "Show Sig. threshold", value = TRUE,
-                                       animation = "smooth", status = "success", bigger = TRUE, icon = icon("check"))
-                      ),
-                      splitLayout(
-                        prettyCheckbox("lawn.counts", label = "Show counts", TRUE, bigger = TRUE,
-                                       animation = "smooth", status = "success",
-                                       icon = icon("check"), width = "100%"),
-                        prettyCheckbox("lawn.webgl", label = "Use webGL", FALSE, bigger = TRUE,
-                                       animation = "smooth", status = "success",
-                                       icon = icon("check"), width = "100%")
-                      ),
-                      splitLayout(
-                        numericInput("lawn.counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
-                        numericInput("lawn.webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1)
+                                       animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
+                        numericInput("lawn.y", label = "y-axis limits:", value = 5, step = 0.5, min = 1)
                       ),
                       div(actionButton("lawn.update", "Update Lawn Plots"), align = "center")
                     ),
@@ -363,7 +327,8 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                                colourInput("hl.genesets.lcol", "Sets border:", value = "#000000"))
                       )
                     )
-                 )
+                 ),
+                 div(actionButton("update", "Update Plots"), align = "center")
                ),
                mainPanel(
                  width = 10,
@@ -408,6 +373,21 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
   )
   
   server <- function(input, output, session) {
+    
+    if (!use.depmap.essential) {
+      shinyjs::hide("dep.crispr.ess")
+      shinyjs::hide("dep.crispr.sel")
+      shinyjs::hide("dep.rnai.ess")
+      shinyjs::hide("dep.rnai.sel")
+    }
+    
+    if (is.null(essential.genes)) {
+      shinyjs::hide("rem.ess")
+    }
+    
+    if (length(gene.data) == 1) {
+      shinyjs::disable("gene.sel2")
+    }
     
     # Load the gene summaries for easy plotting.
     set1.genes <- reactive({
@@ -462,41 +442,43 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       }
     })
     
-    observeEvent(event_data("plotly_click", source = paste0(h.id,"_volc2")), {
-      gene <- event_data("plotly_click", source = paste0(h.id,"_volc2"))
-      gene_old_new <- rbind(clicked$volc2, gene)
-      keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
+    if (length(gene.data) > 1) {
+      observeEvent(event_data("plotly_click", source = paste0(h.id,"_volc2")), {
+        gene <- event_data("plotly_click", source = paste0(h.id,"_volc2"))
+        gene_old_new <- rbind(clicked$volc2, gene)
+        keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
+        
+        if (nrow(keep) == 0) {
+          clicked$volc2 <- NULL
+        } else {
+          clicked$volc2 <- keep
+        }
+      })
       
-      if (nrow(keep) == 0) {
-        clicked$volc2 <- NULL
-      } else {
-        clicked$volc2 <- keep
-      }
-    })
-    
-    observeEvent(event_data("plotly_click", source = paste0(h.id,"_rank2")), {
-      gene <- event_data("plotly_click", source = paste0(h.id,"_rank2"))
-      gene_old_new <- rbind(clicked$rank2, gene)
-      keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
+      observeEvent(event_data("plotly_click", source = paste0(h.id,"_rank2")), {
+        gene <- event_data("plotly_click", source = paste0(h.id,"_rank2"))
+        gene_old_new <- rbind(clicked$rank2, gene)
+        keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
+        
+        if (nrow(keep) == 0) {
+          clicked$rank2 <- NULL
+        } else {
+          clicked$rank2 <- keep
+        }
+      })
       
-      if (nrow(keep) == 0) {
-        clicked$rank2 <- NULL
-      } else {
-        clicked$rank2 <- keep
-      }
-    })
-    
-    observeEvent(event_data("plotly_click", source = paste0(h.id,"_lawn2")), {
-      gene <- event_data("plotly_click", source = paste0(h.id,"_lawn2"))
-      gene_old_new <- rbind(clicked$lawn2, gene)
-      keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
-      
-      if (nrow(keep) == 0) {
-        clicked$lawn2 <- NULL
-      } else {
-        clicked$lawn2 <- keep
-      }
-    })
+      observeEvent(event_data("plotly_click", source = paste0(h.id,"_lawn2")), {
+        gene <- event_data("plotly_click", source = paste0(h.id,"_lawn2"))
+        gene_old_new <- rbind(clicked$lawn2, gene)
+        keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
+        
+        if (nrow(keep) == 0) {
+          clicked$lawn2 <- NULL
+        } else {
+          clicked$lawn2 <- keep
+        }
+      })
+    }
     
     # clear the set of genes when a double-click occurs
     # TODO: lapply this, probably.
@@ -512,17 +494,19 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       clicked$lawn1 <- NULL
     })
     
-    observeEvent(event_data("plotly_doubleclick", source = paste0(h.id,"_volc2")), {
-      clicked$volc2 <- NULL
-    })
-    
-    observeEvent(event_data("plotly_doubleclick", source = paste0(h.id,"_rank2")), {
-      clicked$rank2 <- NULL
-    })
-    
-    observeEvent(event_data("plotly_doubleclick", source = paste0(h.id,"_lawn2")), {
-      clicked$lawn2 <- NULL
-    })
+    if (length(gene.data) > 1) {
+      observeEvent(event_data("plotly_doubleclick", source = paste0(h.id,"_volc2")), {
+        clicked$volc2 <- NULL
+      })
+      
+      observeEvent(event_data("plotly_doubleclick", source = paste0(h.id,"_rank2")), {
+        clicked$rank2 <- NULL
+      })
+      
+      observeEvent(event_data("plotly_doubleclick", source = paste0(h.id,"_lawn2")), {
+        clicked$lawn2 <- NULL
+      })
+    }
     
     # PCA.
     pc <- reactive({
@@ -802,27 +786,6 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       ) %>% DT::formatStyle(0, target = "row", lineHeight = '50%')
     })
     
-    output$gene2.summary <- renderDT({
-      req(set2.genes)
-      # Remove columns that are redundant or confusing.
-      target <- which(names(set2.genes()) %in% c("neg|score", "neg|p-value", "neg|rank",  
-                                                 "neg|lfc", "pos|score", "pos|p-value", "pos|rank",  
-                                                 "pos|lfc", "RandomIndex", "Rank", "goodsgrna")) - 1
-      
-      DT::datatable(set2.genes(),
-                    rownames = FALSE,
-                    filter = "top",
-                    extensions = c("Buttons"),
-                    caption = paste0(input$gene.sel2, " Gene Summary"),
-                    options = list(
-                      search = list(regex = TRUE),
-                      dom = 'Blfrtip',
-                      buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
-                      pageLength = 10,
-                      columnDefs = list(list(visible = FALSE, targets = target)))
-      ) %>% DT::formatStyle(0, target = "row", lineHeight = '50%')
-    })
-    
     output$gene1.vol <- renderPlotly({
       req(set1.genes)
       input$vol.update
@@ -869,19 +832,19 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                     feat.term = "id",
                     hover.info = hov.info,
                     fs = clicked$volc1,
-                    up.color = isolate(input$vol.up.color),
-                    down.color = isolate(input$vol.down.color),
-                    insig.color = isolate(input$vol.insig.color),
-                    sig.opacity = isolate(input$vol.sig.opa),
-                    insig.opacity = isolate(input$vol.insig.opa),
-                    sig.size = isolate(input$vol.sig.size),
-                    insig.size = isolate(input$vol.insig.size),
-                    label.size = isolate(input$vol.lab.size),
-                    webgl = isolate(input$vol.webgl),
-                    webgl.ratio = isolate(input$vol.webgl.ratio),
-                    show.counts = isolate(input$vol.counts),
-                    show.hl.counts = isolate(input$vol.hl.counts),
-                    counts.size = isolate(input$vol.counts.size),
+                    up.color = isolate(input$up.color),
+                    down.color = isolate(input$down.color),
+                    insig.color = isolate(input$insig.color),
+                    sig.opacity = isolate(input$sig.opa),
+                    insig.opacity = isolate(input$insig.opa),
+                    sig.size = isolate(input$sig.size),
+                    insig.size = isolate(input$insig.size),
+                    label.size = isolate(input$lab.size),
+                    webgl = isolate(input$webgl),
+                    webgl.ratio = isolate(input$webgl.ratio),
+                    show.counts = isolate(input$counts),
+                    show.hl.counts = isolate(input$hl.counts),
+                    counts.size = isolate(input$counts.size),
                     highlight.featsets = isolate(input$hl.genesets),
                     highlight.feat = isolate(input$hl.genes),
                     featsets = genesets,
@@ -943,19 +906,19 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                     feat.term = "id",
                  hover.info = c("hit_type", "goodsgrna"),
                     fs = clicked$rank1,
-                    up.color = isolate(input$rank.up.color),
-                    down.color = isolate(input$rank.down.color),
-                    insig.color = isolate(input$rank.insig.color),
-                    sig.opacity = isolate(input$rank.sig.opa),
-                    insig.opacity = isolate(input$rank.insig.opa),
-                    sig.size = isolate(input$rank.sig.size),
-                    insig.size = isolate(input$rank.insig.size),
-                    label.size = isolate(input$rank.lab.size),
-                    webgl = isolate(input$rank.webgl),
-                    webgl.ratio = isolate(input$rank.webgl.ratio),
-                    show.counts = isolate(input$rank.counts),
-                    show.hl.counts = isolate(input$rank.hl.counts),
-                    counts.size = isolate(input$rank.counts.size),
+                    up.color = isolate(input$up.color),
+                    down.color = isolate(input$down.color),
+                    insig.color = isolate(input$insig.color),
+                    sig.opacity = isolate(input$sig.opa),
+                    insig.opacity = isolate(input$insig.opa),
+                    sig.size = isolate(input$sig.size),
+                    insig.size = isolate(input$insig.size),
+                    label.size = isolate(input$lab.size),
+                    webgl = isolate(input$webgl),
+                    webgl.ratio = isolate(input$webgl.ratio),
+                    show.counts = isolate(input$counts),
+                    show.hl.counts = isolate(input$hl.counts),
+                    counts.size = isolate(input$counts.size),
                     highlight.featsets = isolate(input$hl.genesets),
                     highlight.feat = isolate(input$hl.genes),
                     featsets = genesets,
@@ -974,6 +937,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
     output$gene1.lawn <- renderPlotly({
       req(set1.genes)
       df <- set1.genes()
+      input$lawn.update
       
       # Remove common essential genes if needed.
       if (input$rem.ess & !is.null(df$essential)) {
@@ -1012,19 +976,19 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                  x.term = "RandomIndex",
                     hover.info = c("hit_type", "goodsgrna"),
                     fs = clicked$lawn1,
-                    up.color = isolate(input$lawn.up.color),
-                    down.color = isolate(input$lawn.down.color),
-                    insig.color = isolate(input$lawn.insig.color),
-                    sig.opacity = isolate(input$lawn.sig.opa),
-                    insig.opacity = isolate(input$lawn.insig.opa),
-                    sig.size = isolate(input$lawn.sig.size),
-                    insig.size = isolate(input$lawn.insig.size),
-                    label.size = isolate(input$lawn.lab.size),
-                    webgl = isolate(input$lawn.webgl),
-                    webgl.ratio = isolate(input$lawn.webgl.ratio),
-                    show.counts = isolate(input$lawn.counts),
-                    show.hl.counts = isolate(input$lawn.hl.counts),
-                    counts.size = isolate(input$lawn.counts.size),
+                    up.color = isolate(input$up.color),
+                    down.color = isolate(input$down.color),
+                    insig.color = isolate(input$insig.color),
+                    sig.opacity = isolate(input$sig.opa),
+                    insig.opacity = isolate(input$insig.opa),
+                    sig.size = isolate(input$sig.size),
+                    insig.size = isolate(input$insig.size),
+                    label.size = isolate(input$lab.size),
+                    webgl = isolate(input$webgl),
+                    webgl.ratio = isolate(input$webgl.ratio),
+                    show.counts = isolate(input$counts),
+                    show.hl.counts = isolate(input$hl.counts),
+                    counts.size = isolate(input$counts.size),
                     highlight.featsets = isolate(input$hl.genesets),
                     highlight.feat = isolate(input$hl.genes),
                     featsets = genesets,
@@ -1041,225 +1005,256 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       
     })
     
-    output$gene2.vol <- renderPlotly({
-      req(set2.genes)
-      input$vol.update
+    if (length(gene.data) > 1) {
+      output$gene2.summary <- renderDT({
+        req(set2.genes)
+        # Remove columns that are redundant or confusing.
+        target <- which(names(set2.genes()) %in% c("neg|score", "neg|p-value", "neg|rank",  
+                                                   "neg|lfc", "pos|score", "pos|p-value", "pos|rank",  
+                                                   "pos|lfc", "RandomIndex", "Rank", "goodsgrna")) - 1
+        
+        DT::datatable(set2.genes(),
+                      rownames = FALSE,
+                      filter = "top",
+                      extensions = c("Buttons"),
+                      caption = paste0(input$gene.sel2, " Gene Summary"),
+                      options = list(
+                        search = list(regex = TRUE),
+                        dom = 'Blfrtip',
+                        buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                        pageLength = 10,
+                        columnDefs = list(list(visible = FALSE, targets = target)))
+        ) %>% DT::formatStyle(0, target = "row", lineHeight = '50%')
+      })
       
-      res <- set2.genes()
-      
-      hov.info <- c("hit_type", "goodsgrna")
-      
-      # Remove common essential genes if needed.
-      if (input$rem.ess & !is.null(res$essential)) {
-        res <- res[!res$essential,]
-      }
-      
-      # Remove DepMap stuff if requested.
-      if (!is.null(depmap.gene)) {
-        if (input$dep.crispr.ess) {
-          res <- res[!res$DepMap_CRISPR_Essential,]
+      output$gene2.vol <- renderPlotly({
+        req(set2.genes)
+        input$vol.update
+        
+        res <- set2.genes()
+        
+        hov.info <- c("hit_type", "goodsgrna")
+        
+        # Remove common essential genes if needed.
+        if (input$rem.ess & !is.null(res$essential)) {
+          res <- res[!res$essential,]
         }
         
-        if (input$dep.crispr.sel) {
-          res <- res[!res$DepMap_CRISPR_Selective,]
+        # Remove DepMap stuff if requested.
+        if (!is.null(depmap.gene)) {
+          if (input$dep.crispr.ess) {
+            res <- res[!res$DepMap_CRISPR_Essential,]
+          }
+          
+          if (input$dep.crispr.sel) {
+            res <- res[!res$DepMap_CRISPR_Selective,]
+          }
+          
+          if (input$dep.rnai.ess) {
+            res <- res[!res$DepMap_RNAi_Essential,]
+          }
+          
+          if (input$dep.rnai.sel) {
+            res <- res[!res$DepMap_RNAi_Selective,]
+          }
         }
         
-        if (input$dep.rnai.ess) {
-          res <- res[!res$DepMap_RNAi_Essential,]
+        .make_volcano(res = res,
+                      xlim = isolate(input$vol.x),
+                      ylim = isolate(input$vol.y),
+                      fc.thresh = isolate(input$gene.lfc.th),
+                      fc.lines = isolate(input$vol.fcline),
+                      sig.thresh = isolate(input$gene.fdr.th),
+                      sig.line = isolate(input$vol.sigline),
+                      h.id = h.id,
+                      h.id.suffix = "_volc2",
+                      sig.term = "FDR",
+                      lfc.term = "LFC",
+                      feat.term = "id",
+                      hover.info = hov.info,
+                      fs = clicked$volc2,
+                      up.color = isolate(input$up.color),
+                      down.color = isolate(input$down.color),
+                      insig.color = isolate(input$insig.color),
+                      sig.opacity = isolate(input$sig.opa),
+                      insig.opacity = isolate(input$insig.opa),
+                      sig.size = isolate(input$sig.size),
+                      insig.size = isolate(input$insig.size),
+                      label.size = isolate(input$lab.size),
+                      webgl = isolate(input$webgl),
+                      webgl.ratio = isolate(input$webgl.ratio),
+                      show.counts = isolate(input$counts),
+                      show.hl.counts = isolate(input$hl.counts),
+                      counts.size = isolate(input$counts.size),
+                      highlight.featsets = isolate(input$hl.genesets),
+                      highlight.feat = isolate(input$hl.genes),
+                      featsets = genesets,
+                      highlight.feats.color = isolate(input$hl.genes.col),
+                      highlight.feats.size = isolate(input$hl.genes.size),
+                      highlight.feats.opac = isolate(input$hl.genes.opa),
+                      highlight.feats.linecolor = isolate(input$hl.genes.lcol),
+                      highlight.feats.linewidth = isolate(input$hl.genes.lw),
+                      highlight.featsets.color = isolate(input$hl.genesets.col),
+                      highlight.featsets.size = isolate(input$hl.genesets.size),
+                      highlight.featsets.opac = isolate(input$hl.genesets.opa),
+                      highlight.featsets.linecolor = isolate(input$hl.genesets.lcol),
+                      highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
+      })
+      
+      output$gene2.rank <- renderPlotly({
+        req(set2.genes)
+        input$rank.update
+        
+        df <- set2.genes()
+        
+        # Remove common essential genes if needed.
+        if (input$rem.ess & !is.null(df$essential)) {
+          df <- df[!df$essential,]
         }
         
-        if (input$dep.rnai.sel) {
-          res <- res[!res$DepMap_RNAi_Selective,]
-        }
-      }
-      
-      .make_volcano(res = res,
-                    xlim = isolate(input$vol.x),
-                    ylim = isolate(input$vol.y),
-                    fc.thresh = isolate(input$gene.lfc.th),
-                    fc.lines = isolate(input$vol.fcline),
-                    sig.thresh = isolate(input$gene.fdr.th),
-                    sig.line = isolate(input$vol.sigline),
-                    h.id = h.id,
-                    h.id.suffix = "_volc2",
-                    sig.term = "FDR",
-                    lfc.term = "LFC",
-                    feat.term = "id",
-                    hover.info = c("hit_type", "goodsgrna"),
-                    fs = clicked$volc2,
-                    up.color = isolate(input$vol.up.color),
-                    down.color = isolate(input$vol.down.color),
-                    insig.color = isolate(input$vol.insig.color),
-                    sig.opacity = isolate(input$vol.sig.opa),
-                    insig.opacity = isolate(input$vol.insig.opa),
-                    sig.size = isolate(input$vol.sig.size),
-                    insig.size = isolate(input$vol.insig.size),
-                    label.size = isolate(input$vol.lab.size),
-                    webgl = isolate(input$vol.webgl),
-                    webgl.ratio = isolate(input$vol.webgl.ratio),
-                    show.counts = isolate(input$vol.counts),
-                    show.hl.counts = isolate(input$vol.hl.counts),
-                    counts.size = isolate(input$vol.counts.size),
-                    highlight.featsets = isolate(input$hl.genesets),
-                    highlight.feat = isolate(input$hl.genes),
-                    featsets = genesets,
-                    highlight.feats.color = isolate(input$hl.genes.col),
-                    highlight.feats.size = isolate(input$hl.genes.size),
-                    highlight.feats.opac = isolate(input$hl.genes.opa),
-                    highlight.feats.linecolor = isolate(input$hl.genes.lcol),
-                    highlight.feats.linewidth = isolate(input$hl.genes.lw),
-                    highlight.featsets.color = isolate(input$hl.genesets.col),
-                    highlight.featsets.size = isolate(input$hl.genesets.size),
-                    highlight.featsets.opac = isolate(input$hl.genesets.opa),
-                    highlight.featsets.linecolor = isolate(input$hl.genesets.lcol),
-                    highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
-    })
-    
-    output$gene2.rank <- renderPlotly({
-      req(set2.genes)
-      input$rank.update
-      
-      df <- set2.genes()
-      
-      # Remove common essential genes if needed.
-      if (input$rem.ess & !is.null(df$essential)) {
-        df <- df[!df$essential,]
-      }
-      
-      # Remove DepMap stuff if requested.
-      if (!is.null(depmap.gene)) {
-        if (input$dep.crispr.ess) {
-          df <- df[!df$DepMap_CRISPR_Essential,]
+        # Remove DepMap stuff if requested.
+        if (!is.null(depmap.gene)) {
+          if (input$dep.crispr.ess) {
+            df <- df[!df$DepMap_CRISPR_Essential,]
+          }
+          
+          if (input$dep.crispr.sel) {
+            df <- df[!df$DepMap_CRISPR_Selective,]
+          }
+          
+          if (input$dep.rnai.ess) {
+            df <- df[!df$DepMap_RNAi_Essential,]
+          }
+          
+          if (input$dep.rnai.sel) {
+            df <- df[!df$DepMap_RNAi_Selective,]
+          }
         }
         
-        if (input$dep.crispr.sel) {
-          df <- df[!df$DepMap_CRISPR_Selective,]
-        }
-        
-        if (input$dep.rnai.ess) {
-          df <- df[!df$DepMap_RNAi_Essential,]
-        }
-        
-        if (input$dep.rnai.sel) {
-          df <- df[!df$DepMap_RNAi_Selective,]
-        }
-      }
+        .make_rank(df = df,
+                   ylim = list(isolate(input$rank.y.min), isolate(input$rank.y.max)),
+                   y.thresh = isolate(input$gene.lfc.th),
+                   y.lines = isolate(input$rank.fcline),
+                   sig.thresh = isolate(input$gene.fdr.th),
+                   h.id = h.id,
+                   h.id.suffix = "_rank2",
+                   sig.term = "FDR",
+                   y.term = "LFC",
+                   x.term = "Rank",
+                   feat.term = "id",
+                   hover.info = c("hit_type", "goodsgrna"),
+                   fs = clicked$rank2,
+                   up.color = isolate(input$up.color),
+                   down.color = isolate(input$down.color),
+                   insig.color = isolate(input$insig.color),
+                   sig.opacity = isolate(input$sig.opa),
+                   insig.opacity = isolate(input$insig.opa),
+                   sig.size = isolate(input$sig.size),
+                   insig.size = isolate(input$insig.size),
+                   label.size = isolate(input$lab.size),
+                   webgl = isolate(input$webgl),
+                   webgl.ratio = isolate(input$webgl.ratio),
+                   show.counts = isolate(input$counts),
+                   show.hl.counts = isolate(input$hl.counts),
+                   counts.size = isolate(input$counts.size),
+                   highlight.featsets = isolate(input$hl.genesets),
+                   highlight.feat = isolate(input$hl.genes),
+                   featsets = genesets,
+                   highlight.feats.color = isolate(input$hl.genes.col),
+                   highlight.feats.size = isolate(input$hl.genes.size),
+                   highlight.feats.opac = isolate(input$hl.genes.opa),
+                   highlight.feats.linecolor = isolate(input$hl.genes.lcol),
+                   highlight.feats.linewidth = isolate(input$hl.genes.lw),
+                   highlight.featsets.color = isolate(input$hl.genesets.col),
+                   highlight.featsets.size = isolate(input$hl.genesets.size),
+                   highlight.featsets.opac = isolate(input$hl.genesets.opa),
+                   highlight.featsets.linecolor = isolate(input$hl.genesets.lcol),
+                   highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
+      })
       
-      .make_rank(df = df,
-                 ylim = list(isolate(input$rank.y.min), isolate(input$rank.y.max)),
-                 y.thresh = isolate(input$gene.lfc.th),
-                 y.lines = isolate(input$rank.fcline),
-                 sig.thresh = isolate(input$gene.fdr.th),
-                 h.id = h.id,
-                 h.id.suffix = "_rank2",
-                 sig.term = "FDR",
-                 y.term = "LFC",
-                 x.term = "Rank",
-                 feat.term = "id",
-                 hover.info = c("hit_type", "goodsgrna"),
-                 fs = clicked$rank2,
-                 up.color = isolate(input$rank.up.color),
-                 down.color = isolate(input$rank.down.color),
-                 insig.color = isolate(input$rank.insig.color),
-                 sig.opacity = isolate(input$rank.sig.opa),
-                 insig.opacity = isolate(input$rank.insig.opa),
-                 sig.size = isolate(input$rank.sig.size),
-                 insig.size = isolate(input$rank.insig.size),
-                 label.size = isolate(input$rank.lab.size),
-                 webgl = isolate(input$rank.webgl),
-                 webgl.ratio = isolate(input$rank.webgl.ratio),
-                 show.counts = isolate(input$rank.counts),
-                 show.hl.counts = isolate(input$rank.hl.counts),
-                 counts.size = isolate(input$rank.counts.size),
-                 highlight.featsets = isolate(input$hl.genesets),
-                 highlight.feat = isolate(input$hl.genes),
-                 featsets = genesets,
-                 highlight.feats.color = isolate(input$hl.genes.col),
-                 highlight.feats.size = isolate(input$hl.genes.size),
-                 highlight.feats.opac = isolate(input$hl.genes.opa),
-                 highlight.feats.linecolor = isolate(input$hl.genes.lcol),
-                 highlight.feats.linewidth = isolate(input$hl.genes.lw),
-                 highlight.featsets.color = isolate(input$hl.genesets.col),
-                 highlight.featsets.size = isolate(input$hl.genesets.size),
-                 highlight.featsets.opac = isolate(input$hl.genesets.opa),
-                 highlight.featsets.linecolor = isolate(input$hl.genesets.lcol),
-                 highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
-    })
-    
-    output$gene2.lawn <- renderPlotly({
-      req(set2.genes)
-      df <- set2.genes()
-      
-      # Remove common essential genes if needed.
-      if (input$rem.ess & !is.null(df$essential)) {
-        df <- df[!df$essential,]
-      }
-      
-      # Remove DepMap stuff if requested.
-      if (!is.null(depmap.gene)) {
-        if (input$dep.crispr.ess) {
-          df <- df[!df$DepMap_CRISPR_Essential,]
+      output$gene2.lawn <- renderPlotly({
+        req(set2.genes)
+        input$lawn.update
+        
+        df <- set2.genes()
+        
+        # Remove common essential genes if needed.
+        if (input$rem.ess & !is.null(df$essential)) {
+          df <- df[!df$essential,]
         }
         
-        if (input$dep.crispr.sel) {
-          df <- df[!df$DepMap_CRISPR_Selective,]
+        # Remove DepMap stuff if requested.
+        if (!is.null(depmap.gene)) {
+          if (input$dep.crispr.ess) {
+            df <- df[!df$DepMap_CRISPR_Essential,]
+          }
+          
+          if (input$dep.crispr.sel) {
+            df <- df[!df$DepMap_CRISPR_Selective,]
+          }
+          
+          if (input$dep.rnai.ess) {
+            df <- df[!df$DepMap_RNAi_Essential,]
+          }
+          
+          if (input$dep.rnai.sel) {
+            df <- df[!df$DepMap_RNAi_Selective,]
+          }
         }
         
-        if (input$dep.rnai.ess) {
-          df <- df[!df$DepMap_RNAi_Essential,]
-        }
-        
-        if (input$dep.rnai.sel) {
-          df <- df[!df$DepMap_RNAi_Selective,]
-        }
-      }
-      
-      .make_lawn(res = df,
-                 ylim = isolate(input$lawn.y),
-                 fc.thresh = isolate(input$gene.lfc.th),
-                 sig.thresh = isolate(input$gene.fdr.th),
-                 sig.line = isolate(input$lawn.sigline),
-                 h.id = h.id,
-                 h.id.suffix = "_lawn2",
-                 sig.term = "FDR",
-                 lfc.term = "LFC",
-                 feat.term = "id",
-                 x.term = "RandomIndex",
-                 hover.info = c("hit_type", "goodsgrna"),
-                 fs = clicked$lawn2,
-                 up.color = isolate(input$lawn.up.color),
-                 down.color = isolate(input$lawn.down.color),
-                 insig.color = isolate(input$lawn.insig.color),
-                 sig.opacity = isolate(input$lawn.sig.opa),
-                 insig.opacity = isolate(input$lawn.insig.opa),
-                 sig.size = isolate(input$lawn.sig.size),
-                 insig.size = isolate(input$lawn.insig.size),
-                 label.size = isolate(input$lawn.lab.size),
-                 webgl = isolate(input$lawn.webgl),
-                 webgl.ratio = isolate(input$lawn.webgl.ratio),
-                 show.counts = isolate(input$lawn.counts),
-                 show.hl.counts = isolate(input$lawn.hl.counts),
-                 counts.size = isolate(input$lawn.counts.size),
-                 highlight.featsets = isolate(input$hl.genesets),
-                 highlight.feat = isolate(input$hl.genes),
-                 featsets = genesets,
-                 highlight.feats.color = isolate(input$hl.genes.col),
-                 highlight.feats.size = isolate(input$hl.genes.size),
-                 highlight.feats.opac = isolate(input$hl.genes.opa),
-                 highlight.feats.linecolor = isolate(input$hl.genes.lcol),
-                 highlight.feats.linewidth = isolate(input$hl.genes.lw),
-                 highlight.featsets.color = isolate(input$hl.genesets.col),
-                 highlight.featsets.size = isolate(input$hl.genesets.size),
-                 highlight.featsets.opac = isolate(input$hl.genesets.opa),
-                 highlight.featsets.linecolor = isolate(input$hl.genesets.lcol),
-                 highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
-    })
+        .make_lawn(res = df,
+                   ylim = isolate(input$lawn.y),
+                   fc.thresh = isolate(input$gene.lfc.th),
+                   sig.thresh = isolate(input$gene.fdr.th),
+                   sig.line = isolate(input$lawn.sigline),
+                   h.id = h.id,
+                   h.id.suffix = "_lawn2",
+                   sig.term = "FDR",
+                   lfc.term = "LFC",
+                   feat.term = "id",
+                   x.term = "RandomIndex",
+                   hover.info = c("hit_type", "goodsgrna"),
+                   fs = clicked$lawn2,
+                   up.color = isolate(input$up.color),
+                   down.color = isolate(input$down.color),
+                   insig.color = isolate(input$insig.color),
+                   sig.opacity = isolate(input$sig.opa),
+                   insig.opacity = isolate(input$insig.opa),
+                   sig.size = isolate(input$sig.size),
+                   insig.size = isolate(input$insig.size),
+                   label.size = isolate(input$lab.size),
+                   webgl = isolate(input$webgl),
+                   webgl.ratio = isolate(input$webgl.ratio),
+                   show.counts = isolate(input$counts),
+                   show.hl.counts = isolate(input$hl.counts),
+                   counts.size = isolate(input$counts.size),
+                   highlight.featsets = isolate(input$hl.genesets),
+                   highlight.feat = isolate(input$hl.genes),
+                   featsets = genesets,
+                   highlight.feats.color = isolate(input$hl.genes.col),
+                   highlight.feats.size = isolate(input$hl.genes.size),
+                   highlight.feats.opac = isolate(input$hl.genes.opa),
+                   highlight.feats.linecolor = isolate(input$hl.genes.lcol),
+                   highlight.feats.linewidth = isolate(input$hl.genes.lw),
+                   highlight.featsets.color = isolate(input$hl.genesets.col),
+                   highlight.featsets.size = isolate(input$hl.genesets.size),
+                   highlight.featsets.opac = isolate(input$hl.genesets.opa),
+                   highlight.featsets.linecolor = isolate(input$hl.genesets.lcol),
+                   highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
+      })
+    }
     
     # Initialize plots by simulating button click once.
     o <- observe({
       req(pc, input$dim1, input$dim2, input$dim3)
       shinyjs::click("pca.update")
       o$destroy
+    })
+    
+    observeEvent(input$update, {
+      shinyjs::click("lawn.update")
+      shinyjs::click("vol.update")
+      shinyjs::click("rank.update")
     })
   }
   

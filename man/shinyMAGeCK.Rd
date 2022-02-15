@@ -10,6 +10,7 @@ shinyMAGeCK(
   count.summary,
   norm.counts,
   h.id = "mag1",
+  use.depmap.essential = TRUE,
   essential.genes = NULL,
   depmap.data = NULL,
   genesets = NULL,
@@ -30,7 +31,10 @@ Users will be able to swap between them within the app. List element names shoul
 \item{h.id}{String indicating unique ID for interactive plots.
 Required if multiple apps are run within the same Rmd file.}
 
-\item{essential.genes}{Optional character vector of gene identifiers of common essential genes (i.e. pan-lethal) that can be used for labeling/filtering plots.}
+\item{use.depmap.essential}{Boolean indicating whether to download and use DepMap CRISPR and RNAi gene dependency summaries for selective and common essential labeling.}
+
+\item{essential.genes}{Optional character vector of gene identifiers of common essential genes (i.e. pan-lethal) that can be used for labeling/filtering plots.
+If provided, overrides the depmap essential genes.}
 
 \item{depmap.data}{Optional named list containing depmap data.}
 
