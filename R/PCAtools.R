@@ -12,7 +12,7 @@
 #' @importFrom dittoSeq dittoColors
 #' @importFrom grid grid.newpage grid.text
 #' @importFrom shinyWidgets prettyCheckbox
-#' @importFrom shinycustomloader withLoader
+#' @importFrom shinycssloaders withSpinner
 #' @importFrom shinyjqui jqui_resizable
 #' @importFrom matrixStats rowVars
 #' @importFrom stats as.formula p.adjust p.adjust.methods dist
@@ -246,10 +246,10 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
         ),
         mainPanel(width = 9,
           tabsetPanel(
-            tabPanel("biplot", div(jqui_resizable(plotlyOutput("biplot", height = "700px", width = "1000px")), align = "center")),
-            tabPanel("screeplot", div(jqui_resizable(plotlyOutput("screeplot")), align = "center")),
-            tabPanel("eigencorplot", div(jqui_resizable(plotOutput("eigencorplot")), align = "center")),
-            tabPanel("Distance Matrix", div(jqui_resizable(plotOutput("distmatrix")), align = "center")),
+            tabPanel("biplot", div(jqui_resizable(withSpinner(plotlyOutput("biplot", height = "700px", width = "1000px"))), align = "center")),
+            tabPanel("screeplot", div(jqui_resizable(withSpinner(plotlyOutput("screeplot"))), align = "center")),
+            tabPanel("eigencorplot", div(jqui_resizable(withSpinner(plotOutput("eigencorplot"))), align = "center")),
+            tabPanel("Distance Matrix", div(jqui_resizable(withSpinner(plotOutput("distmatrix"))), align = "center")),
             tabPanel("Metadata (Filtering)", div(br(), DTOutput("metadata"), style = "font-size:80%"))
           )
         )

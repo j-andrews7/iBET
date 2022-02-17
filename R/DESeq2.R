@@ -24,7 +24,7 @@
 #' @import shinydashboard
 #' @import dashboardthemes
 #' @importFrom shinyWidgets prettyCheckbox dropdownButton tooltipOptions
-#' @importFrom shinycustomloader withLoader
+#' @importFrom shinycssloaders withSpinner
 #' @importFrom shinyjqui jqui_resizable
 #' @importFrom shinyjs show useShinyjs hidden
 #' @importFrom colourpicker colourInput
@@ -199,11 +199,10 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
               circle = FALSE, label = strong("MA-Plot"), status = "danger", size = "lg", icon = icon("gear"),
               width = "300px", tooltip = tooltipOptions(title = "Click to change plot settings")
             ),
-            withLoader(
+            withSpinner(
               jqui_resizable(
                 plotlyOutput("ma_plot", height = "550px", width = "550px")
-              ),
-              type = "html", loader = "dnaspin"
+              )
             )
           ),
           column(width = 6,
@@ -249,8 +248,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
               circle = FALSE, label = strong("Volcano Plot"), status = "danger", size = "lg", icon = icon("gear"),
               width = "300px", tooltip = tooltipOptions(title = "Click to change plot settings")
             ),
-            withLoader(jqui_resizable(plotlyOutput("volcano_plot", height = "550px", width = "550px")),
-                       type = "html", loader = "dnaspin"),
+            withSpinner(jqui_resizable(plotlyOutput("volcano_plot", height = "550px", width = "550px"))),
           )
         )
       ),

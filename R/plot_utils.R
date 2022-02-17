@@ -60,13 +60,9 @@
   res <- res[!is.na(res[[sig.term]]),]
 
   # Get all gene IDs or symbols to be highlighted.
-  highlight <- NULL
-  if (!is.null(highlight.feats) & highlight.feats != "") {
-    highlight.feats <- strsplit(highlight.feats, ",|\\s|,\\s")[[1]]
-    highlight <- highlight.feats[highlight.feats != ""]
-  }
+  highlight <- highlight.feats
 
-  highlight.fs <- NULL
+  highlight.fs <- highlight.featsets
   if (!is.null(highlight.featsets)) {
     for (featset in highlight.featsets) {
       highlight.fs <- c(highlight.fs, featsets[[featset]])
@@ -302,11 +298,7 @@
   }
 
   # Get all feature IDs to be highlighted.
-  highlight <- NULL
-  if (!is.null(highlight.feats) & highlight.feats != "") {
-    highlight.feats <- strsplit(highlight.feats, ",|\\s|,\\s")[[1]]
-    highlight <- highlight.feats[highlight.feats != ""]
-  }
+  highlight <- highlight.feats
 
   highlight.fs <- NULL
   if (!is.null(highlight.featsets)) {
@@ -431,7 +423,7 @@
     linecolor = toRGB("black"),
     linewidth = 0.5,
     title = x.term,
-    range = list(0, max(df[[x.term]])),
+    range = list(-(0.03 * nrow(df)), nrow(df) + (0.03 * nrow(df))),
     showgrid = FALSE,
     layer = "below traces",
     ticks = "outside",
@@ -544,11 +536,7 @@
   res <- res[!is.na(res[[sig.term]]),]
 
   # Get all gene IDs or symbols to be highlighted.
-  highlight <- NULL
-  if (!is.null(highlight.feats) & highlight.feats != "") {
-    highlight.feats <- strsplit(highlight.feats, ",|\\s|,\\s")[[1]]
-    highlight <- highlight.feats[highlight.feats != ""]
-  }
+  highlight <- highlight.feats
 
   highlight.fs <- NULL
   if (!is.null(highlight.featsets)) {

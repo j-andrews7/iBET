@@ -33,7 +33,7 @@ Imports:
     shinydashboard,
     shinyWidgets,
     dashboardthemes,
-    shinycustomloader,
+    shinycssloaders,
     shinyjqui,
     PCAtools,
     dittoSeq,
