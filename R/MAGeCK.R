@@ -1,4 +1,4 @@
-#' Create an interactive Shiny app for visualization & exploration of MAGeCK RRA CRISPR analyses 
+#' Create an interactive Shiny app for visualization & exploration of MAGeCK RRA CRISPR analyses
 #'
 #' This shiny app is composed of three tabs - an interactive heatmap, MA and volcano plots, and a table of full
 #' differential expression results. The interactive heatmap will generate a sub-heatmap for selected rows/columns.
@@ -23,7 +23,7 @@
 #' @importFrom PCAtools pca
 #' @importFrom dittoSeq dittoColors
 #' @importFrom grid grid.newpage grid.text
-#' @importFrom matrixStats rowVars
+#' @importFrom matrixStats rowVars rowMaxs rowMins
 #'
 #' @param gene.data A named list containing \code{gene_summary.txt} tables as data.frames. Multiple data.frames may be provided, one per element of the list.
 #'   Users will be able to swap between them within the app. List element names should match names of \code{grna.data} list elements.
@@ -34,9 +34,9 @@
 #' @param h.id String indicating unique ID for interactive plots.
 #'   Required if multiple apps are run within the same Rmd file.
 #' @param use.depmap.essential Boolean indicating whether to download and use DepMap CRISPR and RNAi gene dependency summaries for selective and common essential labeling.
-#' @param essential.genes Optional character vector of gene identifiers of common essential genes (i.e. pan-lethal) that can be used for labeling/filtering plots. 
+#' @param essential.genes Optional character vector of gene identifiers of common essential genes (i.e. pan-lethal) that can be used for labeling/filtering plots.
 #'   If provided, overrides the depmap essential genes.
-#' @param depmap.data Optional named list containing depmap data. 
+#' @param depmap.data Optional named list containing depmap data.
 #' @param genesets Optional named list containing genesets that can be interactively highlighted on the plots.
 #'   The elements of the list should each be a geneset with gene identifiers matching those used in the results.
 #' @param height Number indicating height of app in pixels.
@@ -51,7 +51,7 @@
 #' @export
 shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id = "mag1", use.depmap.essential = TRUE,
                         essential.genes = NULL, depmap.data = NULL, genesets = NULL, height = 800) {
-  
+
   # Retrieve depmap data.
   if (use.depmap.essential) {
     depmap.gene <- tryCatch(
@@ -68,7 +68,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
   } else {
     depmap.gene <- NULL
   }
-  
+
   ui <- navbarPage(
     "shinyMAGeCK",
     useShinyjs(),
@@ -158,9 +158,9 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                                              animation = "smooth", status = "success",
                                              icon = icon("check"), width = "100%"),
                               fluidRow(
-                                column(6, selectInput("bip.color", "Color by:", 
+                                column(6, selectInput("bip.color", "Color by:",
                                                       choices = c("", colnames(count.summary)), selected = "Label")),
-                                column(6, selectInput("bip.shape", "Shape by:", 
+                                column(6, selectInput("bip.shape", "Shape by:",
                                                       choices = c("", colnames(count.summary))))
                               ),
                               fluidRow(
@@ -398,7 +398,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                      )
                    ),
                    style = "background-color: #FFFFFF; padding: 3px; margin-bottom: 3px; border: 1px solid #bce8f1; "),
-                 
+
                ),
                mainPanel(
                  width = 10,
@@ -439,9 +439,9 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
     tabPanel("DepMap",
     )
   )
-  
+
   server <- function(input, output, session) {
-    
+
     # -----------QC & QC Summary Tabs------------
     # PCA.
     pc <- reactive({
@@ -449,21 +449,21 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       slmat <- as.matrix(slmed[,c(-1,-2)])
       mat <- log2(slmat+1)
       rownames(mat) <- slmed$sgRNA
-      
+
       req(input$var.remove)
       meta <- count.summary
-      
+
       # Filter samples from QC table.
       if (!is.null(input$count.summary_rows_all) & input$meta.filt) {
         meta <- count.summary[input$count.summary_rows_all,]
         mat <- mat[,input$count.summary_rows_all]
       }
-      
+
       rownames(meta) <- gsub("-", ".", meta$Label)
-      
+
       # Remove guides with no variance in counts, as they break the PCA.
       mat <- mat[(rowMaxs(mat) - rowMins(mat) > 0),]
-      
+
       # If input to use top N features instead rather than percent-based feature removal, account for that
       if (input$keep.top.n) {
         mat <- mat[order(rowVars(mat), decreasing = TRUE),]
@@ -472,21 +472,21 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       } else {
         var.remove <- input$var.remove
       }
-      
+
       if (ncol(mat) > 1) {
         pca(mat, metadata = meta, removeVar = var.remove, scale = input$scale, center = input$center)
       } else {
         NULL
       }
     })
-    
+
     # Populate UI with all PCs.
     # TODO: Write check for only 2 PCs.
     output$pca.comps <- renderUI({
       req(pc)
       local({
         pcs <- pc()
-        
+
         tagList(
           fluidRow(
             column(4, selectInput("dim1", "Dim1:", choices = pcs$components, selected = "PC1")),
@@ -496,39 +496,39 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
         )
       })
     })
-    
+
     output$qc.gini <- renderPlotly({
       gg <- BarView(count.summary, x = "Label", y = "GiniIndex",
                     ylab = "Gini index", main = "sgRNA Read Distribution")
-      
+
       gg + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, size = 12),
-                 axis.text.y = element_text(size = 12)) 
-      
-      ggplotly(gg, tooltip = c("y")) %>% 
-        layout(yaxis = list(range = list(0, max(count.summary$GiniIndex) + .05)), 
+                 axis.text.y = element_text(size = 12))
+
+      ggplotly(gg, tooltip = c("y")) %>%
+        layout(yaxis = list(range = list(0, max(count.summary$GiniIndex) + .05)),
                xaxis = list(tickangle = 315))
     })
-    
+
     output$qc.missed <- renderPlotly({
       gg <- BarView(count.summary, x = "Label", y = "Zerocounts", fill = "#394E80",
                     ylab = "Zero Count sgRNAs", main = "Fully Depleted sgRNAs")
-      
+
       gg + theme_classic() + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, size = 12),
                                    axis.text.y = element_text(size = 12)) + ylim(0, max(count.summary$Zerocounts) + 5)
-      
-      ggplotly(gg, tooltip = c("y")) %>% 
-        layout(yaxis = list(range = list(0, max(count.summary$Zerocounts) + 5)), 
+
+      ggplotly(gg, tooltip = c("y")) %>%
+        layout(yaxis = list(range = list(0, max(count.summary$Zerocounts) + 5)),
                xaxis = list(tickangle = 315))
     })
-    
+
     output$qc.map <- renderPlot({
       MapRatesView(count.summary)
     })
-    
+
     # TODO: rewrite this.
     output$qc.histplot <- renderPlot({
       colors <- dittoColors()
-      
+
       slmed <- norm.counts
       tabsmat <- as.matrix(log2(slmed[,c(-1,-2)] + 1))
       colnames(tabsmat) <- colnames(slmed)[c(-1,-2)]
@@ -539,11 +539,11 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
         xrange <- range(unlist(lapply(histlist, function(X) {X$mids})))
         yrange <- range(unlist(lapply(histlist, function(X) {X$counts})))
         hst1 <- histlist[[1]]
-        plot(hst1$mids,hst1$counts, type='b', pch=20, xlim=c(0,xrange[2]*1.2), 
-             ylim=c(0,yrange[2]*1.2), xlab='log2(counts)', ylab='Frequency', 
+        plot(hst1$mids,hst1$counts, type='b', pch=20, xlim=c(0,xrange[2]*1.2),
+             ylim=c(0,yrange[2]*1.2), xlab='log2(counts)', ylab='Frequency',
              main='Distribution of read counts', col = samplecol[1])
       }
-      if(ncol(tabsmat) >= 2){ 
+      if(ncol(tabsmat) >= 2){
         for(i in 2:ncol(tabsmat)){
           hstn <- histlist[[i]]
           lines(hstn$mids, hstn$counts, type='b', pch=20, col=samplecol[i])
@@ -551,34 +551,34 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       }
       legend('topright', colnames(tabsmat), pch=20, lwd=1, col=samplecol)
     })
-    
+
     # TODO: rewrite this, add color min/max/mid selectors.
     output$qc.corr <- renderPlot({
       slmed <- norm.counts
       slmat <- as.matrix(slmed[,c(-1,-2)])
       slmat.log <- log2(slmat+1)
-      
+
       if (ncol(slmat.log) > 1){
-        ComplexHeatmap::pheatmap(cor(slmat.log), 
+        ComplexHeatmap::pheatmap(cor(slmat.log),
                                  heatmap_legend_param = list(title = "Pearson\nCorr."), main = "Correlation Matrix")
       } else {
         grid.newpage()
         grid.text("Only one sample, no correlation possible.")
       }
     })
-    
+
     # TODO: rewrite this, add inputs.
     output$qc.pca <- renderPlotly({
       req(pc, input$dim1, input$dim2, input$dim3)
       input$pca.update
-      
+
       pc.res <- isolate(pc())
-      
+
       pl.cols <- NULL
       pl.shapes <- NULL
       pl.col <- "black"
       hov.text <- NULL
-      
+
       # Get marker aesthetics mappings.
       # Drop unused factor levels if possible.
       if (isolate(input$bip.color) != "") {
@@ -588,17 +588,17 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
         }
         pl.col <- dittoColors()[seq_along(unique(pc.res$metadata[,isolate(input$bip.color), drop = TRUE]))]
       }
-      
+
       if (isolate(input$bip.shape) != "") {
         pl.shapes <- pc.res$metadata[,isolate(input$bip.shape), drop = TRUE]
         if (is.factor(pl.shapes)) {
           pl.shapes <- droplevels(pl.shapes)
         }
       }
-      
+
       # Just throw label on hover for now.
       hov.text <- paste0("</br><b>Label:</b> ", pc.res$metadata$Label)
-      
+
       # Check if 2D is wanted.
       if (isolate(input$bip.twod)) {
         fig <- plot_ly(pc.res$rotated, x = as.formula(paste0("~", isolate(input$dim1))),
@@ -619,20 +619,20 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                  yaxis = list(showgrid = FALSE, showline = TRUE, mirror = TRUE, zeroline = FALSE,
                               title = paste0(isolate(input$dim2),
                                              " (", format(round(pc.res$variance[isolate(input$dim2)], 2), nsmall = 2),"%)")))
-        
+
         fig <- fig %>% toWebGL()
-        
+
         # Plot loadings.
         if (isolate(input$bip.loadings)) {
           lengthLoadingsArrowsFactor <- 1.5
-          
+
           # Get number of loadings to display.
           xidx <- order(abs(pc.res$loadings[,isolate(input$dim1)]), decreasing = TRUE)
           yidx <- order(abs(pc.res$loadings[,isolate(input$dim2)]), decreasing = TRUE)
           vars <- unique(c(
             rownames(pc.res$loadings)[xidx][seq_len(isolate(input$bip.n.loadings))],
             rownames(pc.res$loadings)[yidx][seq_len(isolate(input$bip.n.loadings))]))
-          
+
           # get scaling parameter to match between variable loadings and rotated loadings
           # This is cribbed almost verbatim from PCAtools code.
           r <- min(
@@ -640,7 +640,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                (max(pc.res$loadings[,isolate(input$dim1)]) - min(pc.res$loadings[,isolate(input$dim1)]))),
             (max(pc.res$rotated[,isolate(input$dim2)]) - min(pc.res$rotated[,isolate(input$dim2)]) /
                (max(pc.res$loadings[,isolate(input$dim2)]) - min(pc.res$loadings[,isolate(input$dim2)]))))
-          
+
           fig <- fig %>%
             add_segments(x = 0, xend = pc.res$loadings[vars,isolate(input$dim1)] * r * lengthLoadingsArrowsFactor,
                          y = 0, yend = pc.res$loadings[vars,isolate(input$dim2)] * r * lengthLoadingsArrowsFactor,
@@ -650,7 +650,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                             ax = 0, ay = 0, text = vars, xanchor = 'center', yanchor= 'bottom')
         }
       } else {
-        
+
         # Generate plot.
         fig <- plot_ly(pc.res$rotated, x = as.formula(paste0("~", isolate(input$dim1))),
                        y = as.formula(paste0("~", isolate(input$dim2))),
@@ -679,10 +679,10 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                toImageButtonOptions = list(format = "svg"),
                displaylogo = FALSE,
                plotGlPixelRatio = 7)
-      
+
       fig
     })
-    
+
     output$count.summary <- renderDT({
       DT::datatable(count.summary,
                     rownames = FALSE,
@@ -699,16 +699,16 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                       scroller = TRUE)
       ) %>% DT::formatStyle(0, target = "row", lineHeight = '80%')
     })
-    
+
     # Initialize plots by simulating button click once.
     o <- observe({
       req(pc, input$dim1, input$dim2, input$dim3)
       shinyjs::click("pca.update")
       o$destroy
     })
-    
+
     #---------Gene (Overview) & Summary Tables Tabs-------------
-    
+
     # Remove certain outputs if parameters for them are not provided.
     if (!use.depmap.essential) {
       shinyjs::hide("dep.crispr.ess")
@@ -716,45 +716,45 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       shinyjs::hide("dep.rnai.ess")
       shinyjs::hide("dep.rnai.sel")
     }
-    
+
     if (is.null(essential.genes)) {
       shinyjs::hide("rem.ess")
     }
-    
+
     # Disable certain inputs if only one dataset provided.
     if (length(gene.data) == 1) {
       shinyjs::disable("gene.sel2")
       shinyjs::hide("highlight.common")
     }
-    
+
     # Load the gene summaries for easy plotting.
     set1.genes <- reactive({
       df <- gene.data[[input$gene.sel1]]
       .gene_ingress(df, sig.thresh = input$gene.fdr.th, lfc.thresh = input$gene.lfc.th, essential.genes = essential.genes, depmap.genes = depmap.gene)
     })
-    
+
     if (length(gene.data) > 1) {
       set2.genes <- reactive({
         df <- gene.data[[input$gene.sel2]]
         .gene_ingress(df, sig.thresh = input$gene.fdr.th, lfc.thresh = input$gene.lfc.th, essential.genes = essential.genes, depmap.genes = depmap.gene)
       })
     }
-    
+
     # Get overlapping hits between sets if needed.
     common.hits <- reactive({
       req(set1.genes, set2.genes)
       s1 <- set1.genes()
       s2 <- set2.genes()
-      
+
       set1.hits <- s1$id[s1$hit_type %in% c("neg", "pos")]
       set2.hits <- s2$id[s2$hit_type %in% c("neg", "pos")]
-      
+
       set1.hits[set1.hits %in% set2.hits]
     })
-    
+
     # Keep track of which genes have been clicked
     clicked <- reactiveValues(volc1 = NULL, rank1 = NULL, lawn1 = NULL, volc2 = NULL, rank2 = NULL, lawn2 = NULL)
-    
+
     # On click, the key field of the event data contains the gene symbol.
     # Add that gene to the set of all "selected" genes. Double click will clear all labels.
     # TODO: lapply this, probably.
@@ -762,114 +762,114 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       gene <- event_data("plotly_click", source = paste0(h.id,"_volc1"))
       gene_old_new <- rbind(clicked$volc1, gene)
       keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
-      
+
       if (nrow(keep) == 0) {
         clicked$volc1 <- NULL
       } else {
         clicked$volc1 <- keep
       }
     })
-    
+
     observeEvent(event_data("plotly_click", source = paste0(h.id,"_rank1")), {
       gene <- event_data("plotly_click", source = paste0(h.id,"_rank1"))
       gene_old_new <- rbind(clicked$rank1, gene)
       keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
-      
+
       if (nrow(keep) == 0) {
         clicked$rank1 <- NULL
       } else {
         clicked$rank1 <- keep
       }
     })
-    
+
     observeEvent(event_data("plotly_click", source = paste0(h.id,"_lawn1")), {
       gene <- event_data("plotly_click", source = paste0(h.id,"_lawn1"))
       gene_old_new <- rbind(clicked$lawn1, gene)
       keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
-      
+
       if (nrow(keep) == 0) {
         clicked$lawn1 <- NULL
       } else {
         clicked$lawn1 <- keep
       }
     })
-    
+
     observeEvent(event_data("plotly_doubleclick", source = paste0(h.id,"_volc1")), {
       clicked$volc1 <- NULL
     })
-    
+
     observeEvent(event_data("plotly_doubleclick", source = paste0(h.id,"_rank1")), {
       clicked$rank1 <- NULL
     })
-    
+
     observeEvent(event_data("plotly_doubleclick", source = paste0(h.id,"_lawn1")), {
       clicked$lawn1 <- NULL
     })
-    
+
     if (length(gene.data) > 1) {
       observeEvent(event_data("plotly_click", source = paste0(h.id,"_volc2")), {
         gene <- event_data("plotly_click", source = paste0(h.id,"_volc2"))
         gene_old_new <- rbind(clicked$volc2, gene)
         keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
-        
+
         if (nrow(keep) == 0) {
           clicked$volc2 <- NULL
         } else {
           clicked$volc2 <- keep
         }
       })
-      
+
       observeEvent(event_data("plotly_click", source = paste0(h.id,"_rank2")), {
         gene <- event_data("plotly_click", source = paste0(h.id,"_rank2"))
         gene_old_new <- rbind(clicked$rank2, gene)
         keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
-        
+
         if (nrow(keep) == 0) {
           clicked$rank2 <- NULL
         } else {
           clicked$rank2 <- keep
         }
       })
-      
+
       observeEvent(event_data("plotly_click", source = paste0(h.id,"_lawn2")), {
         gene <- event_data("plotly_click", source = paste0(h.id,"_lawn2"))
         gene_old_new <- rbind(clicked$lawn2, gene)
         keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
-        
+
         if (nrow(keep) == 0) {
           clicked$lawn2 <- NULL
         } else {
           clicked$lawn2 <- keep
         }
       })
-      
+
       observeEvent(event_data("plotly_doubleclick", source = paste0(h.id,"_volc2")), {
         clicked$volc2 <- NULL
       })
-      
+
       observeEvent(event_data("plotly_doubleclick", source = paste0(h.id,"_rank2")), {
         clicked$rank2 <- NULL
       })
-      
+
       observeEvent(event_data("plotly_doubleclick", source = paste0(h.id,"_lawn2")), {
         clicked$lawn2 <- NULL
       })
     }
-    
+
     # Summary table and plots.
     output$gene1.summary <- renderDT({
       req(set1.genes)
       # Remove columns that are redundant or confusing.
-      target <- which(names(set1.genes()) %in% c("neg|score", "neg|p-value", "neg|rank",  
-                                                 "neg|lfc", "pos|score", "pos|p-value", "pos|rank",  
+      target <- which(names(set1.genes()) %in% c("neg|score", "neg|p-value", "neg|rank",
+                                                 "neg|lfc", "pos|score", "pos|p-value", "pos|rank",
                                                  "pos|lfc", "RandomIndex", "Rank", "goodsgrna")) - 1
-      
+
       df <- set1.genes()
-      
+
       if (!is.null(common.hits())) {
         df$Overlap <- df$id %in% common.hits()
       }
-      
+
       DT::datatable(df,
                     rownames = FALSE,
                     filter = "top",
@@ -883,50 +883,50 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                       columnDefs = list(list(visible = FALSE, targets = target)))
       ) %>% DT::formatStyle(0, target = "row", lineHeight = '50%')
     })
-    
+
     output$gene1.vol <- renderPlotly({
       req(set1.genes)
       input$vol.update
-      
+
       res <- set1.genes()
-      
+
       hov.info <- c("hit_type", "num", "goodsgrna")
-      
+
       # Remove common essential genes if needed.
       if (isolate(input$rem.ess) & !is.null(res$essential)) {
         res <- res[!res$essential,]
       }
-      
+
       # Remove DepMap stuff if requested.
       if (!is.null(depmap.gene)) {
         if (input$dep.crispr.ess) {
           res <- res[!res$DepMap_CRISPR_Essential,]
         }
-        
+
         if (input$dep.crispr.sel) {
           res <- res[!res$DepMap_CRISPR_Selective,]
         }
-        
+
         if (input$dep.rnai.ess) {
           res <- res[!res$DepMap_RNAi_Essential,]
         }
-        
+
         if (input$dep.rnai.sel) {
           res <- res[!res$DepMap_RNAi_Selective,]
         }
       }
-      
+
       highlight <- NULL
       if (!is.null(isolate(input$hl.genes)) & isolate(input$hl.genes) != "") {
         highlight.feats <- strsplit(input$hl.genes, ",|\\s|,\\s")[[1]]
         highlight <- highlight.feats[highlight.feats != ""]
       }
-      
+
       # Add common hits to highlight.
       if (isolate(input$highlight.common)) {
         highlight <- unique(c(common.hits(), highlight))
       }
-      
+
 
       .make_volcano(res = res,
                     xlim = isolate(input$vol.x),
@@ -969,50 +969,50 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                     highlight.featsets.linecolor = isolate(input$hl.genesets.lcol),
                     highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
     })
-    
+
     output$gene1.rank <- renderPlotly({
       req(set1.genes)
       input$rank.update
-      
+
       df <- set1.genes()
-      
+
       hov.info <- c("hit_type", "num", "goodsgrna")
-      
+
       # Remove common essential genes if needed.
       if (input$rem.ess & !is.null(df$essential)) {
         df <- df[!df$essential,]
       }
-      
+
       # Remove DepMap stuff if requested.
       if (!is.null(depmap.gene)) {
         if (input$dep.crispr.ess) {
           df <- df[!df$DepMap_CRISPR_Essential,]
         }
-        
+
         if (input$dep.crispr.sel) {
           df <- df[!df$DepMap_CRISPR_Selective,]
         }
-        
+
         if (input$dep.rnai.ess) {
           df <- df[!df$DepMap_RNAi_Essential,]
         }
-        
+
         if (input$dep.rnai.sel) {
           df <- df[!df$DepMap_RNAi_Selective,]
         }
       }
-      
+
       highlight <- NULL
       if (!is.null(isolate(input$hl.genes)) & isolate(input$hl.genes) != "") {
         highlight.feats <- strsplit(input$hl.genes, ",|\\s|,\\s")[[1]]
         highlight <- highlight.feats[highlight.feats != ""]
       }
-      
+
       # Add common hits to highlight.
       if (isolate(input$highlight.common)) {
         highlight <- unique(c(common.hits(), highlight))
       }
-      
+
       .make_rank(df = df,
                     ylim = list(isolate(input$rank.y.min), isolate(input$rank.y.max)),
                     y.thresh = isolate(input$gene.lfc.th),
@@ -1053,49 +1053,49 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                     highlight.featsets.linecolor = isolate(input$hl.genesets.lcol),
                     highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
     })
-    
+
     output$gene1.lawn <- renderPlotly({
       req(set1.genes)
       df <- set1.genes()
       input$lawn.update
-      
+
       hov.info <- c("hit_type", "num", "goodsgrna")
-      
+
       # Remove common essential genes if needed.
       if (input$rem.ess & !is.null(df$essential)) {
         df <- df[!df$essential,]
       }
-      
+
       # Remove DepMap stuff if requested.
       if (!is.null(depmap.gene)) {
         if (input$dep.crispr.ess) {
           df <- df[!df$DepMap_CRISPR_Essential,]
         }
-        
+
         if (input$dep.crispr.sel) {
           df <- df[!df$DepMap_CRISPR_Selective,]
         }
-        
+
         if (input$dep.rnai.ess) {
           df <- df[!df$DepMap_RNAi_Essential,]
         }
-        
+
         if (input$dep.rnai.sel) {
           df <- df[!df$DepMap_RNAi_Selective,]
         }
       }
-      
+
       highlight <- NULL
       if (!is.null(isolate(input$hl.genes)) & isolate(input$hl.genes) != "") {
         highlight.feats <- strsplit(input$hl.genes, ",|\\s|,\\s")[[1]]
         highlight <- highlight.feats[highlight.feats != ""]
       }
-      
+
       # Add common hits to highlight.
       if (isolate(input$highlight.common)) {
         highlight <- unique(c(common.hits(), highlight))
       }
-      
+
       .make_lawn(res = df,
                     ylim = isolate(input$lawn.y),
                     fc.thresh = isolate(input$gene.lfc.th),
@@ -1135,25 +1135,25 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                     highlight.featsets.opac = isolate(input$hl.genesets.opa),
                     highlight.featsets.linecolor = isolate(input$hl.genesets.lcol),
                     highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
-      
+
     })
-    
+
     # If only one dataset provided, don't render second dataset.
     if (length(gene.data) > 1) {
       output$gene2.summary <- renderDT({
         req(set2.genes)
         # Remove columns that are redundant or confusing.
-        target <- which(names(set2.genes()) %in% c("neg|score", "neg|p-value", "neg|rank",  
-                                                   "neg|lfc", "pos|score", "pos|p-value", "pos|rank",  
+        target <- which(names(set2.genes()) %in% c("neg|score", "neg|p-value", "neg|rank",
+                                                   "neg|lfc", "pos|score", "pos|p-value", "pos|rank",
                                                    "pos|lfc", "RandomIndex", "Rank", "goodsgrna")) - 1
-        
+
         df <- set2.genes()
-        
+
         # Label overlapping hits between datasets if available.
         if (!is.null(common.hits())) {
           df$Overlap <- df$id %in% common.hits()
         }
-        
+
         DT::datatable(df,
                       rownames = FALSE,
                       filter = "top",
@@ -1167,51 +1167,51 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                         columnDefs = list(list(visible = FALSE, targets = target)))
         ) %>% DT::formatStyle(0, target = "row", lineHeight = '50%')
       })
-      
+
       output$gene2.vol <- renderPlotly({
         req(set2.genes)
         input$vol.update
-        
+
         res <- set2.genes()
-        
+
         hov.info <- c("hit_type", "num", "goodsgrna")
-        
+
         # Remove common essential genes if needed.
         if (input$rem.ess & !is.null(res$essential)) {
           res <- res[!res$essential,]
         }
-        
+
         # Remove DepMap stuff if requested.
         if (!is.null(depmap.gene)) {
           if (input$dep.crispr.ess) {
             res <- res[!res$DepMap_CRISPR_Essential,]
           }
-          
+
           if (input$dep.crispr.sel) {
             res <- res[!res$DepMap_CRISPR_Selective,]
           }
-          
+
           if (input$dep.rnai.ess) {
             res <- res[!res$DepMap_RNAi_Essential,]
           }
-          
+
           if (input$dep.rnai.sel) {
             res <- res[!res$DepMap_RNAi_Selective,]
           }
         }
-        
+
         highlight <- NULL
         if (!is.null(isolate(input$hl.genes)) & isolate(input$hl.genes) != "") {
           highlight.feats <- strsplit(input$hl.genes, ",|\\s|,\\s")[[1]]
           highlight <- highlight.feats[highlight.feats != ""]
         }
-        
+
         # Add common hits to highlight.
         if (isolate(input$highlight.common)) {
           highlight <- unique(c(common.hits(), highlight))
         }
-        
-        
+
+
         .make_volcano(res = res,
                       xlim = isolate(input$vol.x),
                       ylim = isolate(input$vol.y),
@@ -1253,50 +1253,50 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                       highlight.featsets.linecolor = isolate(input$hl.genesets.lcol),
                       highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
       })
-      
+
       output$gene2.rank <- renderPlotly({
         req(set2.genes)
         input$rank.update
-        
+
         hov.info <- c("hit_type", "num", "goodsgrna")
-        
+
         df <- set2.genes()
-        
+
         # Remove common essential genes if needed.
         if (input$rem.ess & !is.null(df$essential)) {
           df <- df[!df$essential,]
         }
-        
+
         # Remove DepMap stuff if requested.
         if (!is.null(depmap.gene)) {
           if (input$dep.crispr.ess) {
             df <- df[!df$DepMap_CRISPR_Essential,]
           }
-          
+
           if (input$dep.crispr.sel) {
             df <- df[!df$DepMap_CRISPR_Selective,]
           }
-          
+
           if (input$dep.rnai.ess) {
             df <- df[!df$DepMap_RNAi_Essential,]
           }
-          
+
           if (input$dep.rnai.sel) {
             df <- df[!df$DepMap_RNAi_Selective,]
           }
         }
-        
+
         highlight <- NULL
         if (!is.null(isolate(input$hl.genes)) & isolate(input$hl.genes) != "") {
           highlight.feats <- strsplit(input$hl.genes, ",|\\s|,\\s")[[1]]
           highlight <- highlight.feats[highlight.feats != ""]
         }
-        
+
         # Add common hits to highlight.
         if (isolate(input$highlight.common)) {
           highlight <- unique(c(common.hits(), highlight))
         }
-        
+
         .make_rank(df = df,
                    ylim = list(isolate(input$rank.y.min), isolate(input$rank.y.max)),
                    y.thresh = isolate(input$gene.lfc.th),
@@ -1337,50 +1337,50 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                    highlight.featsets.linecolor = isolate(input$hl.genesets.lcol),
                    highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
       })
-      
+
       output$gene2.lawn <- renderPlotly({
         req(set2.genes)
         input$lawn.update
-        
+
         hov.info <- c("hit_type", "num", "goodsgrna")
-        
+
         df <- set2.genes()
-        
+
         # Remove common essential genes if needed.
         if (input$rem.ess & !is.null(df$essential)) {
           df <- df[!df$essential,]
         }
-        
+
         # Remove DepMap stuff if requested.
         if (!is.null(depmap.gene)) {
           if (input$dep.crispr.ess) {
             df <- df[!df$DepMap_CRISPR_Essential,]
           }
-          
+
           if (input$dep.crispr.sel) {
             df <- df[!df$DepMap_CRISPR_Selective,]
           }
-          
+
           if (input$dep.rnai.ess) {
             df <- df[!df$DepMap_RNAi_Essential,]
           }
-          
+
           if (input$dep.rnai.sel) {
             df <- df[!df$DepMap_RNAi_Selective,]
           }
         }
-        
+
         highlight <- NULL
         if (!is.null(isolate(input$hl.genes)) & isolate(input$hl.genes) != "") {
           highlight.feats <- strsplit(input$hl.genes, ",|\\s|,\\s")[[1]]
           highlight <- highlight.feats[highlight.feats != ""]
         }
-        
+
         # Add common hits to highlight.
         if (isolate(input$highlight.common)) {
           highlight <- unique(c(common.hits(), highlight))
         }
-        
+
         .make_lawn(res = df,
                    ylim = isolate(input$lawn.y),
                    fc.thresh = isolate(input$gene.lfc.th),
@@ -1422,23 +1422,23 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                    highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
       })
     }
-    
+
     # If the Gene tab update button is pressed, click all the update buttons.
     observeEvent(input$gene.update, {
       shinyjs::click("lawn.update")
       shinyjs::click("vol.update")
       shinyjs::click("rank.update")
     })
-    
+
     #---------------sgRNA Tab-----------------
-    
+
     # Load the gene summaries for easy plotting.
     set1.sgrnas <- reactive({
       df <- sgrna.data[[input$sgrna.sel1]]
       df$Rank <- rank(df$LFC)
       df
     })
-    
+
     if (length(sgrna.data) > 1) {
       set2.sgrnas <- reactive({
         df <- sgrna.data[[input$sgrna.sel2]]
@@ -1446,13 +1446,13 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
         df
       })
     }
-    
+
     # Summary tables and plots.
     output$sgrna1.summary <- renderDT({
       req(set1.sgrnas)
-      
+
       df <- set1.sgrnas()
-      
+
       DT::datatable(df,
                     rownames = FALSE,
                     filter = "top",
@@ -1465,27 +1465,27 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                       buttons = c('copy', 'csv', 'excel', 'pdf', 'print'))
       ) %>% DT::formatStyle(0, target = "row", lineHeight = '50%')
     })
-    
+
     output$sgrna1.counts <- renderPlotly({
       req(set1.sgrnas, input$sgrna.gene)
-      
+
       df <- set1.sgrnas()
       df <- df[df$Gene == input$sgrna.gene,]
-      
+
       .make_sgrna_pairplot(df)
     })
-    
+
     output$sgrna1.rank <- renderPlotly({
       req(set1.sgrnas)
       input$rank.update
-      
+
       df <- set1.sgrnas()
-      
+
       hov.info <- c("Gene")
-      
+
       highlight <- NULL
       highlight <- df$sgrna[df$Gene == input$sgrna.gene]
-      
+
       .make_rank(df = df,
                  ylim = list(min(df$LFC) - 0.5, max(df$LFC) + 0.5),
                  y.thresh = 0,
@@ -1526,15 +1526,15 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                  highlight.featsets.linecolor = "black",
                  highlight.featsets.linewidth = 0.5)
     })
-    
+
     output$sgrna1.detail <- renderDT({
       req(set1.sgrnas, input$sgrna.gene)
-      
+
       df <- set1.sgrnas()
       df <- df[df$Gene == input$sgrna.gene,]
-      
+
       target <- which(names(df) %in% c("control_mean", "treat_mean", "control_var", "adj_var", "high_in_treatment", "p.low", "p.high", "p.twosided", "score")) - 1
-      
+
       DT::datatable(df,
                     rownames = FALSE,
                     filter = "top",
@@ -1547,13 +1547,13 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                       columnDefs = list(list(visible = FALSE, targets = target)))
       ) %>% DT::formatStyle(0, target = "row", lineHeight = '50%')
     })
-    
+
     if (length(sgrna.data) > 1) {
       output$sgrna2.summary <- renderDT({
         req(set2.sgrnas)
-        
+
         df <- set2.sgrnas()
-        
+
         DT::datatable(df,
                       rownames = FALSE,
                       filter = "top",
@@ -1566,27 +1566,27 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                         buttons = c('copy', 'csv', 'excel', 'pdf', 'print'))
         ) %>% DT::formatStyle(0, target = "row", lineHeight = '50%')
       })
-      
+
       output$sgrna2.counts <- renderPlotly({
       req(set2.sgrnas, input$sgrna.gene)
-      
+
       df <- set2.sgrnas()
       df <- df[df$Gene == input$sgrna.gene,]
-      
+
       .make_sgrna_pairplot(df)
     })
-      
+
       output$sgrna2.rank <- renderPlotly({
         req(set2.sgrnas)
         input$rank.update
-        
+
         df <- set2.sgrnas()
-        
+
         hov.info <- c("Gene")
-        
+
         highlight <- NULL
         highlight <- df$sgrna[df$Gene == input$sgrna.gene]
-        
+
         .make_rank(df = df,
                    ylim = list(min(df$LFC) - 0.5, max(df$LFC) + 0.5),
                    y.thresh = 0,
@@ -1627,15 +1627,15 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                    highlight.featsets.linecolor = "black",
                    highlight.featsets.linewidth = 0.5)
       })
-      
+
       output$sgrna2.detail <- renderDT({
         req(set2.sgrnas, input$sgrna.gene)
-        
+
         df <- set2.sgrnas()
         df <- df[df$Gene == input$sgrna.gene,]
-        
+
         target <- which(names(df) %in% c("control_mean", "treat_mean", "control_var", "adj_var", "high_in_treatment", "p.low", "p.high", "p.twosided", "score")) - 1
-        
+
         DT::datatable(df,
                       rownames = FALSE,
                       filter = "top",
@@ -1650,6 +1650,6 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       })
     }
   }
-  
+
   shinyApp(ui, server, options = list(height = height))
 }
