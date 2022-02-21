@@ -14,6 +14,7 @@ shinyMAGeCK(
   essential.genes = NULL,
   depmap.data = NULL,
   genesets = NULL,
+  return.app = TRUE,
   height = 800
 )
 }
@@ -40,6 +41,9 @@ If provided, overrides the depmap essential genes.}
 
 \item{genesets}{Optional named list containing genesets that can be interactively highlighted on the plots.
 The elements of the list should each be a geneset with gene identifiers matching those used in the results.}
+
+\item{return.app}{Optional boolean indicating whether a Shiny app should be returned. \code{TRUE} by default. If \code{FALSE},
+a named list of app elements (ui and server) will be returned instead. Useful for deploying as a standalone shiny app.}
 
 \item{height}{Number indicating height of app in pixels.}
 }
