@@ -41,7 +41,9 @@ Imports:
     colourpicker,
     shinyjs,
     methods,
-    shinyBS
+    shinyBS,
+    MAGeCKFlute,
+    htmltools
 Suggests:
     airway,
     magrittr,

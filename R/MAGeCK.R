@@ -24,6 +24,9 @@
 #' @importFrom dittoSeq dittoColors
 #' @importFrom grid grid.newpage grid.text
 #' @importFrom matrixStats rowVars rowMaxs rowMins
+#' @importFrom graphics hist legend lines
+#' @importFrom stats cor
+#' @importFrom utils read.csv
 #'
 #' @param gene.data A named list containing \code{gene_summary.txt} tables as data.frames. Multiple data.frames may be provided, one per element of the list.
 #'   Users will be able to swap between them within the app. List element names should match names of \code{grna.data} list elements.
@@ -39,8 +42,6 @@
 #' @param depmap.data Optional named list containing depmap data.
 #' @param genesets Optional named list containing genesets that can be interactively highlighted on the plots.
 #'   The elements of the list should each be a geneset with gene identifiers matching those used in the results.
-#' @param return.app Optional boolean indicating whether a Shiny app should be returned. \code{TRUE} by default. If \code{FALSE},
-#'   a named list of app elements (ui and server) will be returned instead. Useful for deploying as a standalone shiny app.
 #' @param height Number indicating height of app in pixels.
 #'
 #' @return A Shiny app containing interactive visualizations of MAGeCK RRA analysis results.
@@ -52,7 +53,7 @@
 #' @author Jared Andrews
 #' @export
 shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id = "mag1", use.depmap.essential = TRUE,
-                        essential.genes = NULL, depmap.data = NULL, genesets = NULL, return.app = TRUE, height = 800) {
+                        essential.genes = NULL, depmap.data = NULL, genesets = NULL, height = 800) {
 
   # Retrieve depmap data.
   if (use.depmap.essential) {
@@ -958,7 +959,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                     show.hl.counts = isolate(input$hl.counts),
                     counts.size = isolate(input$counts.size),
                     highlight.featsets = isolate(input$hl.genesets),
-                    highlight.feat = highlight,
+                    highlight.feats = highlight,
                     featsets = genesets,
                     highlight.feats.color = isolate(input$hl.genes.col),
                     highlight.feats.size = isolate(input$hl.genes.size),
@@ -1042,7 +1043,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                     show.hl.counts = isolate(input$hl.counts),
                     counts.size = isolate(input$counts.size),
                     highlight.featsets = isolate(input$hl.genesets),
-                    highlight.feat = highlight,
+                    highlight.feats = highlight,
                     featsets = genesets,
                     highlight.feats.color = isolate(input$hl.genes.col),
                     highlight.feats.size = isolate(input$hl.genes.size),
@@ -1125,7 +1126,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                     show.hl.counts = isolate(input$hl.counts),
                     counts.size = isolate(input$counts.size),
                     highlight.featsets = isolate(input$hl.genesets),
-                    highlight.feat = highlight,
+                    highlight.feats = highlight,
                     featsets = genesets,
                     highlight.feats.color = isolate(input$hl.genes.col),
                     highlight.feats.size = isolate(input$hl.genes.size),
@@ -1242,7 +1243,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                       show.hl.counts = isolate(input$hl.counts),
                       counts.size = isolate(input$counts.size),
                       highlight.featsets = isolate(input$hl.genesets),
-                      highlight.feat = highlight,
+                      highlight.feats = highlight,
                       featsets = genesets,
                       highlight.feats.color = isolate(input$hl.genes.col),
                       highlight.feats.size = isolate(input$hl.genes.size),
@@ -1326,7 +1327,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                    show.hl.counts = isolate(input$hl.counts),
                    counts.size = isolate(input$counts.size),
                    highlight.featsets = isolate(input$hl.genesets),
-                   highlight.feat = highlight,
+                   highlight.feats = highlight,
                    featsets = genesets,
                    highlight.feats.color = isolate(input$hl.genes.col),
                    highlight.feats.size = isolate(input$hl.genes.size),
@@ -1410,7 +1411,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                    show.hl.counts = isolate(input$hl.counts),
                    counts.size = isolate(input$counts.size),
                    highlight.featsets = isolate(input$hl.genesets),
-                   highlight.feat = highlight,
+                   highlight.feats = highlight,
                    featsets = genesets,
                    highlight.feats.color = isolate(input$hl.genes.col),
                    highlight.feats.size = isolate(input$hl.genes.size),
@@ -1515,7 +1516,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                  show.hl.counts = FALSE,
                  counts.size = 8,
                  highlight.featsets = NULL,
-                 highlight.feat = highlight,
+                 highlight.feats = highlight,
                  featsets = NULL,
                  highlight.feats.color = "red",
                  highlight.feats.size = 8,
@@ -1616,7 +1617,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                    show.hl.counts = FALSE,
                    counts.size = 8,
                    highlight.featsets = NULL,
-                   highlight.feat = highlight,
+                   highlight.feats = highlight,
                    featsets = NULL,
                    highlight.feats.color = "red",
                    highlight.feats.size = 8,
@@ -1653,9 +1654,6 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
     }
   }
 
-  if (return.app) {
-    shinyApp(ui, server, options = list(height = height))
-  } else {
-    return(list(ui = ui, server = server))
-  }
+  shinyApp(ui, server, options = list(height = height))
+
 }
