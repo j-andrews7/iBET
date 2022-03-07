@@ -1,7 +1,8 @@
 #' Create an interactive Shiny app for visualization & exploration of MAGeCK RRA CRISPR analyses
 #'
-#' This shiny app is composed of three tabs - an interactive heatmap, MA and volcano plots, and a table of full
-#' differential expression results. The interactive heatmap will generate a sub-heatmap for selected rows/columns.
+#' This shiny app is composed of multiple tabs to peruse RRA results and compare them between timepoints or samples.
+#' Also included are numerous QC plots. Almost all plots are interactive and their aesthetics can be easily tweaked
+#' using the sidebar. See the Details section for more information.
 #'
 #' Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around,
 #' though adding labels will reset the positions, so it's recommended to add all labels prior to re-positioning them.
@@ -437,10 +438,6 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
              div(DT::dataTableOutput("sgrna1.summary"), style = "font-size:80%;"),
              br(),
              div(DT::dataTableOutput("sgrna2.summary"), style = "font-size:80%;")
-    ),
-    tabPanel("Enrichment",
-    ),
-    tabPanel("DepMap",
     )
   )
 

@@ -51,8 +51,9 @@ a named list of app elements (ui and server) will be returned instead. Useful fo
 A Shiny app containing interactive visualizations of MAGeCK RRA analysis results.
 }
 \description{
-This shiny app is composed of three tabs - an interactive heatmap, MA and volcano plots, and a table of full
-differential expression results. The interactive heatmap will generate a sub-heatmap for selected rows/columns.
+This shiny app is composed of multiple tabs to peruse RRA results and compare them between timepoints or samples.
+Also included are numerous QC plots. Almost all plots are interactive and their aesthetics can be easily tweaked
+using the sidebar. See the Details section for more information.
 }
 \details{
 Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around,
