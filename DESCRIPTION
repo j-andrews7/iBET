@@ -43,7 +43,7 @@ Imports:
     methods,
     shinyBS,
     MAGeCKFlute,
-    htmltools
+    htmlwidgets
 Suggests:
     airway,
     magrittr,

@@ -18,6 +18,7 @@
 #' @importFrom stats as.formula p.adjust p.adjust.methods dist
 #' @importFrom shinyBS bsCollapse bsCollapsePanel
 #' @importFrom ComplexHeatmap pheatmap Heatmap HeatmapAnnotation
+#' @importFrom htmlwidgets saveWidget
 #'
 #' @param mat A matrix with features as rows and samples as columns.
 #' @param metadata A dataframe containing sample metadata. The rownames must match the column names of the matrix.
@@ -246,10 +247,11 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
         ),
         mainPanel(width = 9,
           tabsetPanel(
-            tabPanel("biplot", div(jqui_resizable(withSpinner(plotlyOutput("biplot", height = "700px", width = "1000px"))), align = "center")),
-            tabPanel("screeplot", div(jqui_resizable(withSpinner(plotlyOutput("screeplot"))), align = "center")),
-            tabPanel("eigencorplot", div(jqui_resizable(withSpinner(plotOutput("eigencorplot"))), align = "center")),
-            tabPanel("Distance Matrix", div(jqui_resizable(withSpinner(plotOutput("distmatrix"))), align = "center")),
+            tabPanel("biplot", div(withSpinner(jqui_resizable(plotlyOutput("biplot", height = "700px", width = "1000px"))),
+                                   br(), downloadButton("download_plotly_biplot", "Download Interactive Biplot"), align = "center")),
+            tabPanel("screeplot", div(withSpinner(jqui_resizable(plotlyOutput("screeplot"))), align = "center")),
+            tabPanel("eigencorplot", div(withSpinner(jqui_resizable(plotOutput("eigencorplot"))), align = "center")),
+            tabPanel("Distance Matrix", div(withSpinner(jqui_resizable(plotOutput("distmatrix"))), align = "center")),
             tabPanel("Metadata (Filtering)", div(br(), DTOutput("metadata"), style = "font-size:80%"))
           )
         )
@@ -280,6 +282,9 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
 
       matt
     })
+
+    # Used to hold plots for download.
+    plot_store <- reactiveValues()
 
     pc <- reactive({
       req(input$var.remove)
@@ -495,7 +500,9 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                displaylogo = FALSE,
                plotGlPixelRatio = 7)
 
-      fig
+      plot_store$biplot <- fig
+
+      plot_store$biplot
     })
 
     output$screeplot <- renderPlotly({
@@ -661,6 +668,18 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                bottom_annotation = bot.anno,
                heatmap_legend_param = list(title = paste0(isolate(input$dist.method), " Distance")))
     })
+
+    # Download interactive plots as html.
+    output$download_plotly_biplot <- downloadHandler(
+      filename = function() {
+        paste("biplot-", Sys.Date(), ".html", sep = "")
+      },
+      content = function(file) {
+        # export plotly html widget as a temp file to download.
+        saveWidget(plot_store$biplot %>% layout(width = 700, height = 500, autosize = FALSE),
+                   file, selfcontained = TRUE)
+      }
+    )
 
     # Initialize plots by simulating button click once.
     o <- observe({

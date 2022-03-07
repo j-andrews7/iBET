@@ -14,7 +14,6 @@
 #' @importFrom plotly ggplotly plotlyOutput renderPlotly toWebGL plot_ly layout add_annotations config toRGB event_data
 #' @import ggplot2
 #' @importFrom shinyWidgets prettyCheckbox dropdownButton tooltipOptions
-#' @importFrom htmltools tags
 #' @importFrom shinycssloaders withSpinner
 #' @importFrom shinyjqui jqui_resizable
 #' @importFrom shinyjs show useShinyjs hidden disable click
