@@ -296,13 +296,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       }
 
       # If input to use top N features instead rather than percent-based feature removal, account for that
-      if (input$keep.top.n) {
-        var.remove <- 0
-        mat <- mat[order(rowVars(mat), decreasing = TRUE),]
-        mat <- mat[1:input$keep.top.n,]
-      } else {
-        var.remove <- input$var.remove
-      }
+      var.remove <- ifelse(input$keep.top.n, 0, input$var.remove)
 
       pca(mat, metadata = meta, removeVar = var.remove, scale = input$scale, center = input$center)
     })
@@ -333,7 +327,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
     })
 
     # Populate UI with all PCs.
-    # To do: Write check for only 2 PCs.
+    # TODO: Write check for only 2 PCs.
     output$pca.comps <- renderUI({
       req(pc)
       local({
