@@ -12,12 +12,13 @@
 #' @importFrom dittoSeq dittoColors
 #' @importFrom grid grid.newpage grid.text
 #' @importFrom shinyWidgets prettyCheckbox
-#' @importFrom shinycustomloader withLoader
+#' @importFrom shinycssloaders withSpinner
 #' @importFrom shinyjqui jqui_resizable
 #' @importFrom matrixStats rowVars
 #' @importFrom stats as.formula p.adjust p.adjust.methods dist
 #' @importFrom shinyBS bsCollapse bsCollapsePanel
 #' @importFrom ComplexHeatmap pheatmap Heatmap HeatmapAnnotation
+#' @importFrom htmlwidgets saveWidget
 #'
 #' @param mat A matrix with features as rows and samples as columns.
 #' @param metadata A dataframe containing sample metadata. The rownames must match the column names of the matrix.
@@ -99,7 +100,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
               conditionalPanel(
                 condition = "input['keep.top.n'] == true",
                 numericInput("var.n.keep", "Number of features to retain by variance:",
-                            min = 0, max = Inf, step = 1, value = 500)
+                            min = 2, max = Inf, step = 1, value = 500)
               ),
               fluidRow(
                 column(6,
@@ -246,10 +247,11 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
         ),
         mainPanel(width = 9,
           tabsetPanel(
-            tabPanel("biplot", div(jqui_resizable(plotlyOutput("biplot", height = "700px", width = "1000px")), align = "center")),
-            tabPanel("screeplot", div(jqui_resizable(plotlyOutput("screeplot")), align = "center")),
-            tabPanel("eigencorplot", div(jqui_resizable(plotOutput("eigencorplot")), align = "center")),
-            tabPanel("Distance Matrix", div(jqui_resizable(plotOutput("distmatrix")), align = "center")),
+            tabPanel("biplot", div(withSpinner(jqui_resizable(plotlyOutput("biplot", height = "700px", width = "1000px"))),
+                                   br(), downloadButton("download_plotly_biplot", "Download Interactive Biplot"), align = "center")),
+            tabPanel("screeplot", div(withSpinner(jqui_resizable(plotlyOutput("screeplot"))), align = "center")),
+            tabPanel("eigencorplot", div(withSpinner(jqui_resizable(plotOutput("eigencorplot"))), align = "center")),
+            tabPanel("Distance Matrix", div(withSpinner(jqui_resizable(plotOutput("distmatrix"))), align = "center")),
             tabPanel("Metadata (Filtering)", div(br(), DTOutput("metadata"), style = "font-size:80%"))
           )
         )
@@ -281,9 +283,13 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       matt
     })
 
+    # Used to hold plots for download.
+    plot_store <- reactiveValues()
+
     pc <- reactive({
       req(input$var.remove)
       meta <- metadata
+      mat <- matty()
 
       if (!is.null(input$metadata_rows_all) & input$meta.filt) {
         meta <- metadata[input$metadata_rows_all,]
@@ -292,11 +298,13 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       # If input to use top N features instead rather than percent-based feature removal, account for that
       if (input$keep.top.n) {
         var.remove <- 0
+        mat <- mat[order(rowVars(mat), decreasing = TRUE),]
+        mat <- mat[1:input$keep.top.n,]
       } else {
         var.remove <- input$var.remove
       }
 
-      pca(matty(), metadata = meta, removeVar = var.remove, scale = input$scale, center = input$center)
+      pca(mat, metadata = meta, removeVar = var.remove, scale = input$scale, center = input$center)
     })
 
     nonnum_vars <- reactive({
@@ -325,6 +333,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
     })
 
     # Populate UI with all PCs.
+    # To do: Write check for only 2 PCs.
     output$pca.comps <- renderUI({
       req(pc)
       local({
@@ -491,7 +500,9 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                displaylogo = FALSE,
                plotGlPixelRatio = 7)
 
-      fig
+      plot_store$biplot <- fig
+
+      plot_store$biplot
     })
 
     output$screeplot <- renderPlotly({
@@ -657,6 +668,18 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                bottom_annotation = bot.anno,
                heatmap_legend_param = list(title = paste0(isolate(input$dist.method), " Distance")))
     })
+
+    # Download interactive plots as html.
+    output$download_plotly_biplot <- downloadHandler(
+      filename = function() {
+        paste("biplot-", Sys.Date(), ".html", sep = "")
+      },
+      content = function(file) {
+        # export plotly html widget as a temp file to download.
+        saveWidget(plot_store$biplot %>% layout(width = 700, height = 500, autosize = FALSE),
+                   file, selfcontained = TRUE)
+      }
+    )
 
     # Initialize plots by simulating button click once.
     o <- observe({

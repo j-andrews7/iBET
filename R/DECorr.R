@@ -16,6 +16,7 @@
 #' @import shinydashboard
 #' @import dashboardthemes
 #' @importFrom shinyWidgets prettyCheckbox pickerInput tooltipOptions
+#' @importFrom shinycssloaders withSpinner
 #' @importFrom shinyjqui jqui_resizable
 #' @importFrom shinyjs useShinyjs hide show hidden click
 #' @importFrom colourpicker colourInput
@@ -290,9 +291,10 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
       # dynamically allocate rows/columns based on number of plots
       row1_plots <- lapply(1:length(row1()), function(x) {
         column(width = 4,
-          jqui_resizable(
-            plotlyOutput(row1()[x], height = "350px", width = "350px")
-          )
+           withSpinner(jqui_resizable(
+              plotlyOutput(row1()[x], height = "350px", width = "350px")
+            )
+           )
         )
       })
 
@@ -318,9 +320,10 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
 
           row2_plots <- lapply(1:length(row2()), function(x) {
             column(width = 4,
-              jqui_resizable(
-                plotlyOutput(row2()[x], height = "350px", width = "350px")
-              )
+               withSpinner(jqui_resizable(
+                  plotlyOutput(row2()[x], height = "350px", width = "350px")
+                )
+               )
             )
           })
 

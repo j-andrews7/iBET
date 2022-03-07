@@ -24,7 +24,7 @@
 #' @import shinydashboard
 #' @import dashboardthemes
 #' @importFrom shinyWidgets prettyCheckbox dropdownButton tooltipOptions
-#' @importFrom shinycustomloader withLoader
+#' @importFrom shinycssloaders withSpinner
 #' @importFrom shinyjqui jqui_resizable
 #' @importFrom shinyjs show useShinyjs hidden
 #' @importFrom colourpicker colourInput
@@ -199,11 +199,10 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
               circle = FALSE, label = strong("MA-Plot"), status = "danger", size = "lg", icon = icon("gear"),
               width = "300px", tooltip = tooltipOptions(title = "Click to change plot settings")
             ),
-            withLoader(
+            withSpinner(
               jqui_resizable(
                 plotlyOutput("ma_plot", height = "550px", width = "550px")
-              ),
-              type = "html", loader = "dnaspin"
+              )
             )
           ),
           column(width = 6,
@@ -249,8 +248,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
               circle = FALSE, label = strong("Volcano Plot"), status = "danger", size = "lg", icon = icon("gear"),
               width = "300px", tooltip = tooltipOptions(title = "Click to change plot settings")
             ),
-            withLoader(jqui_resizable(plotlyOutput("volcano_plot", height = "550px", width = "550px")),
-                       type = "html", loader = "dnaspin"),
+            withSpinner(jqui_resizable(plotlyOutput("volcano_plot", height = "550px", width = "550px"))),
           )
         )
       ),
@@ -524,7 +522,9 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                     sig.line = isolate(input$vol.sigline),
                     h.id = h.id,
                     sig.term = sig.term,
-                    gs = genes$volc,
+                    lfc.term = "log2FoldChange",
+                    feat.term = "rows",
+                    fs = genes$volc,
                     up.color = isolate(input$vol.up.color),
                     down.color = isolate(input$vol.down.color),
                     insig.color = isolate(input$vol.insig.color),
@@ -538,19 +538,19 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                     show.counts = isolate(input$vol.counts),
                     show.hl.counts = isolate(input$vol.hl.counts),
                     counts.size = isolate(input$vol.counts.size),
-                    highlight.genesets = isolate(input$hl.genesets),
-                    highlight.genes = isolate(input$hl.genes),
-                    genesets = genesets,
-                    highlight.genes.color = isolate(input$hl.genes.col),
-                    highlight.genes.size = isolate(input$hl.genes.size),
-                    highlight.genes.opac = isolate(input$hl.genes.opa),
-                    highlight.genes.linecolor = isolate(input$hl.genes.lcol),
-                    highlight.genes.linewidth = isolate(input$hl.genes.lw),
-                    highlight.genesets.color = isolate(input$hl.genesets.col),
-                    highlight.genesets.size = isolate(input$hl.genesets.size),
-                    highlight.genesets.opac = isolate(input$hl.genesets.opa),
-                    highlight.genesets.linecolor = isolate(input$hl.genesets.lcol),
-                    highlight.genesets.linewidth = isolate(input$hl.genesets.lw))
+                    highlight.featsets = isolate(input$hl.genesets),
+                    highlight.feat = isolate(input$hl.genes),
+                    featsets = genesets,
+                    highlight.feats.color = isolate(input$hl.genes.col),
+                    highlight.feats.size = isolate(input$hl.genes.size),
+                    highlight.feats.opac = isolate(input$hl.genes.opa),
+                    highlight.feats.linecolor = isolate(input$hl.genes.lcol),
+                    highlight.feats.linewidth = isolate(input$hl.genes.lw),
+                    highlight.featsets.color = isolate(input$hl.genesets.col),
+                    highlight.featsets.size = isolate(input$hl.genesets.size),
+                    highlight.featsets.opac = isolate(input$hl.genesets.opa),
+                    highlight.featsets.linecolor = isolate(input$hl.genesets.lcol),
+                    highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
     })
 
     output[["res_table_full"]] <- DT::renderDataTable({

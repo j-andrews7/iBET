@@ -33,7 +33,7 @@ Imports:
     shinydashboard,
     shinyWidgets,
     dashboardthemes,
-    shinycustomloader,
+    shinycssloaders,
     shinyjqui,
     PCAtools,
     dittoSeq,
@@ -41,7 +41,9 @@ Imports:
     colourpicker,
     shinyjs,
     methods,
-    shinyBS
+    shinyBS,
+    MAGeCKFlute,
+    htmlwidgets
 Suggests:
     airway,
     magrittr,
