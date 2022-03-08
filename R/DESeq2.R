@@ -349,9 +349,10 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     # Get annotations. If none provided, use design variables.
     anno <- reactiveVal()
 
-    observe({
-      input$anno.vars
-      input$metadata_rows_all
+    observeEvent(c(input$anno.vars,
+                   input$res.select,
+                   input$metadata_rows_all,
+                   input$update), {
 
       annos <- SummarizedExperiment::colData(dds)
 
@@ -385,6 +386,10 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     observeEvent(input$res.select, {
       req(ress, anno)
       ress(res.list[[input$res.select]])
+
+      if (!is.null(input$metadata_rows_all)) {
+        mat <- mat[, input$metadata_rows_all]
+      }
 
       pdf(NULL)
       ht <- .make_heatmap(mat, ress(), anno(), baseMean_col_fun, log2fc_col_fun,
