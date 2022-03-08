@@ -19,6 +19,7 @@
 #' @importFrom shinyBS bsCollapse bsCollapsePanel
 #' @importFrom ComplexHeatmap pheatmap Heatmap HeatmapAnnotation
 #' @importFrom htmlwidgets saveWidget
+#' @importFrom grDevices pdf dev.off
 #'
 #' @param mat A matrix with features as rows and samples as columns.
 #' @param metadata A dataframe containing sample metadata. The rownames must match the column names of the matrix.
@@ -249,9 +250,12 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
           tabsetPanel(
             tabPanel("biplot", div(withSpinner(jqui_resizable(plotlyOutput("biplot", height = "700px", width = "1000px"))),
                                    br(), downloadButton("download_plotly_biplot", "Download Interactive Biplot"), align = "center")),
-            tabPanel("screeplot", div(withSpinner(jqui_resizable(plotlyOutput("screeplot"))), align = "center")),
-            tabPanel("eigencorplot", div(withSpinner(jqui_resizable(plotOutput("eigencorplot"))), align = "center")),
-            tabPanel("Distance Matrix", div(withSpinner(jqui_resizable(plotOutput("distmatrix"))), align = "center")),
+            tabPanel("screeplot", div(withSpinner(jqui_resizable(plotlyOutput("screeplot"))),
+                                      br(), downloadButton("download_plotly_screeplot", "Download Interactive Screeplot"), align = "center")),
+            tabPanel("eigencorplot", div(withSpinner(jqui_resizable(plotOutput("eigencorplot"))),
+                                         br(), downloadButton("download_eigencorplot", "Download Eigencorplot"), align = "center")),
+            tabPanel("Distance Matrix", div(withSpinner(jqui_resizable(plotOutput("distmatrix"))),
+                                            br(), downloadButton("download_distmat", "Download Distance Matrix"), align = "center")),
             tabPanel("Metadata (Filtering)", div(br(), DTOutput("metadata"), style = "font-size:80%"))
           )
         )
@@ -566,7 +570,9 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                                        font = list(size = 16))
       }
 
-      fig
+      plot_store$screeplot <- fig
+
+      plot_store$screeplot
     })
 
     output$eigencorplot <- renderPlot({
@@ -580,7 +586,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                       length(pc.res$components), isolate(input$eig.components))
 
       if (!is.null(isolate(input$eig.vars)) & length(isolate(input$eig.vars)) > 1) {
-        eigencorplot(pcaobj = pc.res,
+        gg <- eigencorplot(pcaobj = pc.res,
                      components = getComponents(pc.res, seq_len(comps)),
                      metavars = isolate(input$eig.vars),
                      col = c(isolate(input$eig.min.col), isolate(input$eig.mid.col), isolate(input$eig.max.col)),
@@ -602,6 +608,10 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                      fontCorval = isolate(input$eig.corr.style),
                      colCorval = isolate(input$eig.corr.col),
                      posColKey = isolate(input$eig.posKey))
+
+        plot_store$eigencorplot <- gg
+
+        plot_store$eigencorplot
       } else {
         grid.newpage()
         grid.text("Select at least two numeric metadata values.")
@@ -646,7 +656,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
 
       colors <- c(isolate(input$dist.min.col), isolate(input$dist.max.col))
 
-      ComplexHeatmap::pheatmap(sampleDistMatrix,
+      gg <- ComplexHeatmap::pheatmap(sampleDistMatrix,
                clustering_distance_rows = dists,
                clustering_distance_cols = dists,
                col = colors,
@@ -661,6 +671,10 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                top_annotation = top.anno,
                bottom_annotation = bot.anno,
                heatmap_legend_param = list(title = paste0(isolate(input$dist.method), " Distance")))
+
+      plot_store$distmat <- gg
+
+      plot_store$distmat
     })
 
     # Download interactive plots as html.
@@ -670,8 +684,43 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       },
       content = function(file) {
         # export plotly html widget as a temp file to download.
-        saveWidget(plot_store$biplot %>% layout(width = 700, height = 500, autosize = FALSE),
+        saveWidget(jqui_resizable(plot_store$biplot),
                    file, selfcontained = TRUE)
+      }
+    )
+
+    output$download_plotly_screeplot <- downloadHandler(
+      filename = function() {
+        paste("screeplot-", Sys.Date(), ".html", sep = "")
+      },
+      content = function(file) {
+        # export plotly html widget as a temp file to download.
+        saveWidget(jqui_resizable(plot_store$screeplot),
+                   file, selfcontained = TRUE)
+      }
+    )
+
+    output$download_eigencorplot <- downloadHandler(
+      filename = function() {
+        paste("eigencorplot-", Sys.Date(), ".pdf", sep = "")
+      },
+      content = function(file) {
+        # export plotly html widget as a temp file to download.
+        pdf(file,  width = 7, height = 3)
+        print(plot_store$eigencorplot)
+        dev.off()
+      }
+    )
+
+    output$download_distmat <- downloadHandler(
+      filename = function() {
+        paste("distmat-", Sys.Date(), ".pdf", sep = "")
+      },
+      content = function(file) {
+        # export plotly html widget as a temp file to download.
+        pdf(file,  width = 7, height = 3)
+        draw(plot_store$distmat)
+        dev.off()
       }
     )
 
