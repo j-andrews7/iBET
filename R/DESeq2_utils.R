@@ -229,14 +229,16 @@
       layout(xaxis = ax,
              yaxis = ay,
              showlegend = FALSE,
-             shapes = list(fc.line1, fc.line2)) %>%
+             shapes = list(fc.line1, fc.line2),
+             hoverlabel = list(font=list(size=10))) %>%
       add_annotations(x = gs$x, y = gs$y, text = gs$customdata,
                       font = list(size = label.size, family = "Arial"), arrowside = "none")
   } else {
     fig <- fig %>% layout(xaxis = ax,
                    yaxis = ay,
                    showlegend = FALSE,
-                   shapes = list(fc.line1, fc.line2))
+                   shapes = list(fc.line1, fc.line2),
+                   hoverlabel = list(font=list(size=10)))
   }
 
   # Gene count annotations.

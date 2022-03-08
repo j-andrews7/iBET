@@ -224,14 +224,16 @@
       layout(xaxis = ax,
              yaxis = ay,
              showlegend = FALSE,
-             shapes = list(sig.hline, fc.line1, fc.line2)) %>%
+             shapes = list(sig.hline, fc.line1, fc.line2),
+             hoverlabel = list(font=list(size=10))) %>%
       add_annotations(x = fs$x, y = fs$y, text = fs$customdata,
                       font = list(size = label.size, family = "Arial"), arrowside = "none")
   } else {
     fig <- fig %>% layout(xaxis = ax,
                           yaxis = ay,
                           showlegend = FALSE,
-                          shapes = list(sig.hline, fc.line1, fc.line2))
+                          shapes = list(sig.hline, fc.line1, fc.line2),
+                          hoverlabel = list(font=list(size=10)))
   }
 
   # Feature count annotations.
