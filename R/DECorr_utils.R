@@ -166,17 +166,17 @@
   full.df$lfc.x[full.df$lfc.x < -xlim] <- -xlim + 0.1
 
   full.df$hover.string <- paste("</br><b>Gene:</b> ", full.df$Gene,
-                                "</br><b>", paste0(comp1.name, " ", df.vars$res1.lfc.col), ":</b> ",
+                                "</br><b>", paste0("x-axis ", df.vars$res1.lfc.col), ":</b> ",
                                 format(round(full.df$lfc.x, 4), nsmall = 4, scientific = FALSE),
-                                "</br><b>", paste0(comp2.name, " ", df.vars$res2.lfc.col), ":</b> ",
+                                "</br><b>", paste0("y-axis ", df.vars$res2.lfc.col), ":</b> ",
                                 format(round(full.df$lfc.y, 4), nsmall = 4, scientific = FALSE),
-                                "</br><b>", paste0(comp1.name, " ", df.vars$res1.sig.col), ":</b> ",
+                                "</br><b>", paste0("x-axis ", df.vars$res1.sig.col), ":</b> ",
                                 format(round(full.df$sig.x, 4), nsmall = 4),
-                                "</br><b>", paste0(comp2.name, " ", df.vars$res2.sig.col), ":</b> ",
+                                "</br><b>", paste0("y-axis ", df.vars$res2.sig.col), ":</b> ",
                                 format(round(full.df$sig.y, 4), nsmall = 4),
-                                "</br><b>", paste0(comp1.name, " ", df.vars$res1.expr.col),":</b> ",
+                                "</br><b>", paste0("x-axis ", df.vars$res1.expr.col),":</b> ",
                                 format(round(full.df$exp.x, 2), nsmall = 2),
-                                "</br><b>", paste0(comp2.name, " ", df.vars$res2.expr.col),":</b> ",
+                                "</br><b>", paste0("y-axis ", df.vars$res2.expr.col),":</b> ",
                                 format(round(full.df$exp.y, 2), nsmall = 2))
 
   full.df <- as.data.frame(full.df)
@@ -193,7 +193,8 @@
     showgrid = FALSE,
     layer = "below traces",
     ticks = "outside",
-    zerolinewidth = 0.5
+    zerolinewidth = 0.5,
+    titlefont = list(size = 12)
   )
 
   ax <- list(
@@ -206,7 +207,8 @@
     showgrid = FALSE,
     layer = "below traces",
     ticks = "outside",
-    zerolinewidth = 0.5
+    zerolinewidth = 0.5,
+    titlefont = list(size = 12)
   )
 
   # Figure creation.
@@ -247,13 +249,20 @@
     fig <- fig %>%
       layout(xaxis = ax,
              yaxis = ay,
-             showlegend = FALSE, shapes = list(regr.line), margin = list(b = 75)) %>%
+             showlegend = FALSE,
+             shapes = list(regr.line),
+             margin = list(b = 75),
+             hoverlabel = list(font=list(size=10))) %>%
       add_annotations(x = genes.labeled$x, y = genes.labeled$y, text = genes.labeled$customdata,
                       font = list(size = label.size, family = "Arial"), arrowside = "none",
                       arrowwidth = "0.5")
   } else {
     fig <- fig %>% layout(xaxis = ax,
-                   yaxis = ay, showlegend = FALSE, shapes = list(regr.line), margin = list(b = 75))
+                   yaxis = ay,
+                   showlegend = FALSE,
+                   shapes = list(regr.line),
+                   margin = list(b = 75),
+                   hoverlabel = list(font=list(size=10)))
   }
 
   # Gene count annotations.
@@ -264,8 +273,8 @@
         y= 1,
         xref = "paper",
         yref = "paper",
-        text = paste0(comp1.name, " sig.: ", n.comp1.sig,
-                      "\n", comp2.name, " sig.: ", n.comp2.sig,
+        text = paste0("x-comparison sig.: ", n.comp1.sig,
+                      "\ny-comparison sig.: ", n.comp2.sig,
                       "\nBoth sig.: ", n.both.sig,
                       "\nNot sig.: ", n.not.sig,
                       "\nTotal: ", n.total),
