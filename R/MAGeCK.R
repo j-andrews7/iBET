@@ -38,7 +38,8 @@
 #'   Required if multiple apps are run within the same Rmd file.
 #' @param use.depmap.essential Boolean indicating whether to download and use DepMap CRISPR and RNAi
 #'   gene dependency summaries for selective and common essential gene labeling/filtering.
-#' @param essential.genes Optional character vector of gene identifiers of common essential genes (i.e. pan-lethal) that can be used for labeling/filtering plots.
+#' @param positive.ctrl.genes Optional character vector of gene identifiers for positive control genes from the screen so that they can be easily filtered.
+#' @param essential.genes Optional character vector of gene identifiers of common essential genes (i.e. pan-lethal) so that they can be easily filtered.
 #'   If provided, overrides the depmap essential genes.
 #' @param depmap.data Optional named list containing depmap data.
 #' @param genesets Optional named list containing genesets that can be interactively highlighted on the plots.
@@ -56,7 +57,7 @@
 #' @author Jared Andrews
 #' @export
 shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id = "mag1", use.depmap.essential = TRUE,
-                        essential.genes = NULL, depmap.data = NULL, genesets = NULL, return.app = TRUE, height = 800) {
+                        positive.ctrl.genes = NULL, essential.genes = NULL, depmap.data = NULL, genesets = NULL, return.app = TRUE, height = 800) {
 
   # Retrieve depmap data.
   if (use.depmap.essential) {
@@ -241,6 +242,8 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                        prettyCheckbox("dep.crispr.sel", label = "Remove DepMap CRISPR selective genes", value = FALSE,
                                       animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
                        prettyCheckbox("dep.rnai.sel", label = "Remove DepMap RNAi selective genes", value = FALSE,
+                                      animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
+                       prettyCheckbox("rem.pos", label = "Remove positive control genes", value = FALSE,
                                       animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
                        prettyCheckbox("highlight.common", label = "Highlight common hits", value = FALSE,
                                       animation = "smooth", status = "success", bigger = TRUE, icon = icon("check"))
@@ -567,9 +570,9 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
         grid.newpage()
         grid.text("Only one sample, no correlation possible.")
       }
+
     })
 
-    # TODO: rewrite this, add inputs.
     output$qc.pca <- renderPlotly({
       req(pc, input$dim1, input$dim2, input$dim3)
       input$pca.update
@@ -723,6 +726,10 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       shinyjs::hide("rem.ess")
     }
 
+    if (is.null(positive.ctrl.genes)) {
+      shinyjs::hide("rem.pos")
+    }
+
     # Disable certain inputs if only one dataset provided.
     if (length(gene.data) == 1) {
       shinyjs::disable("gene.sel2")
@@ -732,13 +739,15 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
     # Load the gene summaries for easy plotting.
     set1.genes <- reactive({
       df <- gene.data[[input$gene.sel1]]
-      .gene_ingress(df, sig.thresh = input$gene.fdr.th, lfc.thresh = input$gene.lfc.th, essential.genes = essential.genes, depmap.genes = depmap.gene)
+      .gene_ingress(df, sig.thresh = input$gene.fdr.th, lfc.thresh = input$gene.lfc.th,
+                    positive.ctrl.genes = positive.ctrl.genes, essential.genes = essential.genes, depmap.genes = depmap.gene)
     })
 
     if (length(gene.data) > 1) {
       set2.genes <- reactive({
         df <- gene.data[[input$gene.sel2]]
-        .gene_ingress(df, sig.thresh = input$gene.fdr.th, lfc.thresh = input$gene.lfc.th, essential.genes = essential.genes, depmap.genes = depmap.gene)
+        .gene_ingress(df, sig.thresh = input$gene.fdr.th, lfc.thresh = input$gene.lfc.th,
+                      positive.ctrl.genes = positive.ctrl.genes, essential.genes = essential.genes, depmap.genes = depmap.gene)
       })
     }
 
@@ -890,31 +899,36 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       req(set1.genes)
       input$vol.update
 
-      res <- set1.genes()
+      df <- set1.genes()
 
       hov.info <- c("hit_type", "num", "goodsgrna")
 
       # Remove common essential genes if needed.
-      if (isolate(input$rem.ess) & !is.null(res$essential)) {
-        res <- res[!res$essential,]
+      if (isolate(input$rem.ess) & !is.null(df$essential)) {
+        df <- df[!df$essential,]
+      }
+
+      # Remove positive control genes if needed.
+      if (isolate(input$rem.pos) & !is.null(df$Positive_Control)) {
+        df <- df[!df$Positive_Control,]
       }
 
       # Remove DepMap stuff if requested.
       if (!is.null(depmap.gene)) {
-        if (input$dep.crispr.ess) {
-          res <- res[!res$DepMap_CRISPR_Essential,]
+        if (isolate(input$dep.crispr.ess)) {
+          df <- df[!df$DepMap_CRISPR_Essential,]
         }
 
-        if (input$dep.crispr.sel) {
-          res <- res[!res$DepMap_CRISPR_Selective,]
+        if (isolate(input$dep.crispr.sel)) {
+          df <- df[!df$DepMap_CRISPR_Selective,]
         }
 
-        if (input$dep.rnai.ess) {
-          res <- res[!res$DepMap_RNAi_Essential,]
+        if (isolate(input$dep.rnai.ess)) {
+          df <- df[!df$DepMap_RNAi_Essential,]
         }
 
-        if (input$dep.rnai.sel) {
-          res <- res[!res$DepMap_RNAi_Selective,]
+        if (isolate(input$dep.rnai.sel)) {
+          df <- df[!df$DepMap_RNAi_Selective,]
         }
       }
 
@@ -930,7 +944,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       }
 
 
-      .make_volcano(res = res,
+      .make_volcano(res = df,
                     xlim = isolate(input$vol.x),
                     ylim = isolate(input$vol.y),
                     fc.thresh = isolate(input$gene.lfc.th),
@@ -981,25 +995,30 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       hov.info <- c("hit_type", "num", "goodsgrna")
 
       # Remove common essential genes if needed.
-      if (input$rem.ess & !is.null(df$essential)) {
+      if (isolate(input$rem.ess) & !is.null(df$essential)) {
         df <- df[!df$essential,]
+      }
+
+      # Remove positive control genes if needed.
+      if (isolate(input$rem.pos) & !is.null(df$Positive_Control)) {
+        df <- df[!df$Positive_Control,]
       }
 
       # Remove DepMap stuff if requested.
       if (!is.null(depmap.gene)) {
-        if (input$dep.crispr.ess) {
+        if (isolate(input$dep.crispr.ess)) {
           df <- df[!df$DepMap_CRISPR_Essential,]
         }
 
-        if (input$dep.crispr.sel) {
+        if (isolate(input$dep.crispr.sel)) {
           df <- df[!df$DepMap_CRISPR_Selective,]
         }
 
-        if (input$dep.rnai.ess) {
+        if (isolate(input$dep.rnai.ess)) {
           df <- df[!df$DepMap_RNAi_Essential,]
         }
 
-        if (input$dep.rnai.sel) {
+        if (isolate(input$dep.rnai.sel)) {
           df <- df[!df$DepMap_RNAi_Selective,]
         }
       }
@@ -1064,25 +1083,30 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       hov.info <- c("hit_type", "num", "goodsgrna")
 
       # Remove common essential genes if needed.
-      if (input$rem.ess & !is.null(df$essential)) {
+      if (isolate(input$rem.ess) & !is.null(df$essential)) {
         df <- df[!df$essential,]
+      }
+
+      # Remove positive control genes if needed.
+      if (isolate(input$rem.pos) & !is.null(df$Positive_Control)) {
+        df <- df[!df$Positive_Control,]
       }
 
       # Remove DepMap stuff if requested.
       if (!is.null(depmap.gene)) {
-        if (input$dep.crispr.ess) {
+        if (isolate(input$dep.crispr.ess)) {
           df <- df[!df$DepMap_CRISPR_Essential,]
         }
 
-        if (input$dep.crispr.sel) {
+        if (isolate(input$dep.crispr.sel)) {
           df <- df[!df$DepMap_CRISPR_Selective,]
         }
 
-        if (input$dep.rnai.ess) {
+        if (isolate(input$dep.rnai.ess)) {
           df <- df[!df$DepMap_RNAi_Essential,]
         }
 
-        if (input$dep.rnai.sel) {
+        if (isolate(input$dep.rnai.sel)) {
           df <- df[!df$DepMap_RNAi_Selective,]
         }
       }
@@ -1174,31 +1198,36 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
         req(set2.genes)
         input$vol.update
 
-        res <- set2.genes()
+        df <- set2.genes()
 
         hov.info <- c("hit_type", "num", "goodsgrna")
 
         # Remove common essential genes if needed.
-        if (input$rem.ess & !is.null(res$essential)) {
-          res <- res[!res$essential,]
+        if (isolate(input$rem.ess) & !is.null(df$essential)) {
+          df <- df[!df$essential,]
+        }
+
+        # Remove positive control genes if needed.
+        if (isolate(input$rem.pos) & !is.null(df$Positive_Control)) {
+          df <- df[!df$Positive_Control,]
         }
 
         # Remove DepMap stuff if requested.
         if (!is.null(depmap.gene)) {
-          if (input$dep.crispr.ess) {
-            res <- res[!res$DepMap_CRISPR_Essential,]
+          if (isolate(input$dep.crispr.ess)) {
+            df <- df[!df$DepMap_CRISPR_Essential,]
           }
 
-          if (input$dep.crispr.sel) {
-            res <- res[!res$DepMap_CRISPR_Selective,]
+          if (isolate(input$dep.crispr.sel)) {
+            df <- df[!df$DepMap_CRISPR_Selective,]
           }
 
-          if (input$dep.rnai.ess) {
-            res <- res[!res$DepMap_RNAi_Essential,]
+          if (isolate(input$dep.rnai.ess)) {
+            df <- df[!df$DepMap_RNAi_Essential,]
           }
 
-          if (input$dep.rnai.sel) {
-            res <- res[!res$DepMap_RNAi_Selective,]
+          if (isolate(input$dep.rnai.sel)) {
+            df <- df[!df$DepMap_RNAi_Selective,]
           }
         }
 
@@ -1214,7 +1243,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
         }
 
 
-        .make_volcano(res = res,
+        .make_volcano(res = df,
                       xlim = isolate(input$vol.x),
                       ylim = isolate(input$vol.y),
                       fc.thresh = isolate(input$gene.lfc.th),
@@ -1265,25 +1294,30 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
         df <- set2.genes()
 
         # Remove common essential genes if needed.
-        if (input$rem.ess & !is.null(df$essential)) {
+        if (isolate(input$rem.ess) & !is.null(df$essential)) {
           df <- df[!df$essential,]
+        }
+
+        # Remove positive control genes if needed.
+        if (isolate(input$rem.pos) & !is.null(df$Positive_Control)) {
+          df <- df[!df$Positive_Control,]
         }
 
         # Remove DepMap stuff if requested.
         if (!is.null(depmap.gene)) {
-          if (input$dep.crispr.ess) {
+          if (isolate(input$dep.crispr.ess)) {
             df <- df[!df$DepMap_CRISPR_Essential,]
           }
 
-          if (input$dep.crispr.sel) {
+          if (isolate(input$dep.crispr.sel)) {
             df <- df[!df$DepMap_CRISPR_Selective,]
           }
 
-          if (input$dep.rnai.ess) {
+          if (isolate(input$dep.rnai.ess)) {
             df <- df[!df$DepMap_RNAi_Essential,]
           }
 
-          if (input$dep.rnai.sel) {
+          if (isolate(input$dep.rnai.sel)) {
             df <- df[!df$DepMap_RNAi_Selective,]
           }
         }
@@ -1349,25 +1383,30 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
         df <- set2.genes()
 
         # Remove common essential genes if needed.
-        if (input$rem.ess & !is.null(df$essential)) {
+        if (isolate(input$rem.ess) & !is.null(df$essential)) {
           df <- df[!df$essential,]
+        }
+
+        # Remove positive control genes if needed.
+        if (isolate(input$rem.pos) & !is.null(df$Positive_Control)) {
+          df <- df[!df$Positive_Control,]
         }
 
         # Remove DepMap stuff if requested.
         if (!is.null(depmap.gene)) {
-          if (input$dep.crispr.ess) {
+          if (isolate(input$dep.crispr.ess)) {
             df <- df[!df$DepMap_CRISPR_Essential,]
           }
 
-          if (input$dep.crispr.sel) {
+          if (isolate(input$dep.crispr.sel)) {
             df <- df[!df$DepMap_CRISPR_Selective,]
           }
 
-          if (input$dep.rnai.ess) {
+          if (isolate(input$dep.rnai.ess)) {
             df <- df[!df$DepMap_RNAi_Essential,]
           }
 
-          if (input$dep.rnai.sel) {
+          if (isolate(input$dep.rnai.sel)) {
             df <- df[!df$DepMap_RNAi_Selective,]
           }
         }
