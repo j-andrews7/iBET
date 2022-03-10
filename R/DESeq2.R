@@ -558,7 +558,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                     highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
     })
 
-    output[["res_table_full"]] <- DT::renderDataTable({
+    output[["res_table_full"]] <- DT::renderDT(server = FALSE, {
       req(ress)
       df <- as.data.frame(ress())
 
@@ -586,7 +586,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     })
 
     # Metadata table.
-    output$metadata <- renderDT({
+    output$metadata <- DT::renderDT(server = FALSE, {
       df <- as.data.frame(SummarizedExperiment::colData(dds))
       DT::datatable(df,
                     filter = "top",

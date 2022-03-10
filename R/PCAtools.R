@@ -363,7 +363,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       })
     })
 
-    output$metadata <- renderDT({
+    output$metadata <- renderDT(sever = FALSE, {
       DT::datatable(as.data.frame(metadata),
                     rownames = FALSE,
                     filter = "top",

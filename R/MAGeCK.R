@@ -688,7 +688,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       fig
     })
 
-    output$count.summary <- renderDT({
+    output$count.summary <- renderDT(server = FALSE, {
       DT::datatable(count.summary,
                     rownames = FALSE,
                     filter = "top",
@@ -1489,7 +1489,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
     }
 
     # Summary tables and plots.
-    output$sgrna1.summary <- renderDT({
+    output$sgrna1.summary <- renderDT(server = FALSE, {
       req(set1.sgrnas)
 
       df <- set1.sgrnas()
@@ -1590,7 +1590,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
     })
 
     if (length(sgrna.data) > 1) {
-      output$sgrna2.summary <- renderDT({
+      output$sgrna2.summary <- renderDT(server = FALSE, {
         req(set2.sgrnas)
 
         df <- set2.sgrnas()
