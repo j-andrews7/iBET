@@ -1,15 +1,10 @@
 # Make the heatmap for differentially expressed genes under certain cutoffs.
-.make_heatmap <- function(mat, res, anno, bm.col.func, lfc.col.func,
-                          fdr = 0.05, base_mean = 0, log2fc = 0, row.km = 0, col.km = 0) {
+.make_heatmap <- function(mat, res, anno, bm.col.func, lfc.col.func, sig.term,
+                          sig.thresh = 0.05, base_mean = 0, log2fc = 0, row.km = 0, col.km = 0) {
 
   # Adjust for potential differences in the results table.
-  sig.term <- "padj"
-  if("svalue" %in% colnames(res)) {
-    l <- res$svalue <= fdr & res$baseMean >= base_mean & abs(res$log2FoldChange) >= log2fc; l[is.na(l)] = FALSE
-    sig.term <- "svalue"
-  } else {
-    l <- res$padj <= fdr & res$baseMean >= base_mean & abs(res$log2FoldChange) >= log2fc; l[is.na(l)] = FALSE
-  }
+  l <- res[[sig.term]] <= sig.thresh & res$baseMean >= base_mean & abs(res$log2FoldChange) >= log2fc; l[is.na(l)] = FALSE
+
 
   # If no genes meet the cutoffs, don't make heatmap.
   if(sum(l) == 0) {
@@ -52,7 +47,7 @@
                 show_row_names = FALSE, show_column_names = FALSE,
                 row_km = row.km, column_km = col.km,
                 column_title_gp = gpar(fontsize = 10),
-                column_title = paste0(sum(l), " significant genes \nwith ", sig.term," < ", fdr),
+                column_title = paste0(sum(l), " significant genes \nwith ", sig.term," < ", sig.thresh),
                 show_row_dend = FALSE) +
     Heatmap(basem_df, show_row_names = FALSE, width = unit(5, "mm"),
             name = "log10(baseMean+1)", col = bm.col.func, show_column_names = FALSE) +

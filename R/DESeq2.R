@@ -302,7 +302,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
           hr(style="margin:2px; background-color: #737373;"),
           bsCollapse(open = "settings",
             bsCollapsePanel(title = span(icon("plus"), "Plot Settings"), value = "settings", style = "info",
-              numericInput("fdr", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
+              numericInput("sig.thresh", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
+              selectInput("sig.term", label = "Significance term:", choices = colnames(res), selected = ifelse("padj" %in% colnames(res), "padj", "svalue")),
               numericInput("base_mean", label = "Minimal baseMean:", value = 0, step = 1),
               numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
               numericInput("row.km", label = "Row k-means groups:", value = 2, step = 1),
@@ -392,8 +393,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       }
 
       pdf(NULL)
-      ht <- .make_heatmap(mat, ress(), anno(), baseMean_col_fun, log2fc_col_fun,
-                          fdr = as.numeric(input$fdr), base_mean = input$base_mean, log2fc = input$log2fc,
+      ht <- .make_heatmap(mat, ress(), anno(), baseMean_col_fun, log2fc_col_fun, sig.term = input$sig.term,
+                          sig.thresh = as.numeric(input$sig.thresh), base_mean = input$base_mean, log2fc = input$log2fc,
                           row.km = input$row.km, col.km = input$col.km)
       dev.off()
 
@@ -482,9 +483,9 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                    ylim = isolate(input$ma.y),
                    fc.thresh = isolate(input$log2fc),
                    fc.lines = isolate(input$ma.fcline),
-                   sig.thresh = isolate(input$fdr),
+                   sig.thresh = isolate(input$sig.thresh),
                    h.id = h.id,
-                   sig.term = sig.term,
+                   sig.term = isolate(input$sig.term),
                    gs = genes$ma,
                    up.color = isolate(input$ma.up.color),
                    down.color = isolate(input$ma.down.color),
@@ -523,10 +524,10 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                     ylim = isolate(input$vol.y),
                     fc.thresh = isolate(input$log2fc),
                     fc.lines = isolate(input$vol.fcline),
-                    sig.thresh = isolate(input$fdr),
+                    sig.thresh = isolate(input$sig.thresh),
                     sig.line = isolate(input$vol.sigline),
                     h.id = h.id,
-                    sig.term = sig.term,
+                    sig.term = isolate(input$sig.term),
                     lfc.term = "log2FoldChange",
                     feat.term = "rows",
                     fs = genes$volc,
@@ -558,7 +559,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                     highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
     })
 
-    output[["res_table_full"]] <- DT::renderDataTable({
+    output[["res_table_full"]] <- DT::renderDT(server = FALSE, {
       req(ress)
       df <- as.data.frame(ress())
 
@@ -586,7 +587,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
     })
 
     # Metadata table.
-    output$metadata <- renderDT({
+    output$metadata <- DT::renderDT(server = FALSE, {
       df <- as.data.frame(SummarizedExperiment::colData(dds))
       DT::datatable(df,
                     filter = "top",
@@ -616,8 +617,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       }
 
       pdf(NULL)
-      ht <- .make_heatmap(mat, ress(), anno(), baseMean_col_fun, log2fc_col_fun,
-                          fdr = as.numeric(input$fdr), base_mean = input$base_mean, log2fc = input$log2fc,
+      ht <- .make_heatmap(mat, ress(), anno(), baseMean_col_fun, log2fc_col_fun, sig.term = input$sig.term,
+                          sig.thresh = as.numeric(input$sig.thresh), base_mean = input$base_mean, log2fc = input$log2fc,
                         row.km = input$row.km, col.km = input$col.km)
       dev.off()
 
