@@ -22,7 +22,7 @@
 #' @importFrom colourpicker colourInput
 #' @importFrom utils combn
 #' @importFrom stats lm fitted.values
-#' @importFrom shinyBS bsCollapse bsCollapsePanel
+#' @importFrom shinyBS bsCollapse bsCollapsePanel tipify popify
 #'
 #' @param res Either a named list of data.frames containing differential expression analysis results or a
 #'   named list of such lists. The list of lists approach allows the user to choose between different comparison

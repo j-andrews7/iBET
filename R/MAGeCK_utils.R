@@ -87,5 +87,8 @@
                         showline = TRUE,
                         mirror = TRUE,
                         title = "",
-                        showgrid = FALSE))
+                        showgrid = FALSE)) %>%
+    config(toImageButtonOptions = list(format = "svg"),
+           displaylogo = FALSE,
+           plotGlPixelRatio = 7)
 }

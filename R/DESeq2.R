@@ -27,6 +27,7 @@
 #' @importFrom shinycssloaders withSpinner
 #' @importFrom shinyjqui jqui_resizable
 #' @importFrom shinyjs show useShinyjs hidden
+#' @importFrom shinyBS tipify popify
 #' @importFrom colourpicker colourInput
 #' @importFrom methods is
 #' @importFrom DESeq2 DESeq results lfcShrink resultsNames counts

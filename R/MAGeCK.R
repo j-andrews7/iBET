@@ -18,8 +18,9 @@
 #' @importFrom shinycssloaders withSpinner
 #' @importFrom shinyjqui jqui_resizable
 #' @importFrom shinyjs show useShinyjs hidden disable click
+#' @importFrom shinyBS tipify popify
 #' @importFrom colourpicker colourInput
-#' @importFrom MAGeCKFlute BarView MapRatesView VolcanoView ScatterView
+#' @importFrom MAGeCKFlute BarView MapRatesView
 #' @importFrom PCAtools pca
 #' @importFrom dittoSeq dittoColors
 #' @importFrom grid grid.newpage grid.text
@@ -132,7 +133,7 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                  width = 2,
                  h4("Plot Controls"),
                  hr(),
-                 bsCollapse(open = "pca.settings",
+                 bsCollapse(open = "pca.settings", id = "testing",
                             bsCollapsePanel(
                               title = span(icon("plus"), "PCA Settings"), value = "pca.settings", style = "info",
                               uiOutput("pca.comps"),
@@ -148,42 +149,51 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                               ),
                               fluidRow(
                                 column(6,
-                                       prettyCheckbox("center", strong("Center data"), TRUE, bigger = FALSE,
+                                       tipify(prettyCheckbox("center", strong("Center data"), TRUE, bigger = FALSE,
+                                                                animation = "smooth", status = "success",
+                                                                icon = icon("check"), width = "100%"),
+                                              "Zero center the data before performing PCA.", "right", options = list(container = "body")),
+                                       tipify(prettyCheckbox("keep.top.n", strong("Limit by top N features"), FALSE, bigger = FALSE,
+                                                             animation = "smooth", status = "success",
+                                                             icon = icon("check"), width = "100%"),
+                                              "Limit PCA to top N features ranked by variance.", "right", options = list(container = "body"))
+                                ),
+                                column(6,
+                                       tipify(prettyCheckbox("scale", strong("Scale data"), TRUE, bigger = FALSE,
                                                       animation = "smooth", status = "success",
                                                       icon = icon("check"), width = "100%"),
-                                       prettyCheckbox("keep.top.n", strong("Limit by top N features"), FALSE, bigger = FALSE,
-                                                      animation = "smooth", status = "success",
-                                                      icon = icon("check"), width = "100%")
-                                ),
-                                column(6,
-                                       prettyCheckbox("scale", strong("Scale data"), TRUE, bigger = FALSE,
-                                                      animation = "smooth", status = "success",
-                                                      icon = icon("check"), width = "100%")
+                                       "Scale the data to have unit variance before performing PCA.", "right", options = list(container = "body"))
                                 )
                               ),
-                              prettyCheckbox("meta.filt", strong("Filter via metadata table"), TRUE, bigger = FALSE,
+                              tipify(prettyCheckbox("meta.filt", strong("Filter via metadata table"), TRUE, bigger = FALSE,
                                              animation = "smooth", status = "success",
                                              icon = icon("check"), width = "100%"),
+                              "Filter PCA samples to those in metadata table.", "right", options = list(container = "body")),
                               fluidRow(
-                                column(6, selectInput("bip.color", "Color by:",
-                                                      choices = c("", colnames(count.summary)), selected = "Label")),
-                                column(6, selectInput("bip.shape", "Shape by:",
-                                                      choices = c("", colnames(count.summary))))
+                                column(6, tipify(selectInput("bip.color", "Color by:",
+                                                      choices = c("", colnames(count.summary)), selected = "Label"),
+                                          "Metadata variable by which samples are colored.", "right", options = list(container = "body"))),
+                                column(6, tipify(selectInput("bip.shape", "Shape by:",
+                                                      choices = c("", colnames(count.summary))),
+                                          "Metadata variable by which samples are shaped.", "right", options = list(container = "body")))
                               ),
                               fluidRow(
                                 column(6,
-                                       prettyCheckbox("bip.twod", strong("Limit to 2D"), TRUE, bigger = FALSE,
+                                       tipify(prettyCheckbox("bip.twod", strong("Limit to 2D"), TRUE, bigger = FALSE,
                                                       animation = "smooth", status = "success",
-                                                      icon = icon("check"), width = "100%")
+                                                      icon = icon("check"), width = "100%"),
+                                       "Limit PCA biplot to 2D.", "right", options = list(container = "body"))
                                 ),
                                 column(6,
-                                       prettyCheckbox("bip.loadings", strong("Plot Loadings"), FALSE, bigger = FALSE,
+                                       tipify(prettyCheckbox("bip.loadings", strong("Plot Loadings"), FALSE, bigger = FALSE,
                                                       animation = "smooth", status = "success",
-                                                      icon = icon("check"), width = "100%")
+                                                      icon = icon("check"), width = "100%"),
+                                       "Plot top PCA loadings for each PC.", "right", options = list(container = "body"))
                                 )
                               ),
-                              numericInput("bip.n.loadings", "Loadings:",
+                              tipify(numericInput("bip.n.loadings", "Loadings:",
                                            min = 0, max = 100, step = 1, value = 5),
+                              "Number of PCA loadings to plot (if checked).", "right", options = list(container = "body")),
                               div(actionButton("pca.update", "Update PCA"), align = "center")
                             )
                  )
@@ -192,16 +202,46 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                  width = 10,
                  fluidRow(
                    column(width = 4,
-                          jqui_resizable(plotlyOutput("qc.gini")),
-                          jqui_resizable(plotOutput("qc.histplot"))
+                          span(popify(icon("info-circle", style="font-size: 20px"), "Gini Index",
+                                                     c("This plot shows the gini index for each sample, ",
+                                                       "which is a measure of read count inequality between guides. ",
+                                                       "For initial timepoints and early passages, this should usually be <0.1, ",
+                                                       "but should increase as selection occurs."),
+                                                     placement = "bottom", trigger = "hover", options = list(container = "body")),
+                               jqui_resizable(plotlyOutput("qc.gini"))),
+                          span(popify(icon("info-circle", style="font-size: 20px"), "Read Distributions",
+                                      c("This plot shows the read distribution across guides for each sample. ",
+                                        "The distribution should be normal and relatively tight for initial ",
+                                        "timepoints and early passages. As selection occurs, the ",
+                                        "distribution will begin to spread, and there may be buildup at the extremes."),
+                                      placement = "top", trigger = "hover", options = list(container = "body")),
+                               jqui_resizable(plotOutput("qc.histplot")))
                    ),
                    column(width = 4,
-                          jqui_resizable(plotlyOutput("qc.missed")),
-                          jqui_resizable(plotOutput("qc.corr"))
+                          span(popify(icon("info-circle", style="font-size: 20px"), "Zero Count gRNAs",
+                                      c("This plot shows the number of guides with zero reads for each sample. ",
+                                        "For early passages and initial timepoints, this count should ideally be zero ",
+                                        "but should increase as selection occurs. Useful for assessing library quality."),
+                                      placement = "bottom", trigger = "hover", options = list(container = "body")),
+                               jqui_resizable(plotlyOutput("qc.missed"))),
+                          span(popify(icon("info-circle", style="font-size: 20px"), "Sample Correlations",
+                                      c("This plot shows correlation between samples. Typically, initial timepoints ",
+                                        "and early passages, even from different tissues or conditions, correlate well, ",
+                                        "but diverge more and more as selection occurs."),
+                                      placement = "top", trigger = "hover", options = list(container = "body")),
+                               jqui_resizable(plotOutput("qc.corr")))
                    ),
                    column(width = 4,
-                          jqui_resizable(plotOutput("qc.map")),
-                          withSpinner(jqui_resizable(plotlyOutput("qc.pca")))
+                          span(popify(icon("info-circle", style="font-size: 20px"), "Mapping Rates",
+                                      c("This plot shows read mapping rates for each sample. 50-75% mapped is typical."),
+                                      placement = "bottom", trigger = "hover", options = list(container = "body")),
+                               jqui_resizable(plotOutput("qc.map"))),
+                          span(popify(icon("info-circle", style="font-size: 20px"), "Principal Componenet Analysis",
+                                      c("This biplot shows two (or three) PCs from a principal component analysis. ",
+                                        "For early passages and initial timepoints, this count should ideally be zero ",
+                                        "but should increase as selection occurs. Useful for assessing library quality."),
+                                      placement = "top", trigger = "hover", options = list(container = "body")),
+                               withSpinner(jqui_resizable(plotlyOutput("qc.pca")))),
                    )
                  )
                )
@@ -220,33 +260,43 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                  div(
                    fluidRow(
                      column(6,
-                        selectInput("gene.sel1", "Dataset 1:", choices = names(gene.data)),
+                        tipify(selectInput("gene.sel1", "Dataset 1:", choices = names(gene.data)),
+                               "Dataset shown in top row.", "right", options = list(container = "body")),
                         numericInput("gene.fdr.th", "FDR threshold:",
                                      min = 0, max = 1, step = 0.01, value = 0.05)
                      ),
                      column(6,
-                        selectInput("gene.sel2", "Dataset 2:", choices = names(gene.data),
-                                    selected = ifelse(length(names(gene.data) > 1), names(gene.data)[2], names(gene.data)[1])),
+                        tipify(selectInput("gene.sel2", "Dataset 2:", choices = names(gene.data),
+                                    selected = ifelse(length(names(gene.data) > 1), names(gene.data)[2],
+                                                      names(gene.data)[1])),
+                               "Dataset shown in bottom row.", "right", options = list(container = "body")),
                         numericInput("gene.lfc.th", "log2FC threshold:",
                                      min = 0, max = Inf, step = 0.05, value = 0.5)
                      )
                    ),
                    fluidRow(
                      column(12,
-                       prettyCheckbox("rem.ess", label = "Remove essential genes", value = FALSE,
+                       tipify(prettyCheckbox("rem.ess", label = "Remove essential genes", value = FALSE,
                          animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-                       prettyCheckbox("dep.crispr.ess", label = "Remove DepMap CRISPR essential genes", value = FALSE,
+                         "Remove essential genes if any provided to function.", "right", options = list(container = "body")),
+                       tipify(prettyCheckbox("dep.crispr.ess", label = "Remove DepMap CRISPR essential genes", value = FALSE,
                                       animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-                       prettyCheckbox("dep.rnai.ess", label = "Remove DepMap RNAi essential genes", value = FALSE,
+                              "Remove CRISPR common essential genes from latest depmap release.", "right", options = list(container = "body")),
+                       tipify(prettyCheckbox("dep.rnai.ess", label = "Remove DepMap RNAi essential genes", value = FALSE,
                                       animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-                       prettyCheckbox("dep.crispr.sel", label = "Remove DepMap CRISPR selective genes", value = FALSE,
+                              "Remove RNAi common essential genes from latest depmap release.", "right", options = list(container = "body")),
+                       tipify(prettyCheckbox("dep.crispr.sel", label = "Remove DepMap CRISPR selective genes", value = FALSE,
                                       animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-                       prettyCheckbox("dep.rnai.sel", label = "Remove DepMap RNAi selective genes", value = FALSE,
+                              "Remove CRISPR selective essential genes from latest depmap release.", "right", options = list(container = "body")),
+                       tipify(prettyCheckbox("dep.rnai.sel", label = "Remove DepMap RNAi selective genes", value = FALSE,
                                       animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-                       prettyCheckbox("rem.pos", label = "Remove positive control genes", value = FALSE,
+                              "Remove RNAi selective essential genes from latest depmap release.", "right", options = list(container = "body")),
+                       tipify(prettyCheckbox("rem.pos", label = "Remove positive control genes", value = FALSE,
                                       animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-                       prettyCheckbox("highlight.common", label = "Highlight common hits", value = FALSE,
-                                      animation = "smooth", status = "success", bigger = TRUE, icon = icon("check"))
+                              "Remove positive control genes if provided to function.", "right", options = list(container = "body")),
+                       tipify(prettyCheckbox("highlight.common", label = "Highlight common hits", value = FALSE,
+                                      animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
+                              "Highlight common hits between datasets.", "right", options = list(container = "body"))
                      )
                    ),
                  style = "background-color: #FFFFFF; padding: 3px; margin-bottom: 3px; border: 1px solid #bce8f1; "),
@@ -255,34 +305,47 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                       title = span(icon("plus"), "Common Plot Settings"), value = "com.settings", style = "info",
                       fluidRow(
                         column(width = 6,
-                               colourInput("down.color", "Down colour", value = "#0026ff"),
-                               colourInput("up.color", "Up colour", value = "red"),
-                               colourInput("insig.color", "Insig colour", value = "#A6A6A6"),
-                               numericInput("sig.opa", label = "Sig opacity:", value = 1, step = 0.05, min = 0)
+                               tipify(colourInput("down.color", "Down colour", value = "#0026ff"),
+                                      "Color of negatively selected genes.", "right", options = list(container = "body")),
+                               tipify(colourInput("up.color", "Up colour", value = "red"),
+                                      "Color of positively selected genes.", "right", options = list(container = "body")),
+                               tipify(colourInput("insig.color", "Insig colour", value = "#A6A6A6"),
+                                      "Color of insignificant genes.", "right", options = list(container = "body")),
+                               tipify(numericInput("sig.opa", label = "Sig opacity:", value = 1, step = 0.05, min = 0),
+                                      "Opacity of significantly selected genes.", "right", options = list(container = "body"))
                         ),
                         column(width = 6,
-                               numericInput("sig.size", label = "Sig pt size:", value = 6, step = 0.1, min = 0),
-                               numericInput("lab.size", label = "Label size:", value = 10, step = 0.5, min = 1),
-                               numericInput("insig.opa", label = "Insig opacity:", value = 0.5, step = 0.05, min = 0),
-                               numericInput("insig.size", label = "Insig pt size:", value = 5, step = 0.1, min = 0)
+                               tipify(numericInput("sig.size", label = "Sig pt size:", value = 6, step = 0.1, min = 0),
+                                      "Point size of significantly selected genes.", "right", options = list(container = "body")),
+                               tipify(numericInput("lab.size", label = "Label size:", value = 10, step = 0.5, min = 1),
+                                      "Label size of significantly selected genes.", "right", options = list(container = "body")),
+                               tipify(numericInput("insig.opa", label = "Insig opacity:", value = 0.5, step = 0.05, min = 0),
+                                      "Opacity of insignificant genes.", "right", options = list(container = "body")),
+                               tipify(numericInput("insig.size", label = "Insig pt size:", value = 5, step = 0.1, min = 0),
+                                      "Point size of insignificant genes.", "right", options = list(container = "body"))
                         )
                       ),
                       splitLayout(
-                        prettyCheckbox("counts", label = "Show counts", TRUE, bigger = TRUE,
+                        tipify(prettyCheckbox("counts", label = "Show counts", TRUE, bigger = TRUE,
                                        animation = "smooth", status = "success",
                                        icon = icon("check"), width = "100%"),
-                        prettyCheckbox("webgl", label = "Use webGL", FALSE, bigger = TRUE,
+                               "Show hit counts on plot.", "right", options = list(container = "body")),
+                        tipify(prettyCheckbox("webgl", label = "Use webGL", FALSE, bigger = TRUE,
                                        animation = "smooth", status = "success",
-                                       icon = icon("check"), width = "100%")
+                                       icon = icon("check"), width = "100%"),
+                               "Use webGL for plot generation (faster to update, sometimes has visual artifacts).", "right", options = list(container = "body"))
                       ),
                       splitLayout(
-                        prettyCheckbox("hl.counts", label = "Show highlight counts", FALSE, bigger = TRUE,
+                        tipify(prettyCheckbox("hl.counts", label = "Show highlight counts", FALSE, bigger = TRUE,
                                        animation = "smooth", status = "success",
-                                       icon = icon("check"), width = "100%")
+                                       icon = icon("check"), width = "100%"),
+                               "Show highlighted gene counts on plot.", "right", options = list(container = "body"))
                       ),
                       splitLayout(
-                        numericInput("counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
-                        numericInput("webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1)
+                        tipify(numericInput("counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
+                               "Size of counts text.", "right", options = list(container = "body")),
+                        tipify(numericInput("webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1),
+                               "webGL rasterization ratio. Recommend leaving this alone for high-res rasterization.", "right", options = list(container = "body"))
                       )
                     ),
                     bsCollapsePanel(
@@ -326,25 +389,37 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                       ),
                       div(actionButton("lawn.update", "Update Lawn Plots"), align = "center")
                     ),
-                    bsCollapsePanel(title = span(icon("plus"), "Highlight Gene(sets)"), style = "info",
-                      textAreaInput("hl.genes", "Highlight Genes:", value = "", rows = 4,
+                    bsCollapsePanel(title = span(icon("plus"), "Highlight Gene(sets)"), value = "highlight.settings", style = "info",
+                      tipify(textAreaInput("hl.genes", "Highlight Genes:", value = "", rows = 4,
                                     placeholder = "Enter space, comma, or newline delimited genes"),
-                      pickerInput("hl.genesets", "Highlight Genesets:", choices = c("", names(genesets)),
-                                  multiple = TRUE, options = list(`live-search` = TRUE,
-                                                                  `actions-box` = TRUE)),
+                      "Genes to highlight on plots.", "right", options = list(container = "body")),
+                      tipify(pickerInput("hl.genesets", "Highlight Genesets:", choices = c("", names(genesets)),
+                                  multiple = TRUE, options = list(`live-search` = TRUE, `actions-box` = TRUE)),
+                      "If provided, genesets available to highlight on plots.", "right", options = list(container = "body")),
                       fluidRow(
                         column(6,
-                               numericInput("hl.genes.opa", label = "Genes opacity:", value = 1, step = 0.05, min = 0),
-                               numericInput("hl.genes.size", label = "Genes pt size:", value = 7, step = 0.1, min = 0),
-                               numericInput("hl.genes.lw", label = "Genes border width:", value = 1, step = 0.05, min = 0),
-                               colourInput("hl.genes.col", "Genes color:", value = "#E69F00"),
-                               colourInput("hl.genes.lcol", "Genes border:", value = "#000000")),
+                               tipify(numericInput("hl.genes.opa", label = "Genes opacity:", value = 1, step = 0.05, min = 0),
+                                      "Opacity of highlighted genes.", "right", options = list(container = "body")),
+                               tipify(numericInput("hl.genes.size", label = "Genes pt size:", value = 7, step = 0.1, min = 0),
+                                      "Point size of highlighted genes.", "right", options = list(container = "body")),
+                               tipify(numericInput("hl.genes.lw", label = "Genes border width:", value = 1, step = 0.05, min = 0),
+                                      "Border width of highlighted genes.", "right", options = list(container = "body")),
+                               tipify(colourInput("hl.genes.col", "Genes color:", value = "#E69F00"),
+                                      "Fill color of highlighted genes.", "right", options = list(container = "body")),
+                               tipify(colourInput("hl.genes.lcol", "Genes border:", value = "#000000"),
+                                      "Border color of highlighted genes.", "right", options = list(container = "body")))
+                        ,
                         column(6,
-                               numericInput("hl.genesets.opa", label = "Sets opacity:", value = 1, step = 0.05, min = 0),
-                               numericInput("hl.genesets.size", label = "Sets pt size:", value = 7, step = 0.1, min = 0),
-                               numericInput("hl.genesets.lw", label = "Sets border width:", value = 1, step = 0.05, min = 0),
-                               colourInput("hl.genesets.col", "Sets color:", value = "#009E73"),
-                               colourInput("hl.genesets.lcol", "Sets border:", value = "#000000"))
+                               tipify(numericInput("hl.genesets.opa", label = "Sets opacity:", value = 1, step = 0.05, min = 0),
+                                      "Opacity of genes in highlighted geneset(s).", "right", options = list(container = "body")),
+                               tipify(numericInput("hl.genesets.size", label = "Sets pt size:", value = 7, step = 0.1, min = 0),
+                                      "Point size of genes in highlighted geneset(s).", "right", options = list(container = "body")),
+                               tipify(numericInput("hl.genesets.lw", label = "Sets border width:", value = 1, step = 0.05, min = 0),
+                                      "Border width genes in of highlighted geneset(s).", "right", options = list(container = "body")),
+                               tipify(colourInput("hl.genesets.col", "Sets color:", value = "#009E73"),
+                                      "Fill color of genes in highlighted geneset(s).", "right", options = list(container = "body")),
+                               tipify(colourInput("hl.genesets.lcol", "Sets border:", value = "#000000"),
+                                      "Border color of genes in highlighted geneset(s).", "right", options = list(container = "body")))
                       )
                     )
                  ),
@@ -354,13 +429,32 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                  width = 10,
                  fluidRow(
                    column(width = 4,
-                          withSpinner(jqui_resizable(plotlyOutput("gene1.vol")))
+                          span(popify(icon("info-circle", style="font-size: 20px"), title = "Volcano Plot",
+                                      c("This volcano plot shows the log2 fold change on the x-axis and the -log10(FDR) value on the y-axis. ",
+                                        "Thresholds are adjustable. Gene labels can be added (or removed) by clicking on a point ",
+                                        "and can be moved by clicking and dragging the label. The plot is fully customizable with the settings on the left. ",
+                                        "Click and drag to zoom in. Hover over a point for additional info.",
+                                        "Genes with full sgRNA depletion tend to all have the same significance value, forming a shelf-like max y-axis value."),
+                                      placement = "bottom", trigger = "hover", options = list(container = "body")),
+                               withSpinner(jqui_resizable(plotlyOutput("gene1.vol"))))
                    ),
                    column(width = 4,
-                          withSpinner(jqui_resizable(plotlyOutput("gene1.rank")))
+                          span(popify(icon("info-circle", style="font-size: 20px"), title = "Rank Plot",
+                                      c("This rank plot shows the log2 fold change on the y-axis and the gene rank on the x-axis. ",
+                                        "Thresholds are adjustable. Gene labels can be added (or removed) by clicking on a point ",
+                                        "and can be moved by clicking and dragging the label. The plot is fully customizable with the settings on the left. ",
+                                        "Click and drag to zoom in. Hover over a point for additional info."),
+                                      placement = "bottom", trigger = "hover", options = list(container = "body")),
+                               withSpinner(jqui_resizable(plotlyOutput("gene1.rank"))))
                    ),
                    column(width = 4,
-                          withSpinner(jqui_resizable(plotlyOutput("gene1.lawn")))
+                          span(popify(icon("info-circle", style="font-size: 20px"), title = "Lawn Plot",
+                                      c("This plot shows the log2 fold change on the y-axis and the genes randomly ordered on the x-axis. ",
+                                        "Thresholds are adjustable. Gene labels can be added (or removed) by clicking on a point ",
+                                        "and can be moved by clicking and dragging the label. The plot is fully customizable with the settings on the left. ",
+                                        "Click and drag to zoom in. Hover over a point for additional info."),
+                                      placement = "bottom", trigger = "hover", options = list(container = "body")),
+                               withSpinner(jqui_resizable(plotlyOutput("gene1.lawn"))))
                    )
                  ),
                  hr(),
@@ -393,11 +487,13 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                  div(
                    fluidRow(
                      column(6,
-                            selectInput("sgrna.sel1", "Dataset 1:", choices = names(sgrna.data))
+                            tipify(selectInput("sgrna.sel1", "Dataset 1:", choices = names(sgrna.data)),
+                                   "Dataset shown in top row.", "right", options = list(container = "body"))
                      ),
                      column(6,
-                            selectInput("sgrna.sel2", "Dataset 2:", choices = names(sgrna.data),
-                                        selected = ifelse(length(names(sgrna.data) > 1), names(sgrna.data)[2], names(sgrna.data)[1]))
+                            tipify(selectInput("sgrna.sel2", "Dataset 2:", choices = names(sgrna.data),
+                                        selected = ifelse(length(names(sgrna.data) > 1), names(sgrna.data)[2], names(sgrna.data)[1])),
+                                   "Dataset shown in bottom row.", "right", options = list(container = "body"))
                      )
                    ),
                    fluidRow(
@@ -413,10 +509,20 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
                  width = 10,
                  fluidRow(
                    column(width = 2,
-                          withSpinner(jqui_resizable(plotlyOutput("sgrna1.counts")))
+                          span(popify(icon("info-circle", style="font-size: 20px"), title = "Counts Plot",
+                                      c("This rank plot shows the normalized counts for each sgRNA for the ",
+                                        "specified gene across the samples that make up the dataset comparision. ",
+                                        "Hover over a point for additional info."),
+                                      placement = "bottom", trigger = "hover", options = list(container = "body")),
+                               withSpinner(jqui_resizable(plotlyOutput("sgrna1.counts"))))
                    ),
                    column(width = 4,
-                          withSpinner(jqui_resizable(plotlyOutput("sgrna1.rank")))
+                          span(popify(icon("info-circle", style="font-size: 20px"), title = "Rank Plot",
+                                      c("This rank plot shows the log2 fold change on the y-axis and the sgRNA rank on the x-axis. ",
+                                        "sgRNAs for the selected gene will be highlighted. ",
+                                        "Click and drag to zoom in. Hover over a point for additional info."),
+                                      placement = "bottom", trigger = "hover", options = list(container = "body")),
+                               withSpinner(jqui_resizable(plotlyOutput("sgrna1.rank"))))
                    ),
                    column(width = 6,
                           jqui_resizable(div(DT::dataTableOutput("sgrna1.detail"), style = "font-size:80%;"))
@@ -479,7 +585,13 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       }
 
       if (ncol(mat) > 1) {
-        pca(mat, metadata = meta, removeVar = var.remove, scale = input$scale, center = input$center)
+
+        pca(mat,
+            metadata = meta,
+            removeVar = var.remove,
+            scale = input$scale,
+            center = input$center)
+
       } else {
         NULL
       }
@@ -503,15 +615,21 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
     })
 
     output$qc.gini <- renderPlotly({
-      gg <- BarView(count.summary, x = "Label", y = "GiniIndex",
-                    ylab = "Gini index", main = "sgRNA Read Distribution")
+      gg <- BarView(count.summary,
+                    x = "Label",
+                    y = "GiniIndex",
+                    ylab = "Gini index",
+                    main = "sgRNA Read Distribution")
 
       gg + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, size = 12),
                  axis.text.y = element_text(size = 12))
 
       ggplotly(gg, tooltip = c("y")) %>%
         layout(yaxis = list(range = list(0, max(count.summary$GiniIndex) + .05)),
-               xaxis = list(tickangle = 315))
+               xaxis = list(tickangle = 315)) %>%
+        config(toImageButtonOptions = list(format = "svg"),
+               displaylogo = FALSE,
+               plotGlPixelRatio = 7)
     })
 
     output$qc.missed <- renderPlotly({
@@ -523,7 +641,10 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
 
       ggplotly(gg, tooltip = c("y")) %>%
         layout(yaxis = list(range = list(0, max(count.summary$Zerocounts) + 5)),
-               xaxis = list(tickangle = 315))
+               xaxis = list(tickangle = 315)) %>%
+        config(toImageButtonOptions = list(format = "svg"),
+               displaylogo = FALSE,
+               plotGlPixelRatio = 7)
     })
 
     output$qc.map <- renderPlot({
@@ -537,23 +658,26 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       slmed <- norm.counts
       tabsmat <- as.matrix(log2(slmed[,c(-1,-2)] + 1))
       colnames(tabsmat) <- colnames(slmed)[c(-1,-2)]
-      samplecol <- colors[((1:ncol(tabsmat)) %% length(colors)) ]
+      samplecol <- colors[((1:ncol(tabsmat)) %% length(colors))]
       tgz <- hist(tabsmat, breaks = 40)
+
       if(ncol(tabsmat) >= 1) {
         histlist <- lapply(1:ncol(tabsmat), function(X) { return (hist(tabsmat[,X], plot=FALSE, breaks=tgz$breaks)) })
         xrange <- range(unlist(lapply(histlist, function(X) {X$mids})))
         yrange <- range(unlist(lapply(histlist, function(X) {X$counts})))
         hst1 <- histlist[[1]]
-        plot(hst1$mids,hst1$counts, type='b', pch=20, xlim=c(0,xrange[2]*1.2),
+        plot(hst1$mids, hst1$counts, type='b', pch=20, xlim=c(0,xrange[2]*1.2),
              ylim=c(0,yrange[2]*1.2), xlab='log2(counts)', ylab='Frequency',
              main='Distribution of read counts', col = samplecol[1])
       }
+
       if(ncol(tabsmat) >= 2){
         for(i in 2:ncol(tabsmat)){
           hstn <- histlist[[i]]
           lines(hstn$mids, hstn$counts, type='b', pch=20, col=samplecol[i])
         }
       }
+
       legend('topright', colnames(tabsmat), pch=20, lwd=1, col=samplecol)
     })
 
@@ -565,7 +689,8 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
 
       if (ncol(slmat.log) > 1){
         ComplexHeatmap::pheatmap(cor(slmat.log),
-                                 heatmap_legend_param = list(title = "Pearson\nCorr."), main = "Correlation Matrix")
+                                 heatmap_legend_param = list(title = "Pearson\nCorr."),
+                                 main = "Correlation Matrix")
       } else {
         grid.newpage()
         grid.text("Only one sample, no correlation possible.")
@@ -606,7 +731,8 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
 
       # Check if 2D is wanted.
       if (isolate(input$bip.twod)) {
-        fig <- plot_ly(pc.res$rotated, x = as.formula(paste0("~", isolate(input$dim1))),
+        fig <- plot_ly(pc.res$rotated,
+                       x = as.formula(paste0("~", isolate(input$dim1))),
                        y = as.formula(paste0("~", isolate(input$dim2))),
                        type = "scatter",
                        mode = "markers",
@@ -1609,13 +1735,13 @@ shinyMAGeCK <- function(gene.data, sgrna.data, count.summary, norm.counts, h.id 
       })
 
       output$sgrna2.counts <- renderPlotly({
-      req(set2.sgrnas, input$sgrna.gene)
+        req(set2.sgrnas, input$sgrna.gene)
 
-      df <- set2.sgrnas()
-      df <- df[df$Gene == input$sgrna.gene,]
+        df <- set2.sgrnas()
+        df <- df[df$Gene == input$sgrna.gene,]
 
-      .make_sgrna_pairplot(df)
-    })
+        .make_sgrna_pairplot(df)
+      })
 
       output$sgrna2.rank <- renderPlotly({
         req(set2.sgrnas)
