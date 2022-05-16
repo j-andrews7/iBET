@@ -60,7 +60,6 @@ shh <- suppressPackageStartupMessages
 shh(library("DESeq2"))
 shh(library("PCAtools"))
 #shh(library("iBET"))
-shh(library("DEFormats"))
 shh(library("edgeR"))
 shh(library("airway"))
 shh(library("msigdbr"))
@@ -152,6 +151,7 @@ Gene labels can be added to a plot by clicking a point. The labels can also be d
 ```{r}
 shinyDECorr(res, genesets = hs.msig, height = 800)
 ```
+
 
 # SessionInfo
 

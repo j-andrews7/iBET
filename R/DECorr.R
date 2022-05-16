@@ -157,7 +157,7 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                 numericInput("counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0)
               )
             ),
-            bsCollapsePanel(title = span(icon("plus"), "Point Aesthetics"), style = "info",
+            bsCollapsePanel(title = span(icon("plus"), "Point Aesthetics"), value = "aesthetics", style = "info",
               numericInput("lab.size", label = "Label Size:", value = 10, step = 0.5, min = 1),
               fluidRow(
                 column(6,
@@ -176,7 +176,7 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                        colourInput("insig.color", "Insignificant", value = "#666666"))
               )
             ),
-            bsCollapsePanel(title = span(icon("plus"), "Highlight Gene(sets)"), style = "info",
+            bsCollapsePanel(title = span(icon("plus"), "Highlight Gene(sets)"), value = "genesets", style = "info",
               textAreaInput("hl.genes", "Highlight Genes:", value = "", rows = 3,
                             placeholder = "Enter space, comma, or newline delimited genes"),
               pickerInput("hl.genesets", "Highlight Genesets:", choices = c("", names(genesets)),
