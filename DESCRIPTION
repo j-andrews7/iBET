@@ -41,7 +41,6 @@ Imports:
     colourpicker,
     shinyjs,
     methods,
-    shinyBS,
     MAGeCKFlute,
     htmlwidgets
 Suggests:
@@ -52,3 +51,5 @@ Suggests:
     scran,
     scuttle,
     org.Hs.eg.db
+Depends:
+    shinyBS

@@ -16,7 +16,7 @@
 #' @importFrom shinyjqui jqui_resizable
 #' @importFrom matrixStats rowVars
 #' @importFrom stats as.formula p.adjust p.adjust.methods dist
-#' @importFrom shinyBS bsCollapse bsCollapsePanel
+#' @importFrom shinyBS bsCollapse bsCollapsePanel tipify popify
 #' @importFrom ComplexHeatmap pheatmap Heatmap HeatmapAnnotation
 #' @importFrom htmlwidgets saveWidget
 #' @importFrom grDevices pdf dev.off
@@ -110,7 +110,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                                       icon = icon("check"), width = "100%"),
                        prettyCheckbox("keep.top.n", strong("Limit by top N features"), FALSE, bigger = FALSE,
                                       animation = "smooth", status = "success",
-                                      icon = icon("check"), width = "100%")
+                                      icon = icon("check"), width = "100%"),
                 ),
                 column(6,
                        prettyCheckbox("scale", strong("Scale data"), scale, bigger = FALSE,
@@ -363,7 +363,7 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       })
     })
 
-    output$metadata <- renderDT(sever = FALSE, {
+    output$metadata <- renderDT(server = FALSE, {
       DT::datatable(as.data.frame(metadata),
                     rownames = FALSE,
                     filter = "top",
