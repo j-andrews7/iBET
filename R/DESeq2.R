@@ -313,7 +313,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                           multiple = TRUE, options = list(`live-search` = TRUE, `actions-box` = TRUE),
                           selected = annot.by)
             ),
-            bsCollapsePanel(title = span(icon("plus"), "Highlight Gene(sets)"), style = "info",
+            bsCollapsePanel(title = span(icon("plus"), "Highlight Gene(sets)"), value = "genesets", style = "info",
               textAreaInput("hl.genes", "Highlight Genes:", value = "", rows = 4,
                             placeholder = "Enter space, comma, or newline delimited genes"),
               pickerInput("hl.genesets", "Highlight Genesets:", choices = c("", names(genesets)),
