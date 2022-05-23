@@ -68,14 +68,14 @@ shh(library("org.Hs.eg.db"))
 data("airway")
 airway$dex <- relevel(airway$dex, ref = "untrt")
 
-# Swap ensemble IDs to gene symbols.
+# Get gene symbols.
 ens <- rownames(airway)
 symbols <- mapIds(org.Hs.eg.db, keys = ens,
   column = c('SYMBOL'), keytype = 'ENSEMBL')
 symbols <- symbols[!is.na(symbols)]
 symbols <- symbols[match(rownames(airway), names(symbols))]
-rownames(airway) <- symbols
-keep <- !is.na(rownames(airway))
+rowData(airway)$SYMBOLS <- symbols
+keep <- !is.na(rowData(airway)$SYMBOLS)
 airway <- airway[keep,]
 
 # Retrieve MSigDB Hallmark gene sets and convert to a named list.
@@ -85,6 +85,7 @@ hs.msig <- hs.msig %>% split(x = .$gene_symbol, f = .$gs_name)
 dds <- DESeqDataSet(airway, design = ~ dex)
 dds <- DESeq(dds)
 vst <- assay(vst(dds))
+rownames(vst) <- rowData(dds)$SYMBOLS
 ```
 
 ## Interactive PCA via `PCAtools`
@@ -134,12 +135,18 @@ dds <- DESeq(dds)
 deseq.res2 <- results(dds, contrast = c("cell", "N080611", "N052611"))
 deseq.res3 <- results(dds, contrast = c("cell", "N61311", "N080611"))
 deseq.res4 <- results(dds, contrast = c("cell", "N080611", "N61311"))
+
+deseq.res1$SYMBOLS <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
+deseq.res2$SYMBOLS <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
+deseq.res3$SYMBOLS <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
+deseq.res4$SYMBOLS <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
+
 res <- list("trt v untrt" = as.data.frame(deseq.res1), 
             "N080611vN052611" = as.data.frame(deseq.res2), 
             "N61311vN080611" = as.data.frame(deseq.res3), 
             "N080611vN61311" = as.data.frame(deseq.res4))
 
-shinyDESeq2(dds, res = res, genesets = hs.msig, annot.by = c("cell", "dex"))
+shinyDESeq2(dds, res = res, genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
 ```
 
 ## Correlating DE Results
