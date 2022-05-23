@@ -56,6 +56,9 @@
 #'   Required if multiple apps are run within the same Rmd file.
 #' @param genesets Optional named list containing genesets that can be interactively highlighted on the plots.
 #'   The elements of the list should each be a geneset with gene identifiers matching those used in the results.
+#' @param swap.rownames String. The column name of rowData(dds) \emph{and} res used to identify features instead of rownames(object).
+#'
+#'   Note if this column contains duplicates (e.g. gene symbols), they will be make unique via the addition of ".1", ".2", etc.
 #' @param height Number indicating height of app in pixels.
 #'
 #' @return A Shiny app containing interconnected InteractiveComplexHeatmap, MAplot, and volcano plots along with full DE results.
@@ -68,7 +71,10 @@
 #' @export
 shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                         use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE,
-                        h.id = "ht1", genesets = NULL, height = 800) {
+                        h.id = "ht1", genesets = NULL, swap.rownames = NULL, height = 800) {
+
+  # Swap rownames if necessary.
+  dds <- .swap_rownames(dds, swap.rownames = swap.rownames)
 
   # Check is res is individual or named list.
   multi.res <- FALSE
@@ -76,8 +82,9 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
   if (is(res, "list")) {
     if (!is.null(names(res))) {
       multi.res <- TRUE
-      res.list <- res
-      res <- res[[1]]
+      # Swap rownames if necessary.
+      res.list <- lapply(res, .swap_rownames,  swap.rownames = swap.rownames)
+      res <- res.list[[1]]
     } else {
       stop("Results list elements should be named.")
     }
@@ -298,13 +305,15 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       sidebarLayout(
         sidebarPanel(
           width = 2,
-          tags$label(HTML(qq("Comparison: <code style='font-weight:normal; font-size: 10px;'>@{paste(coef, collapse = ' ')}</code>")), class = "shiny-input-container", style = "font-size:1.2em;"),
+          tags$label(HTML(qq("Comparison: <code style='font-weight:normal; font-size: 10px;'>@{paste(coef, collapse = ' ')}</code>")),
+                     class = "shiny-input-container", style = "font-size:1.2em;"),
           hidden(div(id = "mres", selectInput("res.select", NULL, choices = names(res.list)))),
           hr(style="margin:2px; background-color: #737373;"),
           bsCollapse(open = "settings",
             bsCollapsePanel(title = span(icon("plus"), "Plot Settings"), value = "settings", style = "info",
               numericInput("sig.thresh", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
-              selectInput("sig.term", label = "Significance term:", choices = colnames(res), selected = ifelse("padj" %in% colnames(res), "padj", "svalue")),
+              selectInput("sig.term", label = "Significance term:", choices = colnames(res),
+                          selected = ifelse("padj" %in% colnames(res), "padj", "svalue")),
               numericInput("base_mean", label = "Minimal baseMean:", value = 0, step = 1),
               numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
               numericInput("row.km", label = "Row k-means groups:", value = 2, step = 1),
@@ -417,9 +426,14 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       row_index <- unique(unlist(df$row_index))
       selected <- env$row_index[row_index]
 
+      cnames <- c(sig.term)
+      if (!is.null(swap.rownames)) {
+        cnames <- c(cnames, "ORIGINAL_ROWS")
+      }
+
       output[["res_table"]] <- DT::renderDataTable({
 
-        DT::formatRound(DT::datatable(as.data.frame(ress()[selected, c("baseMean", "log2FoldChange", sig.term)]),
+        DT::formatRound(DT::datatable(as.data.frame(ress()[selected, c("baseMean", "log2FoldChange", cnames)]),
                                       rownames = TRUE, options = list(lengthMenu = c(5, 10, 25),
                                                                       pageLength = 20)),
                         columns = 1:3, digits = 5) %>%
@@ -433,7 +447,13 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
 
       output[["res_table"]] <- DT::renderDataTable({
         # Adjust output table columns based on results table.
-        DT::formatRound(DT::datatable(as.data.frame(ress()[selected, c("baseMean", "log2FoldChange", sig.term)]),
+        cnames <- c(sig.term)
+        if (!is.null(swap.rownames)) {
+          cnames <- c(cnames, "ORIGINAL_ROWS")
+        }
+
+        df <- df[, c("baseMean", "log2FoldChange", "lfcSE", cnames)]
+        DT::formatRound(DT::datatable(as.data.frame(ress()[selected, c("baseMean", "log2FoldChange", cnames)]),
                                       rownames = TRUE, options = list(lengthMenu = c(5, 10, 25),
                                                                       pageLength = 20)),
                         columns = 1:3, digits = 5) %>%
@@ -546,7 +566,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                     show.hl.counts = isolate(input$vol.hl.counts),
                     counts.size = isolate(input$vol.counts.size),
                     highlight.featsets = isolate(input$hl.genesets),
-                    highlight.feat = isolate(input$hl.genes),
+                    highlight.feats = isolate(input$hl.genes),
                     featsets = genesets,
                     highlight.feats.color = isolate(input$hl.genes.col),
                     highlight.feats.size = isolate(input$hl.genes.size),
@@ -565,6 +585,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       df <- as.data.frame(ress())
 
       # Collect proper output columns.
+      cnames <- NULL
       if (sig.term == "svalue") {
         cnames <- "svalue"
       } else if ("stat" %in% colnames(df)) {
@@ -573,7 +594,13 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
         cnames <- c("padj", "pvalue")
       }
 
-      df <- df[, c("baseMean", "log2FoldChange", "lfcSE", cnames)]
+      # Can't tack on to cnames because of rounding.
+      snames <- NULL
+      if (!is.null(swap.rownames)) {
+        snames <- "ORIGINAL_ROWS"
+      }
+
+      df <- df[, c("baseMean", "log2FoldChange", "lfcSE", cnames, snames)]
 
       DT::formatRound(DT::datatable(df,
                                     rownames = TRUE,

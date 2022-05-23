@@ -14,6 +14,7 @@ shinyDESeq2(
   use.vst = TRUE,
   h.id = "ht1",
   genesets = NULL,
+  swap.rownames = NULL,
   height = 800
 )
 }
@@ -50,6 +51,10 @@ Required if multiple apps are run within the same Rmd file.}
 
 \item{genesets}{Optional named list containing genesets that can be interactively highlighted on the plots.
 The elements of the list should each be a geneset with gene identifiers matching those used in the results.}
+
+\item{swap.rownames}{String. The column name of rowData(dds) \emph{and} res used to identify features instead of rownames(object).
+
+Note if this column contains duplicates (e.g. gene symbols), they will be make unique via the addition of ".1", ".2", etc.}
 
 \item{height}{Number indicating height of app in pixels.}
 }

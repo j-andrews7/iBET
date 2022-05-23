@@ -29,7 +29,6 @@ Imports:
     stats,
     ggplot2,
     plotly,
-    apeglm,
     shinydashboard,
     shinyWidgets,
     dashboardthemes,
@@ -41,7 +40,6 @@ Imports:
     colourpicker,
     shinyjs,
     methods,
-    MAGeCKFlute,
     htmlwidgets
 Suggests:
     airway,
