@@ -30,6 +30,7 @@
 #' @importFrom shinyBS tipify popify
 #' @importFrom colourpicker colourInput
 #' @importFrom methods is
+#' @importFrom htmlwidgets saveWidget
 #' @importFrom DESeq2 DESeq results lfcShrink resultsNames counts
 #'
 #' @param dds A \code{\link[DESeq2]{DESeqDataSet}} object.
@@ -209,9 +210,10 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
             ),
             withSpinner(
               jqui_resizable(
-                plotlyOutput("ma_plot", height = "550px", width = "550px")
+                plotlyOutput("ma_plot", height = "500px", width = "550px")
               )
-            )
+            ),
+            div(downloadButton("download_plotly_ma", "Download Interactive MAplot"), align = "left", style="margin-top: 10px;")
           ),
           column(width = 6,
             br(),
@@ -256,7 +258,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
               circle = FALSE, label = strong("Volcano Plot"), status = "danger", size = "lg", icon = icon("gear"),
               width = "300px", tooltip = tooltipOptions(title = "Click to change plot settings")
             ),
-            withSpinner(jqui_resizable(plotlyOutput("volcano_plot", height = "550px", width = "550px"))),
+            withSpinner(jqui_resizable(plotlyOutput("volcano_plot", height = "500px", width = "550px"))),
+            div(downloadButton("download_plotly_volc", "Download Interactive Volcano plot"), align = "left", style="margin-top: 10px;")
           )
         )
       ),
@@ -359,6 +362,9 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
 
     # Get annotations. If none provided, use design variables.
     anno <- reactiveVal()
+
+    # Used to hold plots for download.
+    plot_store <- reactiveValues()
 
     observeEvent(c(input$anno.vars,
                    input$res.select,
@@ -500,7 +506,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       req(genes)
       input$update
 
-      .make_maplot(res = ress(),
+      plot_store$ma_plot <- .make_maplot(res = ress(),
                    ylim = isolate(input$ma.y),
                    fc.thresh = isolate(input$log2fc),
                    fc.lines = isolate(input$ma.fcline),
@@ -534,13 +540,15 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                    highlight.genesets.opac = isolate(input$hl.genesets.opa),
                    highlight.genesets.linecolor = isolate(input$hl.genesets.lcol),
                    highlight.genesets.linewidth = isolate(input$hl.genesets.lw))
+
+      plot_store$ma_plot
     })
 
     output$volcano_plot <- renderPlotly({
       req(genes)
       input$update
 
-      .make_volcano(res = ress(),
+      plot_store$volcano_plot <- .make_volcano(res = ress(),
                     xlim = isolate(input$vol.x),
                     ylim = isolate(input$vol.y),
                     fc.thresh = isolate(input$log2fc),
@@ -578,6 +586,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                     highlight.featsets.opac = isolate(input$hl.genesets.opa),
                     highlight.featsets.linecolor = isolate(input$hl.genesets.lcol),
                     highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
+
+      plot_store$volcano_plot
     })
 
     output[["res_table_full"]] <- DT::renderDT(server = FALSE, {
@@ -662,6 +672,28 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       }
     }, ignoreNULL = FALSE)
 
+    # Download interactive plots as html.
+    output$download_plotly_volc <- downloadHandler(
+      filename = function() {
+        paste("volcanoplot-", Sys.Date(), ".html", sep = "")
+      },
+      content = function(file) {
+        # export plotly html widget as a temp file to download.
+        saveWidget(jqui_resizable(plot_store$volcano_plot),
+                   file, selfcontained = TRUE)
+      }
+    )
+
+    output$download_plotly_ma <- downloadHandler(
+      filename = function() {
+        paste("maplot-", Sys.Date(), ".html", sep = "")
+      },
+      content = function(file) {
+        # export plotly html widget as a temp file to download.
+        saveWidget(jqui_resizable(plot_store$ma_plot),
+                   file, selfcontained = TRUE)
+      }
+    )
   }
 
   shinyApp(ui, server, options = list(height = height))
