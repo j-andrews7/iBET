@@ -69,7 +69,8 @@ differential expression results. The interactive heatmap will generate a sub-hea
 Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around,
 though adding labels will reset the positions, so it's recommended to add all labels prior to re-positioning them.
 
-Note that significance values of 0 will always be pushed above the y-limit of the volcano plot, as they are infinite values after log transformation.
+Note that significance values of 0 will always be pushed above the y-limit of the volcano plot,
+as they are infinite values after log transformation.
 }
 \seealso{
 \code{\link[DESeq2]{results}}, \code{\link[DESeq2]{lfcShrink}}, \code{\link[DESeq2]{resultsNames}}.

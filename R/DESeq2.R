@@ -6,7 +6,8 @@
 #' Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around,
 #' though adding labels will reset the positions, so it's recommended to add all labels prior to re-positioning them.
 #'
-#' @details Note that significance values of 0 will always be pushed above the y-limit of the volcano plot, as they are infinite values after log transformation.
+#' @details Note that significance values of 0 will always be pushed above the y-limit of the volcano plot,
+#'   as they are infinite values after log transformation.
 #'
 #' @rawNamespace import(shiny, except = c(dataTableOutput, renderDataTable))
 #' @import InteractiveComplexHeatmap
@@ -30,6 +31,7 @@
 #' @importFrom shinyBS tipify popify
 #' @importFrom colourpicker colourInput
 #' @importFrom methods is
+#' @importFrom htmlwidgets saveWidget
 #' @importFrom DESeq2 DESeq results lfcShrink resultsNames counts
 #'
 #' @param dds A \code{\link[DESeq2]{DESeqDataSet}} object.
@@ -174,44 +176,60 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
               tags$h3("Plot Settings"),
               fluidRow(
                 column(width = 6,
-                  colourInput("ma.down.color", "Down-reg colour", value = "#0026ff"),
-                  colourInput("ma.up.color", "Up-reg colour", value = "red"),
-                  colourInput("ma.insig.color", "Insig colour", value = "black"),
-                  numericInput("ma.sig.opa", label = "Sig opacity:", value = 1, step = 0.05, min = 0)
+                  tipify(colourInput("ma.down.color", "Down-reg colour", value = "#0026ff"),
+                         "Color of down-regulated genes.", "right", options = list(container = "body")),
+                  tipify(colourInput("ma.up.color", "Up-reg colour", value = "red"),
+                         "Color of up-regulated genes.", "right", options = list(container = "body")),
+                  tipify(colourInput("ma.insig.color", "Insig colour", value = "black"),
+                         "Color of insignificant genes.", "right", options = list(container = "body")),
+                  tipify(numericInput("ma.sig.opa", label = "Sig opacity:", value = 1, step = 0.05, min = 0),
+                         "Opacity of DE genes.", "right", options = list(container = "body"))
                 ),
                 column(width = 6,
                   numericInput("ma.y", label = "y-axis limits:", value = 5, step = 0.1, min = 0.1),
-                  numericInput("ma.lab.size", label = "Label size:", value = 10, step = 0.5, min = 1),
-                  numericInput("ma.insig.opa", label = "Insig opacity:", value = 1, step = 0.05, min = 0),
-                  numericInput("ma.sig.size", label = "Sig pt size:", value = 5, step = 0.1, min = 1),
-                  numericInput("ma.insig.size", label = "Insig pt size:", value = 3, step = 0.1, min = 0)
+                  tipify(numericInput("ma.lab.size", label = "Label size:", value = 10, step = 0.5, min = 1),
+                         "Font size of gene labels.", "right", options = list(container = "body")),
+                  tipify(numericInput("ma.insig.opa", label = "Insig opacity:", value = 1, step = 0.05, min = 0),
+                         "Opacity of non-DE genes.", "right", options = list(container = "body")),
+                  tipify(numericInput("ma.sig.size", label = "Sig pt size:", value = 5, step = 0.1, min = 1),
+                         "Point size of DE genes.", "right", options = list(container = "body")),
+                  tipify(numericInput("ma.insig.size", label = "Insig pt size:", value = 3, step = 0.1, min = 0),
+                         "Point size of non-DE genes.", "right", options = list(container = "body"))
                 )
               ),
-              prettyCheckbox("ma.fcline", label = "Show MAplot FC Threshold", value = TRUE,
+              tipify(prettyCheckbox("ma.fcline", label = "Show MAplot FC Threshold", value = TRUE,
                             animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-              prettyCheckbox("ma.hl.counts", label = "Show highlight counts", FALSE, bigger = TRUE,
+                     "Draw lines for FC threshold.", "right", options = list(container = "body")),
+              tipify(prettyCheckbox("ma.hl.counts", label = "Show highlight counts", FALSE, bigger = TRUE,
                              animation = "smooth", status = "success",
                              icon = icon("check"), width = "100%"),
+                     "Show count of highlighted genes and genesets.", "right", options = list(container = "body")),
               splitLayout(
-                prettyCheckbox("ma.webgl", label = "Use webGL", TRUE, bigger = TRUE,
+                tipify(prettyCheckbox("ma.webgl", label = "Use webGL", TRUE, bigger = TRUE,
                                animation = "smooth", status = "success",
                                icon = icon("check"), width = "100%"),
-                prettyCheckbox("ma.counts", label = "Show counts", TRUE, bigger = TRUE,
+                       "Plot with webGL. Faster, but sometimes has visual artifacts.", "right", options = list(container = "body")),
+                tipify(prettyCheckbox("ma.counts", label = "Show counts", TRUE, bigger = TRUE,
                                animation = "smooth", status = "success",
-                               icon = icon("check"), width = "100%")
+                               icon = icon("check"), width = "100%"),
+                       "Show count of DE and total genes.", "right", options = list(container = "body"))
               ),
               splitLayout(
-                numericInput("ma.webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1),
-                numericInput("ma.counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0)
+                tipify(numericInput("ma.webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1),
+                       "Controls rasterization resolution when webGL is used. Higher is greater resolution, recommend leaving at default.",
+                       "right", options = list(container = "body")),
+                tipify(numericInput("ma.counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
+                       "Font size of gene counts.", "right", options = list(container = "body"))
               ),
               circle = FALSE, label = strong("MA-Plot"), status = "danger", size = "lg", icon = icon("gear"),
               width = "300px", tooltip = tooltipOptions(title = "Click to change plot settings")
             ),
             withSpinner(
               jqui_resizable(
-                plotlyOutput("ma_plot", height = "550px", width = "550px")
+                plotlyOutput("ma_plot", height = "500px", width = "550px")
               )
-            )
+            ),
+            div(downloadButton("download_plotly_ma", "Download Interactive MAplot"), align = "left", style="margin-top: 10px;")
           ),
           column(width = 6,
             br(),
@@ -219,44 +237,60 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
               tags$h3("Plot Settings"),
               fluidRow(
                 column(width = 6,
-                  colourInput("vol.down.color", "Down-reg colour", value = "#0026ff"),
-                  colourInput("vol.up.color", "Up-reg colour", value = "red"),
-                  colourInput("vol.insig.color", "Insig colour", value = "#A6A6A6"),
-                  numericInput("vol.sig.opa", label = "Sig opacity:", value = 1, step = 0.05, min = 0),
-                  numericInput("vol.sig.size", label = "Sig pt size:", value = 5, step = 0.1, min = 0)
+                  tipify(colourInput("vol.down.color", "Down-reg colour", value = "#0026ff"),
+                         "Color of down-regulated genes.", "right", options = list(container = "body")),
+                  tipify(colourInput("vol.up.color", "Up-reg colour", value = "red"),
+                         "Color of up-regulated genes.", "right", options = list(container = "body")),
+                  tipify(colourInput("vol.insig.color", "Insig colour", value = "#A6A6A6"),
+                         "Color of insignificant genes.", "right", options = list(container = "body")),
+                  tipify(numericInput("vol.sig.opa", label = "Sig opacity:", value = 1, step = 0.05, min = 0),
+                         "Opacity of DE genes.", "right", options = list(container = "body")),
+                  tipify(numericInput("vol.sig.size", label = "Sig pt size:", value = 5, step = 0.1, min = 0),
+                         "Point size of DE genes.", "right", options = list(container = "body"))
                 ),
                 column(width = 6,
                   numericInput("vol.x", label = "x-axis limits:", value = 5, step = 0.1, min = 0.1),
                   numericInput("vol.y", label = "y-axis limits:",
                                value = max(-log10(res[[sig.term]][!is.na(res[[sig.term]])])) + 0.1,
                                step = 0.5, min = 1),
-                  numericInput("vol.lab.size", label = "Label size:", value = 10, step = 0.5, min = 1),
-                  numericInput("vol.insig.opa", label = "Insig opacity:", value = 1, step = 0.05, min = 0),
-                  numericInput("vol.insig.size", label = "Insig pt size:", value = 3, step = 0.1, min = 0)
+                  tipify(numericInput("vol.lab.size", label = "Label size:", value = 10, step = 0.5, min = 1),
+                         "Font size of gene labels.", "right", options = list(container = "body")),
+                  tipify(numericInput("vol.insig.opa", label = "Insig opacity:", value = 1, step = 0.05, min = 0),
+                         "Opacity of non-DE genes.", "right", options = list(container = "body")),
+                  tipify(numericInput("vol.insig.size", label = "Insig pt size:", value = 3, step = 0.1, min = 0),
+                         "Point size of non-DE genes.", "right", options = list(container = "body")),
                 )
               ),
               prettyCheckbox("vol.fcline", label = "Show FC Threshold", value = TRUE,
                              animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-              prettyCheckbox("vol.sigline", label = "Show Signficance Threshold", value = TRUE,
+              tipify(prettyCheckbox("vol.sigline", label = "Show Signficance Threshold", value = TRUE,
                              animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-              prettyCheckbox("vol.hl.counts", label = "Show Highlight Counts", value = FALSE,
+                     "Draw line at significance threshold.", "right", options = list(container = "body")),
+              tipify(prettyCheckbox("vol.hl.counts", label = "Show Highlight Counts", value = FALSE,
                              animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
+                     "Show count of highlighted genes and genesets.", "right", options = list(container = "body")),
               splitLayout(
-                prettyCheckbox("vol.counts", label = "Show counts", TRUE, bigger = TRUE,
+                tipify(prettyCheckbox("vol.counts", label = "Show counts", TRUE, bigger = TRUE,
                                animation = "smooth", status = "success",
                                icon = icon("check"), width = "100%"),
-                prettyCheckbox("vol.webgl", label = "Use webGL", TRUE, bigger = TRUE,
+                       "Show count of DE and total genes.", "right", options = list(container = "body")),
+                tipify(prettyCheckbox("vol.webgl", label = "Use webGL", TRUE, bigger = TRUE,
                                animation = "smooth", status = "success",
-                               icon = icon("check"), width = "100%")
+                               icon = icon("check"), width = "100%"),
+                       "Plot with webGL. Faster, but sometimes has visual artifacts.", "right", options = list(container = "body"))
               ),
               splitLayout(
-                numericInput("vol.counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
-                numericInput("vol.webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1)
+                tipify(numericInput("vol.counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
+                       "Font size of gene counts.", "right", options = list(container = "body")),
+                tipify(numericInput("vol.webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1),
+                       "Controls rasterization resolution when webGL is used. Higher is greater resolution, recommend leaving at default.",
+                       "right", options = list(container = "body"))
               ),
               circle = FALSE, label = strong("Volcano Plot"), status = "danger", size = "lg", icon = icon("gear"),
               width = "300px", tooltip = tooltipOptions(title = "Click to change plot settings")
             ),
-            withSpinner(jqui_resizable(plotlyOutput("volcano_plot", height = "550px", width = "550px"))),
+            withSpinner(jqui_resizable(plotlyOutput("volcano_plot", height = "500px", width = "550px"))),
+            div(downloadButton("download_plotly_volc", "Download Interactive Volcano plot"), align = "left", style="margin-top: 10px;")
           )
         )
       ),
@@ -307,20 +341,28 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
           width = 2,
           tags$label(HTML(qq("Comparison: <code style='font-weight:normal; font-size: 10px;'>@{paste(coef, collapse = ' ')}</code>")),
                      class = "shiny-input-container", style = "font-size:1.2em;"),
-          hidden(div(id = "mres", selectInput("res.select", NULL, choices = names(res.list)))),
+          hidden(div(id = "mres", tipify(selectInput("res.select", NULL, choices = names(res.list))),
+                 "Results to view from provided set.", "right", options = list(container = "body"))),
           hr(style="margin:2px; background-color: #737373;"),
           bsCollapse(open = "settings",
             bsCollapsePanel(title = span(icon("plus"), "Plot Settings"), value = "settings", style = "info",
-              numericInput("sig.thresh", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
-              selectInput("sig.term", label = "Significance term:", choices = colnames(res),
+              tipify(numericInput("sig.thresh", label = "Significance threshold:", value = 0.05, step = 0.001, min = 0.0001),
+                     "Significance threshold to consider a gene DE.", "right", options = list(container = "body")),
+              tipify(selectInput("sig.term", label = "Significance term:", choices = colnames(res),
                           selected = ifelse("padj" %in% colnames(res), "padj", "svalue")),
-              numericInput("base_mean", label = "Minimal baseMean:", value = 0, step = 1),
-              numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
-              numericInput("row.km", label = "Row k-means groups:", value = 2, step = 1),
-              numericInput("col.km", label = "Column k-means groups:", value = 0, step = 1),
-              pickerInput("anno.vars", "Annotate Heatmap by:", choices = c("", names(SummarizedExperiment::colData(dds))),
+                     "Significance term to use for DE filtering.", "right", options = list(container = "body")),
+              tipify(numericInput("base_mean", label = "Minimal baseMean:", value = 0, step = 1),
+                     "Minimal baseMean (expression) required to consider a gene DE.", "right", options = list(container = "body")),
+              tipify(numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
+                     "log2 fold change magnitude threshold required to consider a gene DE.", "right", options = list(container = "body")),
+              tipify(numericInput("row.km", label = "Row k-means groups:", value = 2, step = 1),
+                     "Number of groups to break heatmap into via  k-means clustering on rows.", "right", options = list(container = "body")),
+              tipify(numericInput("col.km", label = "Column k-means groups:", value = 0, step = 1),
+                     "Number of groups to break heatmap into via k-means clustering on columns.", "right", options = list(container = "body")),
+              tipify(pickerInput("anno.vars", "Annotate Heatmap by:", choices = c("", names(SummarizedExperiment::colData(dds))),
                           multiple = TRUE, options = list(`live-search` = TRUE, `actions-box` = TRUE),
-                          selected = annot.by)
+                          selected = annot.by),
+                     "Sample metadata columns used for column annotations.", "right", options = list(container = "body"))
             ),
             bsCollapsePanel(title = span(icon("plus"), "Highlight Gene(sets)"), value = "genesets", style = "info",
               textAreaInput("hl.genes", "Highlight Genes:", value = "", rows = 4,
@@ -330,17 +372,28 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                                                           `actions-box` = TRUE)),
               fluidRow(
                 column(6,
-                  numericInput("hl.genes.opa", label = "Genes opacity:", value = 1, step = 0.05, min = 0),
-                  numericInput("hl.genes.size", label = "Genes pt size:", value = 7, step = 0.1, min = 0),
-                  numericInput("hl.genes.lw", label = "Genes border width:", value = 1, step = 0.05, min = 0),
-                  colourInput("hl.genes.col", "Genes color:", value = "#E69F00"),
-                  colourInput("hl.genes.lcol", "Genes border:", value = "#000000")),
+                       tipify(numericInput("hl.genes.opa", label = "Genes opacity:", value = 1, step = 0.05, min = 0),
+                              "Opacity of highlighted genes.", "right", options = list(container = "body")),
+                       tipify(numericInput("hl.genes.size", label = "Genes pt size:", value = 7, step = 0.1, min = 0),
+                              "Point size of highlighted genes.", "right", options = list(container = "body")),
+                       tipify(numericInput("hl.genes.lw", label = "Genes border width:", value = 0.5, step = 0.05, min = 0),
+                              "Width of border for highlighted genes.", "right", options = list(container = "body")),
+                       tipify(colourInput("hl.genes.col", "Genes color:", value = "#FFFF19"),
+                              "Color of genes to highlight.", "right", options = list(container = "body")),
+                       tipify(colourInput("hl.genes.lcol", "Genes border:", value = "#000000"),
+                              "Border color of genes to highlight.", "right", options = list(container = "body"))
+                ),
                 column(6,
-                  numericInput("hl.genesets.opa", label = "Sets opacity:", value = 1, step = 0.05, min = 0),
-                  numericInput("hl.genesets.size", label = "Sets pt size:", value = 7, step = 0.1, min = 0),
-                  numericInput("hl.genesets.lw", label = "Sets border width:", value = 1, step = 0.05, min = 0),
-                  colourInput("hl.genesets.col", "Sets color:", value = "#009E73"),
-                  colourInput("hl.genesets.lcol", "Sets border:", value = "#000000"))
+                       tipify(numericInput("hl.genesets.opa", label = "Sets opacity:", value = 1, step = 0.05, min = 0),
+                              "Opacity of highlighted genesets.", "right", options = list(container = "body")),
+                       tipify(numericInput("hl.genesets.size", label = "Sets pt size:", value = 7, step = 0.1, min = 0),
+                              "Point size of highlighted genesets.", "right", options = list(container = "body")),
+                       tipify(numericInput("hl.genesets.lw", label = "Sets border width:", value = 0.5, step = 0.05, min = 0),
+                              "Width of border for highlighted genesets.", "right", options = list(container = "body")),
+                       tipify(colourInput("hl.genesets.col", "Sets color:", value = "#38FFF2"),
+                              "Color of genesets to highlight.", "right", options = list(container = "body")),
+                       tipify(colourInput("hl.genesets.lcol", "Sets border:", value = "#000000"),
+                              "Border color of genesets to highlight.", "right", options = list(container = "body")))
               )
             )
           ),
@@ -359,6 +412,9 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
 
     # Get annotations. If none provided, use design variables.
     anno <- reactiveVal()
+
+    # Used to hold plots for download.
+    plot_store <- reactiveValues()
 
     observeEvent(c(input$anno.vars,
                    input$res.select,
@@ -500,7 +556,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       req(genes)
       input$update
 
-      .make_maplot(res = ress(),
+      plot_store$ma_plot <- .make_maplot(res = ress(),
                    ylim = isolate(input$ma.y),
                    fc.thresh = isolate(input$log2fc),
                    fc.lines = isolate(input$ma.fcline),
@@ -534,13 +590,15 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                    highlight.genesets.opac = isolate(input$hl.genesets.opa),
                    highlight.genesets.linecolor = isolate(input$hl.genesets.lcol),
                    highlight.genesets.linewidth = isolate(input$hl.genesets.lw))
+
+      plot_store$ma_plot
     })
 
     output$volcano_plot <- renderPlotly({
       req(genes)
       input$update
 
-      .make_volcano(res = ress(),
+      plot_store$volcano_plot <- .make_volcano(res = ress(),
                     xlim = isolate(input$vol.x),
                     ylim = isolate(input$vol.y),
                     fc.thresh = isolate(input$log2fc),
@@ -578,6 +636,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                     highlight.featsets.opac = isolate(input$hl.genesets.opa),
                     highlight.featsets.linecolor = isolate(input$hl.genesets.lcol),
                     highlight.featsets.linewidth = isolate(input$hl.genesets.lw))
+
+      plot_store$volcano_plot
     })
 
     output[["res_table_full"]] <- DT::renderDT(server = FALSE, {
@@ -662,6 +722,28 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
       }
     }, ignoreNULL = FALSE)
 
+    # Download interactive plots as html.
+    output$download_plotly_volc <- downloadHandler(
+      filename = function() {
+        paste("volcanoplot-", Sys.Date(), ".html", sep = "")
+      },
+      content = function(file) {
+        # export plotly html widget as a temp file to download.
+        saveWidget(jqui_resizable(plot_store$volcano_plot),
+                   file, selfcontained = TRUE)
+      }
+    )
+
+    output$download_plotly_ma <- downloadHandler(
+      filename = function() {
+        paste("maplot-", Sys.Date(), ".html", sep = "")
+      },
+      content = function(file) {
+        # export plotly html widget as a temp file to download.
+        saveWidget(jqui_resizable(plot_store$ma_plot),
+                   file, selfcontained = TRUE)
+      }
+    )
   }
 
   shinyApp(ui, server, options = list(height = height))
