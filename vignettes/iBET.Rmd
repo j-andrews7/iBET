@@ -85,7 +85,7 @@ hs.msig <- hs.msig %>% split(x = .$gene_symbol, f = .$gs_name)
 dds <- DESeqDataSet(airway, design = ~ dex)
 dds <- DESeq(dds)
 vst <- assay(vst(dds))
-rownames(vst) <- rowData(dds)$SYMBOLS
+rownames(vst) <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
 ```
 
 ## Interactive PCA via `PCAtools`
@@ -156,7 +156,7 @@ This widget creates scatter plots for arbitrary combinations of DE results. It t
 Gene labels can be added to a plot by clicking a point. The labels can also be dragged around, though adding labels to a plot will reset the label positions for said plot, so it's recommended to add all labels prior to re-positioning them.
 
 ```{r}
-shinyDECorr(res, genesets = hs.msig, height = 800)
+shinyDECorr(res, gene.col = "SYMBOLS", genesets = hs.msig, height = 800)
 ```
 
 
