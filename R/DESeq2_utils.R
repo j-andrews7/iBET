@@ -62,7 +62,7 @@
 # TODO: Add defaults, document, and export.
 .make_volcano <- function(res, xlim, ylim, fc.thresh, fc.lines, hover.info = NULL,
                           sig.line, h.id, feat.term, sig.term, lfc.term, down.color, up.color,
-                          insig.color, sig.thresh = 0.05, fs = NULL, sig.size, insig.size,
+                          insig.color, sig.thresh = 0.05, basemean.thresh = 0, fs = NULL, sig.size, insig.size,
                           sig.opacity, insig.opacity, label.size, webgl, webgl.ratio, show.counts,
                           show.hl.counts, counts.size, highlight.featsets, highlight.feats, featsets,
                           highlight.feats.color, highlight.feats.size, highlight.feats.opac,
@@ -96,25 +96,17 @@
   }
 
   # Significance filter.
-  up.feats <- res[[sig.term]] < sig.thresh & res[[lfc.term]] > fc.thresh
+  up.feats <- res[[sig.term]] < sig.thresh & res[[lfc.term]] > fc.thresh & res$baseMean > basemean.thresh
   res$col[up.feats] <- up.color
   res$cex[up.feats] <- sig.size
   res$order[up.feats] <- 1
   res$opacity[up.feats] <- sig.opacity
 
-  dn.feats <- res[[sig.term]] < sig.thresh & res[[lfc.term]] < -fc.thresh
+  dn.feats <- res[[sig.term]] < sig.thresh & res[[lfc.term]] < -fc.thresh & res$baseMean > basemean.thresh
   res$col[dn.feats] <- down.color
   res$cex[dn.feats] <- sig.size
   res$order[dn.feats] <- 1
   res$opacity[dn.feats] <- sig.opacity
-
-  # LFC filter.
-  if(fc.thresh > 0) {
-    fc.threshed <- abs(res[[lfc.term]]) < fc.thresh
-    res$col[fc.threshed] <- insig.color
-    res$cex[fc.threshed] <- insig.size
-    res$order[fc.threshed] <- 0
-  }
 
   res$x <- res[[lfc.term]]
   res$y <- -log10(res[[sig.term]])
@@ -302,7 +294,7 @@
 
 .make_maplot <- function(res, ylim, fc.thresh, fc.lines, h.id, sig.term,
                          down.color, up.color, insig.color, sig.size, insig.size, sig.thresh = 0.05,
-                         gs = NULL, sig.opacity, insig.opacity, label.size, webgl, webgl.ratio, show.counts,
+                         gs = NULL, basemean.thresh = 0, sig.opacity, insig.opacity, label.size, webgl, webgl.ratio, show.counts,
                          counts.size, show.hl.counts, highlight.genesets, highlight.genes, genesets,
                          highlight.genes.color, highlight.genes.size, highlight.genes.opac,
                          highlight.genes.linecolor, highlight.genes.linewidth,
@@ -334,26 +326,19 @@
   }
 
   # Styling.
-  up.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange > fc.thresh
+  up.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange > fc.thresh & res$baseMean > basemean.thresh
   res$col[up.degs] <- up.color
   res$cex[up.degs] <- sig.size
   res$order[up.degs] <- 1
   res$opacity[up.degs] <- sig.opacity
 
-  dn.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange < -fc.thresh
+  dn.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange < -fc.thresh & res$baseMean > basemean.thresh
   res$col[dn.degs] <- down.color
   res$cex[dn.degs] <- sig.size
   res$order[dn.degs] <- 1
   res$opacity[dn.degs] <- sig.opacity
 
   res$lcol <- res$col
-
-  if(fc.thresh > 0) {
-    fc.threshed <- abs(res$log2FoldChange) < fc.thresh
-    res$col[fc.threshed] <- insig.color
-    res$cex[fc.threshed] <- insig.size
-    res$order[fc.threshed] <- 0
-  }
 
   # Get gene numbers.
   n.up.genes <- length(up.degs[up.degs == TRUE])
