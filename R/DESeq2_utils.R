@@ -334,13 +334,13 @@
   }
 
   # Styling.
-  up.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange > 0
+  up.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange > fc.thresh
   res$col[up.degs] <- up.color
   res$cex[up.degs] <- sig.size
   res$order[up.degs] <- 1
   res$opacity[up.degs] <- sig.opacity
 
-  dn.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange < 0
+  dn.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange < -fc.thresh
   res$col[dn.degs] <- down.color
   res$cex[dn.degs] <- sig.size
   res$order[dn.degs] <- 1
