@@ -59,7 +59,7 @@ First, let's load up some example data.
 shh <- suppressPackageStartupMessages
 shh(library("DESeq2"))
 shh(library("PCAtools"))
-#shh(library("iBET"))
+shh(library("iBET"))
 shh(library("edgeR"))
 shh(library("airway"))
 shh(library("msigdbr"))
@@ -90,13 +90,18 @@ rownames(vst) <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
 
 ## Interactive PCA via `PCAtools`
 
-[PCAtools](https://bioconductor.org/packages/release/bioc/html/PCAtools.html) is a straight-forward package for principle component analysis. Note that filtering samples in the Metadata tab will re-run and re-plot the PCA.
+This interactive app provides provides several ways to assess variability within a dataset via [PCAtools](https://bioconductor.org/packages/release/bioc/html/PCAtools.html). It contains five tabs:
+
+-   **biplot** - Contains an interactive biplot of PCA components (the traditional PCA plot). The PCA itself can be controlled via the PCA Settings box in the sidebar. The biplot can be adjusted in the Biplot Settings box.
+-   **screeplot** - Contains a screeplot, which is used to assess the variability explained by each principal component. Useful for selecting the number of PCs to retain for downstream analyses. There are a few methods to select this number included in the Screeplot Settings box in the sidebar.
+-   **eigencorplot** - This is a heatmap of variables by principal components to show how well each variable correlates with each PC. Currently, only numeric metadata variables may be used with it as factor variables depend on ordering and may yield confusing results.
+-   **Distance Matrix** - This provides a distance matrix between all samples in the set. Annotations can easily be added to any or all axes.
+-   **Metadata** - Contains a table of sample metadata. Can be used to filter the samples used in the PCA and shown in the biplot and distance matrices.
 
 ```{r pca, message = FALSE, warning = FALSE}
 shinyPCAtools(vst, metadata = colData(dds), annot.by = c("cell", "dex"), 
               color.by = "dex", shape.by = "cell", scale = TRUE, height = 850)
 ```
-
 
 ### Larger (scRNA) Dataset
 
@@ -122,7 +127,7 @@ shinyPCAtools(logcounts(data), metadata = colData(data), annot.by = c("Cell.Type
 
 ## Interactive Differential Expression via `DESeq2`
 
-This widget was heavily inspired by the `interactivate` function from the [InteractiveComplexHeatmap](https://bioconductor.org/packages/release/bioc/html/InteractiveComplexHeatmap.html) package. It wraps [DESeq2](https://bioconductor.org/packages/release/bioc/html/DESeq2.html) and will run differential expression analysis if not provided a results dataframe as well. 
+This widget was heavily inspired by the `interactivate` function from the [InteractiveComplexHeatmap](https://bioconductor.org/packages/release/bioc/html/InteractiveComplexHeatmap.html) package. It wraps [DESeq2](https://bioconductor.org/packages/release/bioc/html/DESeq2.html) and will run differential expression analysis if not provided a results dataframe as well.
 
 Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around, though adding labels will reset the position, so it's recommended to add all labels prior to re-positioning them. Gene sets can be highlighted easily if provided.
 
@@ -159,12 +164,15 @@ Gene labels can be added to a plot by clicking a point. The labels can also be d
 shinyDECorr(res, gene.col = "SYMBOLS", genesets = hs.msig, height = 800)
 ```
 
-
 # SessionInfo
 
 <details>
 
-<summary>Click to expand</summary>
+<summary>
+
+Click to expand
+
+</summary>
 
 ```{r, echo = FALSE}
 sessionInfo()
