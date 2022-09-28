@@ -429,8 +429,10 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
         annos <- NULL
       }
 
-      l <- sapply(annos, function(x) (is.factor(x) || is.character(x))) | sapply(annos, function(x) length(unique(x)) == 1)
-      annos <- annos[, l, drop = FALSE]
+      if (!is.null(annos)) {
+        l <- sapply(annos, function(x) (is.factor(x) || is.character(x))) | sapply(annos, function(x) length(unique(x)) == 1)
+        annos <- annos[, l, drop = FALSE]
+      }
 
       if (ncol(annos) == 0) {
         annos <- NULL
