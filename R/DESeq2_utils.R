@@ -520,7 +520,7 @@ baseMean: @{df[1, 'baseMean']}
 log2FoldChange: @{df[1, 'log2FoldChange']}
 lfcSE: @{df[1, 'lfcSE']}
 pvalue: @{df[1, 'pvalue']}
-adjusted pvalue: @{df[1, 'padj']}</pre>
+padj: @{df[1, 'padj']}</pre>
 "
   } else {
     tmpl <- "
@@ -531,9 +531,9 @@ log2FoldChange: @{df[1, 'log2FoldChange']}
 lfcSE: @{df[1, 'lfcSE']}
 stat: @{df[1, 'stat']}
 pvalue: @{df[1, 'pvalue']}
-adjusted pvalue: @{df[1, 'padj']}</pre>
+padj: @{df[1, 'padj']}</pre>
 "
   }
 
-  return(tmpl)
+  tmpl
 }
