@@ -146,12 +146,12 @@ deseq.res2$SYMBOLS <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
 deseq.res3$SYMBOLS <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
 deseq.res4$SYMBOLS <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
 
-res <- list("trt v untrt" = as.data.frame(deseq.res1), 
+rezzy <- list("trt v untrt" = as.data.frame(deseq.res1), 
             "N080611vN052611" = as.data.frame(deseq.res2), 
             "N61311vN080611" = as.data.frame(deseq.res3), 
             "N080611vN61311" = as.data.frame(deseq.res4))
 
-shinyDESeq2(dds, res = res, genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
+shinyDESeq2(dds, res = rezzy, genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
 ```
 
 ## Correlating DE Results
@@ -161,7 +161,7 @@ This widget creates scatter plots for arbitrary combinations of DE results. It t
 Gene labels can be added to a plot by clicking a point. The labels can also be dragged around, though adding labels to a plot will reset the label positions for said plot, so it's recommended to add all labels prior to re-positioning them.
 
 ```{r}
-shinyDECorr(res, gene.col = "SYMBOLS", genesets = hs.msig, height = 800)
+shinyDECorr(rezzy, gene.col = "SYMBOLS", genesets = hs.msig, height = 800)
 ```
 
 # SessionInfo
