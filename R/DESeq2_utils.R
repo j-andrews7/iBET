@@ -299,7 +299,8 @@
                          highlight.genes.color, highlight.genes.size, highlight.genes.opac,
                          highlight.genes.linecolor, highlight.genes.linewidth,
                          highlight.genesets.color, highlight.genesets.size, highlight.genesets.opac,
-                         highlight.genesets.linecolor, highlight.genesets.linewidth) {
+                         highlight.genesets.linecolor, highlight.genesets.linewidth,
+                         loess, loess.color, loess.span, loess.genesets, loess.genesets.color, loess.genesets.span) {
 
   res$col <- rep(insig.color, nrow(res))
   res$cex <- rep(insig.size, nrow(res))
@@ -358,6 +359,8 @@
   n.gs.hl <- 0
   n.hl <- 0
 
+  highlight.data <- NULL
+  
   if (!is.null(highlight.gs)) {
     highlight.gs <- highlight.gs[highlight.gs %in% res$Gene]
     n.gs.hl <- length(res$col[res$Gene %in% highlight.gs])
@@ -368,6 +371,8 @@
     res$lcol[res$Gene %in% highlight.gs] <- highlight.genesets.linecolor
     res$lw[res$Gene %in% highlight.gs] <- highlight.genesets.linewidth
     res$order[res$Gene %in% highlight.gs] <- 2
+
+    highlight.data <- res[res$Gene %in% highlight.gs,]
   }
 
   # Want these to have precedence over the genesets in case entries are in both.
@@ -425,21 +430,32 @@
     fc.line1 <- .hline(y = fc.thresh, color = "#999999", width = 1, dash = "longdash")
     fc.line2 <- .hline(y = -fc.thresh, color = "#999999", width = 1, dash = "longdash")
   }
-
-  # Figure generation.
+  
   fig <- plot_ly(res, x = ~log10(x),
-                 y = ~y,
+                 source = paste0(h.id, "_ma")) %>%
+                 add_markers(y = ~y,
                  customdata = ~Gene,
-                 type = "scatter",
-                 mode = "markers",
                  marker = list(color = ~col,
                                size = ~cex,
                                symbol = ~sh,
                                line = list(color = ~lcol, width = ~lw),
                                opacity = ~opacity),
                  text = ~hover.string,
-                 hoverinfo = "text",
-                 source = paste0(h.id, "_ma")) %>%
+                 hoverinfo = "text")
+
+
+  if (loess) {
+    fig <- fig %>% add_lines(y = ~fitted(loess(y ~ -log10(x), span = loess.span)), line = list(color = loess.color, width = 3), name = "LOESS")
+  }
+
+  if (!is.null(highlight.data)) {
+    if (loess.genesets) {
+      fig <- fig %>% add_lines(data = highlight.data, x = ~log10(x), y = ~fitted(loess(y ~ -log10(x), span = loess.genesets.span)), 
+        line = list(color = loess.genesets.color, width = 3), name = "LOESS")
+    }
+  }
+
+  fig <- fig %>% 
     config(edits = list(annotationPosition = TRUE,
                         annotationTail = TRUE),
            toImageButtonOptions = list(format = "svg"),

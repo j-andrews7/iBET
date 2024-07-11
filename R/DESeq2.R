@@ -19,8 +19,9 @@
 #' @importFrom SummarizedExperiment colData assay
 #' @importFrom grDevices dev.off pdf
 #' @importFrom graphics par
-#' @importFrom stats quantile
+#' @importFrom stats quantile loess fitted
 #' @importFrom plotly ggplotly plotlyOutput renderPlotly toWebGL plot_ly layout add_annotations config toRGB event_data
+#'   add_lines add_markers
 #' @import ggplot2
 #' @import shinydashboard
 #' @import dashboardthemes
@@ -183,7 +184,13 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                   tipify(colourInput("ma.insig.color", "Insig colour", value = "black"),
                          "Color of insignificant genes.", "right", options = list(container = "body")),
                   tipify(numericInput("ma.sig.opa", label = "Sig opacity:", value = 1, step = 0.05, min = 0),
-                         "Opacity of DE genes.", "right", options = list(container = "body"))
+                         "Opacity of DE genes.", "right", options = list(container = "body")),
+                tipify(prettyCheckbox("ma.loess", label = "Show LOESS line", TRUE, bigger = TRUE,
+                               animation = "smooth", status = "success",
+                               icon = icon("check"), width = "100%"),
+                       "Draw LOESS line over all points (scatterplot smoother).", "right", options = list(container = "body")),
+                tipify(colourInput("ma.loess.color", "LOESS colour", value = "#fd8f00"),
+                         "Color of LOESS line.", "right", options = list(container = "body"))
                 ),
                 column(width = 6,
                   numericInput("ma.y", label = "y-axis limits:", value = 5, step = 0.1, min = 0.1),
@@ -194,8 +201,20 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                   tipify(numericInput("ma.sig.size", label = "Sig pt size:", value = 5, step = 0.1, min = 1),
                          "Point size of DE genes.", "right", options = list(container = "body")),
                   tipify(numericInput("ma.insig.size", label = "Insig pt size:", value = 3, step = 0.1, min = 0),
-                         "Point size of non-DE genes.", "right", options = list(container = "body"))
+                         "Point size of non-DE genes.", "right", options = list(container = "body")),
+                  tipify(prettyCheckbox("ma.loess.hl.genesets", label = "Show GSets LOESS", TRUE, bigger = TRUE,
+                               animation = "smooth", status = "success",
+                               icon = icon("check"), width = "100%"),
+                       "Draw LOESS line over highlighted genesets (scatterplot smoother).", "right", options = list(container = "body")),
+                  tipify(colourInput("ma.loess.hl.genesets.color", "GSets LOESS colour", value = "#23A39D"),
+                         "Color of genesets LOESS line.", "right", options = list(container = "body"))
                 )
+              ),
+              splitLayout(
+                tipify(numericInput("ma.loess.span", label = "LOESS span:", value = 0.75, max = 1, step = 0.5, min = 0.01),
+                         "Smoothness of LOESS (higher is smoother).", "right", options = list(container = "body")),
+                tipify(numericInput("ma.loess.hl.genesets.span", label = "LOESS genesets span:", value = 0.75, max = 1, step = 0.5, min = 0.01),
+                         "Smoothness of geneset LOESS (higher is smoother).", "right", options = list(container = "body")),
               ),
               tipify(prettyCheckbox("ma.fcline", label = "Show MAplot FC Threshold", value = TRUE,
                             animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
@@ -592,7 +611,14 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                    highlight.genesets.size = isolate(input$hl.genesets.size),
                    highlight.genesets.opac = isolate(input$hl.genesets.opa),
                    highlight.genesets.linecolor = isolate(input$hl.genesets.lcol),
-                   highlight.genesets.linewidth = isolate(input$hl.genesets.lw))
+                   highlight.genesets.linewidth = isolate(input$hl.genesets.lw),
+                   loess = isolate(input$ma.loess),
+                   loess.color = isolate(input$ma.loess.color),
+                   loess.span = isolate(input$ma.loess.span),
+                   loess.genesets = isolate(input$ma.loess.hl.genesets),
+                   loess.genesets.color = isolate(input$ma.loess.hl.genesets.color),
+                   loess.genesets.span = isolate(input$ma.loess.hl.genesets.span))
+
 
       plot_store$ma_plot
     })
