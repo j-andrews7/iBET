@@ -653,7 +653,10 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                 genes$volc <- NULL
 
                 # Update significance term choices to new column names.
-                updateSelectInput(session, "sig.term", choices = colnames(ress()))
+                updateSelectInput(session, "sig.term",
+                    choices = colnames(ress()),
+                    selected = ifelse("padj" %in% colnames(res), "padj", "svalue")
+                )
 
                 if (!is.null(input$metadata_rows_all)) {
                     mat <- mat[, input$metadata_rows_all]
@@ -687,7 +690,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
             row_index <- unique(unlist(df$row_index))
             selected <- env$row_index[row_index]
 
-            cnames <- c(sig.term)
+            cnames <- c("stat", "pvalue", "padj", "svalue")[c("stat", "pvalue", "padj", "svalue") %in% colnames(ress())]
             if (!is.null(swap.rownames)) {
                 cnames <- c(cnames, "ORIGINAL_ROWS")
             }
@@ -700,7 +703,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                             pageLength = 20
                         )
                     ),
-                    columns = 1:3, digits = 5
+                    columns = seq_along(c("baseMean", "log2FoldChange", cnames)), digits = 5
                 ) %>%
                     DT::formatStyle(0, target = "row", lineHeight = "40%")
             })
@@ -873,12 +876,11 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
 
             # Collect proper output columns.
             cnames <- NULL
-            if (sig.term == "svalue") {
-                cnames <- "svalue"
-            } else if ("stat" %in% colnames(df)) {
-                cnames <- c("padj", "pvalue", "stat")
-            } else {
-                cnames <- c("padj", "pvalue")
+
+            for (term in c("stat", "pvalue", "padj", "svalue")) {
+                if (term %in% colnames(df)) {
+                    cnames <- c(cnames, term)
+                }
             }
 
             # Can't tack on to cnames because of rounding.
