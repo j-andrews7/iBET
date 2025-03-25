@@ -6,8 +6,8 @@
   l <- res[[sig.term]] <= sig.thresh & res$baseMean >= base_mean & abs(res$log2FoldChange) >= log2fc; l[is.na(l)] = FALSE
 
 
-  # If no genes meet the cutoffs, don't make heatmap.
-  if(sum(l) == 0) {
+  # If 0 or 1 gene meet the cutoffs, don't make heatmap.
+  if(sum(l) < 2) {
     return(NULL)
   }
 
