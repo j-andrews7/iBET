@@ -698,7 +698,7 @@ shinyDE <- function(mat, res, metadata = NULL, annot.by = NULL,
                 # Update significance term choices to new column names.
                 updateSelectInput(session, "sig.term",
                     choices = colnames(ress()),
-                    selected = ifelse("padj" %in% colnames(res), "padj", "svalue")
+                    selected = sig.col
                 )
 
                 if (!is.null(input$metadata_rows_all)) {
@@ -706,8 +706,9 @@ shinyDE <- function(mat, res, metadata = NULL, annot.by = NULL,
                 }
 
                 pdf(NULL)
-                ht <- .make_heatmap(mat, ress(), anno(), baseMean_col_fun, log2fc_col_fun,
+                ht <- .make_heatmap(mat, ress(), anno(), abundance_col_fun, log2fc_col_fun,
                     sig.term = input$sig.term,
+                    lfc.col = lfc.col, abundance.col = abundance.col,
                     sig.thresh = as.numeric(input$sig.thresh), base_mean = input$base_mean, log2fc = input$log2fc,
                     row.km = input$row.km, col.km = input$col.km
                 )
@@ -733,20 +734,23 @@ shinyDE <- function(mat, res, metadata = NULL, annot.by = NULL,
             row_index <- unique(unlist(df$row_index))
             selected <- env$row_index[row_index]
 
-            cnames <- c("stat", "pvalue", "padj", "svalue")[c("stat", "pvalue", "padj", "svalue") %in% colnames(ress())]
+            # Find available columns
+            display_cols <- c(abundance.col, lfc.col)
+            cnames <- c("stat", "pvalue", "padj", "svalue", "lfcSE")[c("stat", "pvalue", "padj", "svalue", "lfcSE") %in% colnames(ress())]
             if (!is.null(swap.rownames)) {
                 cnames <- c(cnames, "ORIGINAL_ROWS")
             }
+            all_cols <- c(display_cols, cnames)
 
             output[["res_table"]] <- DT::renderDataTable({
                 DT::formatRound(
-                    DT::datatable(as.data.frame(ress()[selected, c("baseMean", "log2FoldChange", cnames)]),
+                    DT::datatable(as.data.frame(ress()[selected, all_cols]),
                         rownames = TRUE, options = list(
                             lengthMenu = c(5, 10, 25),
                             pageLength = 20
                         )
                     ),
-                    columns = seq_along(c("baseMean", "log2FoldChange", cnames)), digits = 5
+                    columns = seq_along(all_cols), digits = 5
                 ) %>%
                     DT::formatStyle(0, target = "row", lineHeight = "40%")
             })
@@ -758,20 +762,24 @@ shinyDE <- function(mat, res, metadata = NULL, annot.by = NULL,
 
             output[["res_table"]] <- DT::renderDataTable({
                 # Adjust output table columns based on results table.
-                cnames <- c(sig.term)
+                display_cols <- c(abundance.col, lfc.col)
+                cnames <- c(sig.col)
+                if ("lfcSE" %in% colnames(ress())) {
+                    display_cols <- c(display_cols, "lfcSE")
+                }
                 if (!is.null(swap.rownames)) {
                     cnames <- c(cnames, "ORIGINAL_ROWS")
                 }
-
-                df <- df[, c("baseMean", "log2FoldChange", "lfcSE", cnames)]
+                all_cols <- c(display_cols, cnames)
+                
                 DT::formatRound(
-                    DT::datatable(as.data.frame(ress()[selected, c("baseMean", "log2FoldChange", cnames)]),
+                    DT::datatable(as.data.frame(ress()[selected, all_cols]),
                         rownames = TRUE, options = list(
                             lengthMenu = c(5, 10, 25),
                             pageLength = 20
                         )
                     ),
-                    columns = 1:3, digits = 5
+                    columns = seq_len(length(display_cols)), digits = 5
                 ) %>%
                     DT::formatStyle(0, target = "row", lineHeight = "40%")
             })
@@ -825,6 +833,8 @@ shinyDE <- function(mat, res, metadata = NULL, annot.by = NULL,
                 basemean.thresh = isolate(input$base_mean),
                 h.id = h.id,
                 sig.term = isolate(input$sig.term),
+                lfc.col = lfc.col,
+                abundance.col = abundance.col,
                 gs = genes$ma,
                 up.color = isolate(input$ma.up.color),
                 down.color = isolate(input$ma.down.color),
@@ -879,7 +889,8 @@ shinyDE <- function(mat, res, metadata = NULL, annot.by = NULL,
                 basemean.thresh = isolate(input$base_mean),
                 h.id = h.id,
                 sig.term = isolate(input$sig.term),
-                lfc.term = "log2FoldChange",
+                lfc.term = lfc.col,
+                abundance.col = abundance.col,
                 feat.term = "rows",
                 fs = genes$volc,
                 up.color = isolate(input$vol.up.color),
@@ -918,9 +929,10 @@ shinyDE <- function(mat, res, metadata = NULL, annot.by = NULL,
             df <- as.data.frame(ress())
 
             # Collect proper output columns.
+            display_cols <- c(abundance.col, lfc.col)
             cnames <- NULL
 
-            for (term in c("stat", "pvalue", "padj", "svalue")) {
+            for (term in c("lfcSE", "stat", "pvalue", "padj", "svalue", "qvalue", "FDR")) {
                 if (term %in% colnames(df)) {
                     cnames <- c(cnames, term)
                 }
@@ -932,7 +944,8 @@ shinyDE <- function(mat, res, metadata = NULL, annot.by = NULL,
                 snames <- "ORIGINAL_ROWS"
             }
 
-            df <- df[, c("baseMean", "log2FoldChange", "lfcSE", cnames, snames)]
+            all_cols <- c(display_cols, cnames, snames)
+            df <- df[, all_cols]
 
             DT::formatRound(
                 DT::datatable(df,
@@ -946,28 +959,32 @@ shinyDE <- function(mat, res, metadata = NULL, annot.by = NULL,
                         buttons = c("copy", "csv", "excel", "pdf", "print")
                     )
                 ),
-                columns = c("baseMean", "log2FoldChange", cnames), digits = 5
+                columns = c(display_cols, cnames), digits = 5
             ) %>%
                 DT::formatStyle(1, target = "row", lineHeight = "40%")
         })
 
         # Metadata table.
         output$metadata <- DT::renderDT(server = FALSE, {
-            df <- as.data.frame(SummarizedExperiment::colData(dds))
-            DT::datatable(df,
-                filter = "top",
-                extensions = c("Buttons", "Scroller"),
-                options = list(
-                    search = list(regex = TRUE),
-                    lengthMenu = list(c(10, 25, 50, -1), c("10", "25", "50", "all")),
-                    dom = "Blfrtip",
-                    buttons = c("copy", "csv", "excel", "pdf", "print"),
-                    scrollX = TRUE,
-                    deferRender = TRUE,
-                    scrollY = 400,
-                    scroller = TRUE
+            if (!is.null(metadata)) {
+                df <- as.data.frame(metadata)
+                DT::datatable(df,
+                    filter = "top",
+                    extensions = c("Buttons", "Scroller"),
+                    options = list(
+                        search = list(regex = TRUE),
+                        lengthMenu = list(c(10, 25, 50, -1), c("10", "25", "50", "all")),
+                        dom = "Blfrtip",
+                        buttons = c("copy", "csv", "excel", "pdf", "print"),
+                        scrollX = TRUE,
+                        deferRender = TRUE,
+                        scrollY = 400,
+                        scroller = TRUE
+                    )
                 )
-            )
+            } else {
+                DT::datatable(data.frame(Message = "No metadata provided"))
+            }
         })
 
         # Only remake heatmap on button click.
@@ -984,8 +1001,9 @@ shinyDE <- function(mat, res, metadata = NULL, annot.by = NULL,
                 }
 
                 pdf(NULL)
-                ht <- .make_heatmap(mat, ress(), anno(), baseMean_col_fun, log2fc_col_fun,
+                ht <- .make_heatmap(mat, ress(), anno(), abundance_col_fun, log2fc_col_fun,
                     sig.term = input$sig.term,
+                    lfc.col = lfc.col, abundance.col = abundance.col,
                     sig.thresh = as.numeric(input$sig.thresh), base_mean = input$base_mean, log2fc = input$log2fc,
                     row.km = input$row.km, col.km = input$col.km
                 )
@@ -1035,4 +1053,75 @@ shinyDE <- function(mat, res, metadata = NULL, annot.by = NULL,
     }
 
     shinyApp(ui, server, options = list(height = height))
+}
+
+#' Backward compatibility wrapper for shinyDE (formerly shinyDESeq2)
+#'
+#' This function provides backward compatibility for the old \code{shinyDESeq2} function.
+#' It accepts a DESeqDataSet object and wraps it to work with the new generic \code{shinyDE} function.
+#'
+#' @param dds A \code{\link[DESeq2]{DESeqDataSet}} object.
+#' @param res Either the object returned by \code{\link[DESeq2]{results}} or \code{\link[DESeq2]{lfcShrink}}
+#'   or a named list of such results.
+#' @param coef A string indicating the coefficient name for which results will be generated.
+#' @param annot.by A string or character vector containing the names of sample metadata variables.
+#' @param use.lfcShrink Boolean indicating whether \code{\link[DESeq2]{lfcShrink}} should be used.
+#' @param lfcThreshold Number passed to \code{\link[DESeq2]{lfcShrink}} or \code{\link[DESeq2]{results}}.
+#' @param use.vst Boolean indicating whether \code{\link[DESeq2]{vst}} transformed counts should be used.
+#' @param h.id String indicating unique ID for interactive heatmaps.
+#' @param genesets Optional named list containing genesets.
+#' @param swap.rownames String. The column name used to identify features.
+#' @param height Number indicating height of app in pixels.
+#'
+#' @return A Shiny app.
+#' 
+#' @export
+#' @importFrom DESeq2 DESeq results lfcShrink resultsNames counts vst
+#' @importFrom SummarizedExperiment colData assay
+shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
+                        use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE,
+                        h.id = "ht1", genesets = NULL, swap.rownames = NULL, height = 800) {
+    
+    # If gene dispersions not yet calculated, calculate them.
+    if (is.null(body(dds@dispersionFunction))) {
+        dds <- DESeq2::DESeq(dds)
+    }
+    
+    # Get contrast name if results are not provided.
+    if (is.null(res)) {
+        if (is.null(coef)) {
+            coef <- DESeq2::resultsNames(dds)[DESeq2::resultsNames(dds) != "Intercept"][1]
+        }
+
+        if (use.lfcShrink) {
+            res <- DESeq2::lfcShrink(dds, coef = coef, lfcThreshold = lfcThreshold)
+        } else {
+            res <- DESeq2::results(dds, name = coef, lfcThreshold = lfcThreshold)
+        }
+    }
+
+    # Get expression matrix
+    if (use.vst) {
+        mat <- SummarizedExperiment::assay(DESeq2::vst(dds))
+    } else {
+        mat <- as.matrix(DESeq2::counts(dds, normalized = TRUE))
+    }
+    
+    # Get metadata
+    metadata <- as.data.frame(SummarizedExperiment::colData(dds))
+    
+    # Call the new generic function
+    shinyDE(
+        mat = mat,
+        res = res,
+        metadata = metadata,
+        annot.by = annot.by,
+        sig.col = NULL,  # Auto-detect
+        lfc.col = "log2FoldChange",
+        abundance.col = "baseMean",
+        h.id = h.id,
+        genesets = genesets,
+        swap.rownames = swap.rownames,
+        height = height
+    )
 }
