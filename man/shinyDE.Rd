@@ -19,15 +19,21 @@ shinyDE(
 )
 }
 \arguments{
-\item{mat}{A numeric matrix of expression values (e.g., normalized counts, VST-transformed counts, log-CPM).
+\item{mat}{A numeric matrix of expression values (e.g., normalized counts, VST-transformed counts, log-CPM),
+a \code{\link[DESeq2]{DESeqDataSet}} object, or a \code{\link[edgeR]{DGEList}} object.
+If a DESeqDataSet is provided, VST-transformed counts will be extracted.
+If a DGEList is provided, log-CPM values will be calculated.
 Rows are features (genes) and columns are samples. Required.}
 
 \item{res}{A data frame or named list of data frames containing differential expression results.
 Each data frame must contain columns for significance, fold change, and abundance (see sig.col, lfc.col, and abundance.col parameters).
-If a named list is provided, users will be able to choose between results in the app. Required.}
+If a named list is provided, users will be able to choose between results in the app. 
+If \code{mat} is a DESeqDataSet and \code{res} is NULL, results will be generated automatically.
+Required (unless mat is a DESeqDataSet).}
 
 \item{metadata}{A data frame containing sample metadata. Rows should correspond to columns in \code{mat}.
-If provided, can be used for heatmap annotations and sample filtering. Optional.}
+If provided, can be used for heatmap annotations and sample filtering. 
+If \code{mat} is a DESeqDataSet or DGEList with sample information, metadata will be extracted automatically if not provided. Optional.}
 
 \item{annot.by}{A string or character vector containing the names of metadata columns to be used as heatmap annotations.
 Only used if \code{metadata} is provided. Optional.}
@@ -70,18 +76,25 @@ as they are infinite values after log transformation.
 }
 \examples{
 \dontrun{
-# Example with DESeq2 results
+# Example with DESeq2 - direct object usage
 library(DESeq2)
 dds <- DESeq(dds)
 res <- results(dds)
+shinyDE(dds, res = as.data.frame(res))
+
+# Example with DESeq2 - manual extraction
 mat <- assay(vst(dds))
 shinyDE(mat, res = as.data.frame(res), metadata = colData(dds))
 
-# Example with edgeR results
+# Example with edgeR - direct object usage
 library(edgeR)
-fit <- glmQLFit(y, design)
-qlf <- glmQLFTest(fit)
+y <- DGEList(counts = counts)
+y <- calcNormFactors(y)
+# ... run DE analysis ...
 res <- topTags(qlf, n = Inf)$table
+shinyDE(y, res = res, lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
+
+# Example with manual matrix
 shinyDE(mat, res = res, lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
 }
 }

@@ -35,14 +35,22 @@
 #' @importFrom colourpicker colourInput
 #' @importFrom methods is
 #' @importFrom htmlwidgets saveWidget
+#' @importFrom DESeq2 vst
+#' @importFrom edgeR cpm
 #'
-#' @param mat A numeric matrix of expression values (e.g., normalized counts, VST-transformed counts, log-CPM).
+#' @param mat A numeric matrix of expression values (e.g., normalized counts, VST-transformed counts, log-CPM),
+#'   a \code{\link[DESeq2]{DESeqDataSet}} object, or a \code{\link[edgeR]{DGEList}} object.
+#'   If a DESeqDataSet is provided, VST-transformed counts will be extracted.
+#'   If a DGEList is provided, log-CPM values will be calculated.
 #'   Rows are features (genes) and columns are samples. Required.
 #' @param res A data frame or named list of data frames containing differential expression results.
 #'   Each data frame must contain columns for significance, fold change, and abundance (see sig.col, lfc.col, and abundance.col parameters).
-#'   If a named list is provided, users will be able to choose between results in the app. Required.
+#'   If a named list is provided, users will be able to choose between results in the app. 
+#'   If \code{mat} is a DESeqDataSet and \code{res} is NULL, results will be generated automatically.
+#'   Required (unless mat is a DESeqDataSet).
 #' @param metadata A data frame containing sample metadata. Rows should correspond to columns in \code{mat}.
-#'   If provided, can be used for heatmap annotations and sample filtering. Optional.
+#'   If provided, can be used for heatmap annotations and sample filtering. 
+#'   If \code{mat} is a DESeqDataSet or DGEList with sample information, metadata will be extracted automatically if not provided. Optional.
 #' @param annot.by A string or character vector containing the names of metadata columns to be used as heatmap annotations.
 #'   Only used if \code{metadata} is provided. Optional.
 #' @param sig.col String specifying the column name in \code{res} containing significance values (e.g., "padj", "FDR", "svalue").
@@ -63,29 +71,80 @@
 #'
 #' @examples
 #' \dontrun{
-#' # Example with DESeq2 results
+#' # Example with DESeq2 - direct object usage
 #' library(DESeq2)
 #' dds <- DESeq(dds)
 #' res <- results(dds)
+#' shinyDE(dds, res = as.data.frame(res))
+#' 
+#' # Example with DESeq2 - manual extraction
 #' mat <- assay(vst(dds))
 #' shinyDE(mat, res = as.data.frame(res), metadata = colData(dds))
 #' 
-#' # Example with edgeR results
+#' # Example with edgeR - direct object usage
 #' library(edgeR)
-#' fit <- glmQLFit(y, design)
-#' qlf <- glmQLFTest(fit)
+#' y <- DGEList(counts = counts)
+#' y <- calcNormFactors(y)
+#' # ... run DE analysis ...
 #' res <- topTags(qlf, n = Inf)$table
+#' shinyDE(y, res = res, lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
+#' 
+#' # Example with manual matrix
 #' shinyDE(mat, res = res, lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
 #' }
 #'
 #' @author Jared Andrews, based on code by Zuguang Gu.
 #' @export
-shinyDE <- function(mat, res, metadata = NULL, annot.by = NULL,
+shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
                     sig.col = NULL, lfc.col = "log2FoldChange", abundance.col = "baseMean",
                     h.id = "ht1", genesets = NULL, swap.rownames = NULL, height = 800) {
+    
+    # Handle DESeqDataSet objects
+    if (methods::is(mat, "DESeqDataSet")) {
+        # Extract metadata if not provided
+        if (is.null(metadata)) {
+            metadata <- as.data.frame(SummarizedExperiment::colData(mat))
+        }
+        
+        # Extract VST-transformed counts
+        mat <- SummarizedExperiment::assay(DESeq2::vst(mat))
+        
+        # Set default column names for DESeq2
+        if (lfc.col == "log2FoldChange" && abundance.col == "baseMean") {
+            # These are already the defaults, no change needed
+        }
+    }
+    
+    # Handle DGEList objects
+    if (methods::is(mat, "DGEList")) {
+        # Extract metadata if not provided and available
+        if (is.null(metadata) && !is.null(mat$samples)) {
+            metadata <- mat$samples
+        }
+        
+        # Calculate log-CPM values
+        mat <- edgeR::cpm(mat, log = TRUE)
+        
+        # Set default column names for edgeR if they match DESeq2 defaults
+        if (lfc.col == "log2FoldChange") {
+            lfc.col <- "logFC"
+        }
+        if (abundance.col == "baseMean") {
+            abundance.col <- "logCPM"
+        }
+        if (is.null(sig.col)) {
+            sig.col <- "FDR"
+        }
+    }
+    
+    # Validate res is provided (unless it was NULL and mat was DESeqDataSet with automatic generation)
+    if (is.null(res)) {
+        stop("res parameter is required. Please provide differential expression results.")
+    }
+    
     # Validate inputs
     if (!is.matrix(mat) && !is.data.frame(mat)) {
-        stop("mat must be a matrix or data frame")
+        stop("mat must be a matrix, data frame, DESeqDataSet, or DGEList object")
     }
     
     if (is.data.frame(mat)) {

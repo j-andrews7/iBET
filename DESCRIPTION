@@ -40,7 +40,8 @@ Imports:
     colourpicker,
     shinyjs,
     methods,
-    htmlwidgets
+    htmlwidgets,
+    edgeR
 Suggests:
     airway,
     magrittr,

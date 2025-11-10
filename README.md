@@ -102,6 +102,8 @@ Multiple comparisons can also be provided for switching between analyses quickly
 
 ### Using with DESeq2 Results
 
+You can pass a DESeqDataSet directly:
+
 ```{r de, message = FALSE, warning = FALSE}
 library(DESeq2)
 deseq.res1 <- results(dds, contrast = c("dex", "trt", "untrt"))
@@ -115,15 +117,19 @@ res <- list("trt v untrt" = as.data.frame(deseq.res1),
             "N61311vN080611" = as.data.frame(deseq.res3), 
             "N080611vN61311" = as.data.frame(deseq.res4))
 
-# Get expression matrix and metadata
+# Pass DESeqDataSet directly
+shinyDE(dds, res = res, genesets = hs.msig, annot.by = c("cell", "dex"))
+
+# Or extract components manually
 mat <- assay(vst(dds))
 metadata <- as.data.frame(colData(dds))
-
 shinyDE(mat = mat, res = res, metadata = metadata, 
         genesets = hs.msig, annot.by = c("cell", "dex"))
 ```
 
 ### Using with edgeR Results
+
+You can pass a DGEList directly:
 
 ```{r de_edger, message = FALSE, warning = FALSE, eval = FALSE}
 library(edgeR)
@@ -135,11 +141,14 @@ fit <- glmQLFit(y, design)
 qlf <- glmQLFTest(fit)
 res_edger <- topTags(qlf, n = Inf)$table
 
-# Use with shinyDE
+# Pass DGEList directly
+shinyDE(y, res = res_edger, lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
+
+# Or extract components manually
 shinyDE(
   mat = cpm(y, log = TRUE), 
   res = res_edger,
-  metadata = colData(dds),
+  metadata = y$samples,
   lfc.col = "logFC",
   abundance.col = "logCPM", 
   sig.col = "FDR",
