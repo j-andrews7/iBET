@@ -19,7 +19,7 @@ devtools::install_github("j-andrews7/iBET")
 
 ## Usage
 
-**iBET** currently contains three interactive widgets - `shinyPCAtools`, `shinyDE` (formerly `shinyDESeq2`), and `shinyDECorr`. They can be dropped into Rmd documents or ran directly within RStudio as shown below.
+**iBET** currently contains three interactive widgets - `shinyPCAtools`, `shinyDE`, and `shinyDECorr`. They can be dropped into Rmd documents or ran directly within RStudio as shown below.
 
 I **highly** recommend altering the width of your Rmd report by using a CSS block at the top of your document (right after the YAML header). This will use much more of the page, which makes using the widgets much easier. The following works well on most screens with no scaling:
 
@@ -102,9 +102,8 @@ Multiple comparisons can also be provided for switching between analyses quickly
 
 ### Using with DESeq2 Results
 
-The backward-compatible `shinyDESeq2` function works exactly as before:
-
 ```{r de, message = FALSE, warning = FALSE}
+library(DESeq2)
 deseq.res1 <- results(dds, contrast = c("dex", "trt", "untrt"))
 dds <- DESeqDataSet(airway, design = ~ cell)
 dds <- DESeq(dds)
@@ -116,15 +115,17 @@ res <- list("trt v untrt" = as.data.frame(deseq.res1),
             "N61311vN080611" = as.data.frame(deseq.res3), 
             "N080611vN61311" = as.data.frame(deseq.res4))
 
-shinyDESeq2(dds, res = res, genesets = hs.msig, annot.by = c("cell", "dex"))
+# Get expression matrix and metadata
+mat <- assay(vst(dds))
+metadata <- as.data.frame(colData(dds))
+
+shinyDE(mat = mat, res = res, metadata = metadata, 
+        genesets = hs.msig, annot.by = c("cell", "dex"))
 ```
 
-### Using with Generic DE Results (e.g., edgeR, limma)
+### Using with edgeR Results
 
-The new `shinyDE` function accepts results from any DE analysis tool:
-
-```{r de_generic, message = FALSE, warning = FALSE, eval = FALSE}
-# Example with edgeR results
+```{r de_edger, message = FALSE, warning = FALSE, eval = FALSE}
 library(edgeR)
 y <- DGEList(counts = counts(dds))
 y <- calcNormFactors(y)

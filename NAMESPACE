@@ -2,7 +2,6 @@
 
 export(shinyDE)
 export(shinyDECorr)
-export(shinyDESeq2)
 export(shinyPCAtools)
 import(ComplexHeatmap)
 import(DT)

@@ -133,9 +133,7 @@ Gene labels can be added to the MAplot and volcano plot by clicking a point. The
 
 Multiple comparisons can also be provided for switching between analyses quickly.
 
-### Using with DESeq2 (backward compatible)
-
-The `shinyDESeq2` function works exactly as before for backward compatibility:
+### Using with DESeq2
 
 ```{r de, message = FALSE, warning = FALSE}
 deseq.res1 <- results(dds, contrast = c("dex", "trt", "untrt"))
@@ -155,10 +153,15 @@ res <- list("trt v untrt" = as.data.frame(deseq.res1),
             "N61311vN080611" = as.data.frame(deseq.res3), 
             "N080611vN61311" = as.data.frame(deseq.res4))
 
-shinyDESeq2(dds, res = res, genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
+# Get expression matrix and metadata
+mat <- assay(vst(dds))
+metadata <- as.data.frame(colData(dds))
+
+shinyDE(mat = mat, res = res, metadata = metadata, 
+        genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
 ```
 
-Alternatively, you can use the new generic `shinyDE` function directly with any DE results. See `?shinyDE` for details on using results from edgeR, limma, or other tools.
+For using results from edgeR, limma, or other DE tools, see `?shinyDE` for details on customizing column names.
 
 ## Correlating DE Results
 
