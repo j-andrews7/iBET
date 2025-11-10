@@ -19,7 +19,7 @@ devtools::install_github("j-andrews7/iBET")
 
 ## Usage
 
-**iBET** currently contains three interactive widgets - `shinyPCAtools`, `shinyDESeq2`, and `shinyDECorr`. They can be dropped into Rmd documents or ran directly within RStudio as shown below.
+**iBET** currently contains three interactive widgets - `shinyPCAtools`, `shinyDE` (formerly `shinyDESeq2`), and `shinyDECorr`. They can be dropped into Rmd documents or ran directly within RStudio as shown below.
 
 I **highly** recommend altering the width of your Rmd report by using a CSS block at the top of your document (right after the YAML header). This will use much more of the page, which makes using the widgets much easier. The following works well on most screens with no scaling:
 
@@ -92,13 +92,17 @@ shinyPCAtools(logcounts(data), metadata = colData(data), annot.by = c("Cell.Type
               color.by = "Cell.Type", removeVar = 0.9, scale = TRUE)
 ```
 
-## Interactive Differential Expression via `DESeq2`
+## Interactive Differential Expression Visualization
 
-This widget was heavily inspired by the `interactivate` function from the [InteractiveComplexHeatmap](https://bioconductor.org/packages/release/bioc/html/InteractiveComplexHeatmap.html) package. It wraps [DESeq2](https://bioconductor.org/packages/release/bioc/html/DESeq2.html) and will run differential expression analysis if not provided a results dataframe as well. 
+The `shinyDE` function provides an interactive widget for exploring differential expression results from any analysis tool (DESeq2, edgeR, limma, etc.). It was heavily inspired by the `interactivate` function from the [InteractiveComplexHeatmap](https://bioconductor.org/packages/release/bioc/html/InteractiveComplexHeatmap.html) package.
 
 Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around, though adding labels will reset the position, so it's recommended to add all labels prior to re-positioning them. Gene sets can be highlighted easily if provided.
 
 Multiple comparisons can also be provided for switching between analyses quickly.
+
+### Using with DESeq2 Results
+
+The backward-compatible `shinyDESeq2` function works exactly as before:
 
 ```{r de, message = FALSE, warning = FALSE}
 deseq.res1 <- results(dds, contrast = c("dex", "trt", "untrt"))
@@ -113,6 +117,33 @@ res <- list("trt v untrt" = as.data.frame(deseq.res1),
             "N080611vN61311" = as.data.frame(deseq.res4))
 
 shinyDESeq2(dds, res = res, genesets = hs.msig, annot.by = c("cell", "dex"))
+```
+
+### Using with Generic DE Results (e.g., edgeR, limma)
+
+The new `shinyDE` function accepts results from any DE analysis tool:
+
+```{r de_generic, message = FALSE, warning = FALSE, eval = FALSE}
+# Example with edgeR results
+library(edgeR)
+y <- DGEList(counts = counts(dds))
+y <- calcNormFactors(y)
+design <- model.matrix(~ dex, data = colData(dds))
+y <- estimateDisp(y, design)
+fit <- glmQLFit(y, design)
+qlf <- glmQLFTest(fit)
+res_edger <- topTags(qlf, n = Inf)$table
+
+# Use with shinyDE
+shinyDE(
+  mat = cpm(y, log = TRUE), 
+  res = res_edger,
+  metadata = colData(dds),
+  lfc.col = "logFC",
+  abundance.col = "logCPM", 
+  sig.col = "FDR",
+  annot.by = c("dex")
+)
 ```
 
 ## Correlating DE Results
