@@ -754,5 +754,5 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       o$destroy
     })
   }
-  shinyApp(ui, server, options = list(height = height))
+  shinyApp(ui, server, options = list(height = height, launch.browser = TRUE))
 }

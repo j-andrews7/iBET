@@ -39,6 +39,7 @@ div.main-container {
 ```
 
 ```{r, include=FALSE}
+library(iBET)
 library(BiocStyle)
 knitr::opts_chunk$set(echo = TRUE, fig.align = "center", message = FALSE, warning = FALSE)
 ```
