@@ -102,7 +102,7 @@ Multiple comparisons can also be provided for switching between analyses quickly
 
 ### Using with DESeq2 Results
 
-You can pass a DESeqDataSet directly:
+You can pass a DESeqDataSet directly with multiple comparisons:
 
 ```{r de, message = FALSE, warning = FALSE}
 library(DESeq2)
@@ -112,19 +112,28 @@ dds <- DESeq(dds)
 deseq.res2 <- results(dds, contrast = c("cell", "N080611", "N052611"))
 deseq.res3 <- results(dds, contrast = c("cell", "N61311", "N080611"))
 deseq.res4 <- results(dds, contrast = c("cell", "N080611", "N61311"))
+
+deseq.res1$SYMBOLS <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
+deseq.res2$SYMBOLS <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
+deseq.res3$SYMBOLS <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
+deseq.res4$SYMBOLS <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
+
 res <- list("trt v untrt" = as.data.frame(deseq.res1), 
             "N080611vN052611" = as.data.frame(deseq.res2), 
             "N61311vN080611" = as.data.frame(deseq.res3), 
             "N080611vN61311" = as.data.frame(deseq.res4))
 
-# Pass DESeqDataSet directly
-shinyDE(dds, res = res, genesets = hs.msig, annot.by = c("cell", "dex"))
+# Pass DESeqDataSet directly - uses VST by default
+shinyDE(dds, res = res, genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
+
+# Or use a different transformation
+shinyDE(dds, res = res, assay = "rlog", genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
 
 # Or extract components manually
 mat <- assay(vst(dds))
 metadata <- as.data.frame(colData(dds))
 shinyDE(mat = mat, res = res, metadata = metadata, 
-        genesets = hs.msig, annot.by = c("cell", "dex"))
+        genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
 ```
 
 ### Using with edgeR Results
@@ -141,8 +150,11 @@ fit <- glmQLFit(y, design)
 qlf <- glmQLFTest(fit)
 res_edger <- topTags(qlf, n = Inf)$table
 
-# Pass DGEList directly
+# Pass DGEList directly - uses log-CPM by default
 shinyDE(y, res = res_edger, lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
+
+# Or use non-log CPM
+shinyDE(y, res = res_edger, assay = "cpm", lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
 
 # Or extract components manually
 shinyDE(

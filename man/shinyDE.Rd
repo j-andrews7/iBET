@@ -6,12 +6,13 @@
 \usage{
 shinyDE(
   mat,
-  res,
+  res = NULL,
   metadata = NULL,
   annot.by = NULL,
   sig.col = NULL,
   lfc.col = "log2FoldChange",
   abundance.col = "baseMean",
+  assay = NULL,
   h.id = "ht1",
   genesets = NULL,
   swap.rownames = NULL,
@@ -21,15 +22,11 @@ shinyDE(
 \arguments{
 \item{mat}{A numeric matrix of expression values (e.g., normalized counts, VST-transformed counts, log-CPM),
 a \code{\link[DESeq2]{DESeqDataSet}} object, or a \code{\link[edgeR]{DGEList}} object.
-If a DESeqDataSet is provided, VST-transformed counts will be extracted.
-If a DGEList is provided, log-CPM values will be calculated.
 Rows are features (genes) and columns are samples. Required.}
 
 \item{res}{A data frame or named list of data frames containing differential expression results.
 Each data frame must contain columns for significance, fold change, and abundance (see sig.col, lfc.col, and abundance.col parameters).
-If a named list is provided, users will be able to choose between results in the app. 
-If \code{mat} is a DESeqDataSet and \code{res} is NULL, results will be generated automatically.
-Required (unless mat is a DESeqDataSet).}
+If a named list is provided, users will be able to choose between results in the app. Required.}
 
 \item{metadata}{A data frame containing sample metadata. Rows should correspond to columns in \code{mat}.
 If provided, can be used for heatmap annotations and sample filtering. 
@@ -46,6 +43,11 @@ Defaults to "log2FoldChange".}
 
 \item{abundance.col}{String specifying the column name in \code{res} containing abundance/expression values (e.g., "baseMean", "AveExpr").
 Defaults to "baseMean".}
+
+\item{assay}{String specifying which transformation/assay to extract when \code{mat} is a DESeqDataSet or DGEList.
+For DESeqDataSet: "vst" (default), "rlog", "normTransform", or a specific assay name.
+For DGEList: "logCPM" (default), "cpm", or "counts".
+Ignored if \code{mat} is already a matrix. Optional.}
 
 \item{h.id}{String indicating unique ID for interactive heatmaps.
 Required if multiple apps are run within the same Rmd file. Defaults to "ht1".}
@@ -82,6 +84,16 @@ dds <- DESeq(dds)
 res <- results(dds)
 shinyDE(dds, res = as.data.frame(res))
 
+# Example with DESeq2 - multiple comparisons
+res1 <- results(dds, contrast = c("condition", "treated", "untreated"))
+res2 <- results(dds, contrast = c("condition", "treated2", "untreated"))
+res_list <- list("treated vs untreated" = as.data.frame(res1),
+                 "treated2 vs untreated" = as.data.frame(res2))
+shinyDE(dds, res = res_list, assay = "vst")
+
+# Example with DESeq2 - using rlog transformation
+shinyDE(dds, res = as.data.frame(res), assay = "rlog")
+
 # Example with DESeq2 - manual extraction
 mat <- assay(vst(dds))
 shinyDE(mat, res = as.data.frame(res), metadata = colData(dds))
@@ -93,6 +105,9 @@ y <- calcNormFactors(y)
 # ... run DE analysis ...
 res <- topTags(qlf, n = Inf)$table
 shinyDE(y, res = res, lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
+
+# Example with edgeR - using CPM without log
+shinyDE(y, res = res, assay = "cpm", lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
 
 # Example with manual matrix
 shinyDE(mat, res = res, lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")

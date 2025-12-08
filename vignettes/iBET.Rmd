@@ -135,7 +135,7 @@ Multiple comparisons can also be provided for switching between analyses quickly
 
 ### Using with DESeq2
 
-You can pass a DESeqDataSet directly to `shinyDE`:
+You can pass a DESeqDataSet directly to `shinyDE` with multiple comparisons:
 
 ```{r de, message = FALSE, warning = FALSE}
 deseq.res1 <- results(dds, contrast = c("dex", "trt", "untrt"))
@@ -155,11 +155,14 @@ res <- list("trt v untrt" = as.data.frame(deseq.res1),
             "N61311vN080611" = as.data.frame(deseq.res3), 
             "N080611vN61311" = as.data.frame(deseq.res4))
 
-# Pass DESeqDataSet directly - it will extract VST counts and metadata automatically
+# Pass DESeqDataSet directly - uses VST by default
 shinyDE(dds, res = res, genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
+
+# You can also specify a different transformation
+# shinyDE(dds, res = res, assay = "rlog", genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
 ```
 
-For using results from edgeR (including direct DGEList usage), limma, or other DE tools, see `?shinyDE` for details on customizing column names.
+For using results from edgeR (including direct DGEList usage), limma, or other DE tools, see `?shinyDE` for details on customizing column names and transformation options.
 
 ## Correlating DE Results
 
