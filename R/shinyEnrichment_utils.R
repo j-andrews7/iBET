@@ -47,17 +47,23 @@ dotPlotEnrichment <- function(enrich, numSets = 10, colourBy = "p.adjust", title
 }
 
 
-# #'@title BarPlot Function for enrichment Results
-# #' @param enrichObj enrichGO object from cluster profiler
-# #' @param numSets the number of gene sets you want to be displayed in the plot
-# #' @param colourBy The colour gradient is determined by: pvalue, p.adjust or qvalue 
-# #' @param titleForPlot Title for the plot
-# #' @param x_axis Whether the x axis represents the GeneRatio or Count 
-# #' @importFrom plotly ggplotly 
-# #' @importFrom clusterProfiler barplot
-# #' @importFrom ggplot2 ggplot
-# #' @author Jacob Martin 
-# #' @export
+#' @title Bar Plot Enrichment Visualization
+#' @description Creates interactive horizontal bar plot for enrichment analysis results
+#' @param enrich Enrichment result object (e.g., from clusterProfiler)
+#' @param numSets Number of top results to display (default: 10)
+#' @param colourBy Column name for fill color gradient (default: "p.adjust")
+#' @param titleForPlot Plot title (default: "Title")
+#' @param x_axis X-axis value column ("GeneRatio" or "Count", default: "GeneRatio")
+#' @param textSize Axis text size (default: 10)
+#' @param colour1 Low-end color for gradient (default: "red")
+#' @param colour2 High-end color for gradient (default: "blue")
+#' @return Interactive plotly object
+#' @importFrom rlang sym .data
+#' @importFrom ggplot2 ggplot aes geom_col reorder scale_fill_gradient labs theme_minimal
+#' @importFrom ggplot2 element_text coord_flip
+#' @importFrom plotly ggplotly
+#' @author Jacob Martin
+#' @export
 
 barPlotEnrichment <- function(enrich, numSets = 10, colourBy = "p.adjust", titleForPlot = "Title", x_axis = "GeneRatio", textSize = 10, colour1 = "red", colour2 = "blue"){
     
@@ -75,36 +81,59 @@ barPlotEnrichment <- function(enrich, numSets = 10, colourBy = "p.adjust", title
     plotlyOut <- ggplotly(barPlot, tooltip = c("text", "y", "fill"))
     return(plotlyOut)
 }
+#' @title Heatmap Enrichment Visualization
+#' @description Creates interactive binary heatmap for enrichment analysis results showing gene presence/absence
+#' @param enrich Enrichment result object (e.g., from clusterProfiler)
+#' @param numSets Number of top results to display (default: 10)
+#' @param colour Tile color for gene presence (default: "black")
+#' @param sizeText Axis text size (default: 10)
+#' @return Interactive plotly object
+#' @importFrom ggplot2 ggplot aes geom_tile scale_fill_manual theme_minimal element_text labs
+#' @importFrom plotly ggplotly
+#' @author Jacob Martin
+#' @export
 
-# #'@title HeatMap Plot
-# #' @param enrich enrichGO object from cluster profiler
-# #' @param numSets the number of gene sets you want to be displayed in the plot
-# #' @importFrom plotly ggplotly 
-# #' @importFrom clusterProfiler heatplot
-# #' @importFrom ggplot2 ggplot
-# #' @author Jacob Martin 
-# #' @export
-# #' 
-# heatPlotEnrichment <- function(enrich, numSets = 10){
-#     heatPlot <- heatplot(enrich, showCategory = numSets)
-#     plotlyHeatOut <- ggplotly(heatPlot, tooltip = c("text", "Count", "GeneRatio", "Description"))
-#     return(plotlyHeatOut)
-# }
+heatPlotEnrichment <- function(enrich, numSets = 10, colour = "black", sizeText = 10, title = NULL){
 
-# #'@title Tree Plot
-# #' @param enrich enrichGO object from cluster profiler
-# #' @param numSets the number of gene sets you want to be displayed in the plot
-# #' @param colourBy The colour gradient is determined by: pvalue, p.adjust or qvalue 
-# #' @importFrom plotly ggplotly 
-# #' @importFrom enrichplot treeplot
-# #' @importFrom ggplot2 ggplot
-# #' @author Jacob Martin 
-# #' @export
-# treePlotEnrichment <- function(enrich, numSets = 10, colourBy = "p.adjust"){
-#     treePlot <- treeplot(enrich, showCategory = numSets, color = colourBy)
-#     plotlyHeatOut <- ggplotly(treePlot)
-#     return(plotlyHeatOut)
-# }
+  top_terms <- head(enrich, numSets)
+  gene_list <- strsplit(top_terms$geneID, "/")
+  names(gene_list) <- top_terms$Description
+  
+  long_df <- data.frame(
+    pathway = rep(names(gene_list), lengths(gene_list)),
+    gene    = unlist(gene_list),
+    presence = 1L
+  )
+  
+  # Rest of your code stays the same
+  all_genes    <- sort(unique(long_df$gene))
+  all_pathways <- sort(unique(long_df$pathway))
+
+  full_grid <- expand.grid(
+    gene    = all_genes,
+    pathway = all_pathways,
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+
+  plot_data <- merge(full_grid, long_df, by = c("gene", "pathway"), all.x = TRUE)
+  plot_data$presence[is.na(plot_data$presence)] <- 0L
+  plot_data$presence <- factor(plot_data$presence, levels = c(0, 1))
+
+  heat <- ggplot(plot_data, aes(x = gene, y = pathway, fill = presence)) +
+    geom_tile(color = "white", linewidth = 1) +
+    scale_fill_manual(values = c("0" = "white", "1" = colour)) +
+    theme_minimal(base_size = 11) +
+    theme(
+      axis.text.x = element_text(angle = 90, hjust = 1, size = 9),
+      axis.text.y = element_text(size = sizeText)
+    ) +
+    labs(x = "Genes", y = "Enriched GO Terms", fill = "Gene\nPresence", 
+         title = title)
+         
+  heatPlotlyOut <- ggplotly(heat, tooltip = c("x", "y", "fill"))
+  return(heatPlotlyOut)
+}
 
 
 
@@ -117,6 +146,4 @@ barPlotEnrichment <- function(enrich, numSets = 10, colourBy = "p.adjust", title
 #Count
 test <- readRDS("/Volumes/JM/Development/iBET/Play/ExampleEnrichment.rds")
 test1 <- as.data.frame(test)
-x <- dotPlotEnrichment(enrich = test, numSets = 10, colourBy = "p.adjust", titleForPlot = "Title", x_axis = "GeneRatio", textSize = 10, colour1 = "red", colour2 = "blue")
-y <- barPlotEnrichment(enrich = test, numSets = 10, colourBy = "p.adjust", titleForPlot = "Title", x_axis = "GeneRatio", textSize = 10, colour1 = "red", colour2 = "blue")
 
