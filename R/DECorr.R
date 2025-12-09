@@ -84,6 +84,15 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
     }
   }
 
+  ui <- .create_decorr_ui(res, multiset, genesets, sig.thresh)
+  server <- .create_decorr_server(res, multiset, sig.col, lfc.col, gene.col, expr.col, genesets)
+  
+  shinyApp(ui, server, options = list(height = height))
+}
+
+
+# Internal function to create DECorr UI
+.create_decorr_ui <- function(res, multiset, genesets, sig.thresh) {
   body <- mainPanel(width = 9,
     fluidRow(
       uiOutput("row1")
@@ -239,8 +248,12 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
       )
     )
   )
+}
 
-  server <- function(input, output, session) {
+
+# Internal function to create DECorr server
+.create_decorr_server <- function(res, multiset, sig.col, lfc.col, gene.col, expr.col, genesets) {
+  function(input, output, session) {
 
     if (multiset) {
       shinyjs::show("comp.set")
@@ -446,6 +459,4 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
       o$destroy
     })
   }
-
-  shinyApp(ui, server, options = list(height = height))
 }

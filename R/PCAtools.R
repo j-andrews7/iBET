@@ -41,7 +41,16 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                           center = TRUE, color.by = NULL, shape.by = NULL,
                           annot.by = NULL, height = 850) {
 
-  ui <- dashboardPage(
+  ui <- .create_pca_ui(metadata, removeVar, color.by, shape.by, center, scale)
+  server <- .create_pca_server(mat, metadata, annot.by)
+  
+  shinyApp(ui, server, options = list(height = height))
+}
+
+
+# Internal function to create PCA UI
+.create_pca_ui <- function(metadata, removeVar, color.by, shape.by, center, scale) {
+  dashboardPage(
     dashboardHeader(disable = TRUE),
     dashboardSidebar(disable = TRUE),
     dashboardBody(
@@ -285,8 +294,12 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       )
     )
   )
+}
 
-  server <- function(input, output, session) {
+
+# Internal function to create PCA server
+.create_pca_server <- function(mat, metadata, annot.by) {
+  function(input, output, session) {
 
     matty <- reactive({
       matt <- mat
@@ -754,5 +767,4 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
       o$destroy
     })
   }
-  shinyApp(ui, server, options = list(height = height))
 }
