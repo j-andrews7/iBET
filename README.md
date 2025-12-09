@@ -19,7 +19,7 @@ devtools::install_github("j-andrews7/iBET")
 
 ## Usage
 
-**iBET** currently contains three interactive widgets - `shinyPCAtools`, `shinyDESeq2`, and `shinyDECorr`. They can be dropped into Rmd documents or ran directly within RStudio as shown below.
+**iBET** currently contains three interactive widgets - `shinyPCAtools`, `shinyDE`, and `shinyDECorr`. They can be dropped into Rmd documents or ran directly within RStudio as shown below.
 
 I **highly** recommend altering the width of your Rmd report by using a CSS block at the top of your document (right after the YAML header). This will use much more of the page, which makes using the widgets much easier. The following works well on most screens with no scaling:
 
@@ -92,27 +92,80 @@ shinyPCAtools(logcounts(data), metadata = colData(data), annot.by = c("Cell.Type
               color.by = "Cell.Type", removeVar = 0.9, scale = TRUE)
 ```
 
-## Interactive Differential Expression via `DESeq2`
+## Interactive Differential Expression Visualization
 
-This widget was heavily inspired by the `interactivate` function from the [InteractiveComplexHeatmap](https://bioconductor.org/packages/release/bioc/html/InteractiveComplexHeatmap.html) package. It wraps [DESeq2](https://bioconductor.org/packages/release/bioc/html/DESeq2.html) and will run differential expression analysis if not provided a results dataframe as well. 
+The `shinyDE` function provides an interactive widget for exploring differential expression results from any analysis tool (DESeq2, edgeR, limma, etc.). It was heavily inspired by the `interactivate` function from the [InteractiveComplexHeatmap](https://bioconductor.org/packages/release/bioc/html/InteractiveComplexHeatmap.html) package.
 
 Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around, though adding labels will reset the position, so it's recommended to add all labels prior to re-positioning them. Gene sets can be highlighted easily if provided.
 
 Multiple comparisons can also be provided for switching between analyses quickly.
 
+### Using with DESeq2 Results
+
+You can pass a DESeqDataSet directly with multiple comparisons:
+
 ```{r de, message = FALSE, warning = FALSE}
+library(DESeq2)
 deseq.res1 <- results(dds, contrast = c("dex", "trt", "untrt"))
 dds <- DESeqDataSet(airway, design = ~ cell)
 dds <- DESeq(dds)
 deseq.res2 <- results(dds, contrast = c("cell", "N080611", "N052611"))
 deseq.res3 <- results(dds, contrast = c("cell", "N61311", "N080611"))
 deseq.res4 <- results(dds, contrast = c("cell", "N080611", "N61311"))
+
+deseq.res1$SYMBOLS <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
+deseq.res2$SYMBOLS <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
+deseq.res3$SYMBOLS <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
+deseq.res4$SYMBOLS <- make.names(rowData(dds)$SYMBOLS, unique = TRUE)
+
 res <- list("trt v untrt" = as.data.frame(deseq.res1), 
             "N080611vN052611" = as.data.frame(deseq.res2), 
             "N61311vN080611" = as.data.frame(deseq.res3), 
             "N080611vN61311" = as.data.frame(deseq.res4))
 
-shinyDESeq2(dds, res = res, genesets = hs.msig, annot.by = c("cell", "dex"))
+# Pass DESeqDataSet directly - uses VST by default
+shinyDE(dds, res = res, genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
+
+# Or use a different transformation
+shinyDE(dds, res = res, assay = "rlog", genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
+
+# Or extract components manually
+mat <- assay(vst(dds))
+metadata <- as.data.frame(colData(dds))
+shinyDE(mat = mat, res = res, metadata = metadata, 
+        genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
+```
+
+### Using with edgeR Results
+
+You can pass a DGEList directly:
+
+```{r de_edger, message = FALSE, warning = FALSE, eval = FALSE}
+library(edgeR)
+y <- DGEList(counts = counts(dds))
+y <- calcNormFactors(y)
+design <- model.matrix(~ dex, data = colData(dds))
+y <- estimateDisp(y, design)
+fit <- glmQLFit(y, design)
+qlf <- glmQLFTest(fit)
+res_edger <- topTags(qlf, n = Inf)$table
+
+# Pass DGEList directly - uses log-CPM by default
+shinyDE(y, res = res_edger, lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
+
+# Or use non-log CPM
+shinyDE(y, res = res_edger, assay = "cpm", lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
+
+# Or extract components manually
+shinyDE(
+  mat = cpm(y, log = TRUE), 
+  res = res_edger,
+  metadata = y$samples,
+  lfc.col = "logFC",
+  abundance.col = "logCPM", 
+  sig.col = "FDR",
+  annot.by = c("dex")
+)
 ```
 
 ## Correlating DE Results

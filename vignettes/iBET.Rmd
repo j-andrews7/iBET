@@ -125,13 +125,17 @@ shinyPCAtools(logcounts(data), metadata = colData(data), annot.by = c("Cell.Type
               color.by = "Cell.Type", removeVar = 0.9, scale = TRUE)
 ```
 
-## Interactive Differential Expression via `DESeq2`
+## Interactive Differential Expression Visualization
 
-This widget was heavily inspired by the `interactivate` function from the [InteractiveComplexHeatmap](https://bioconductor.org/packages/release/bioc/html/InteractiveComplexHeatmap.html) package. It wraps [DESeq2](https://bioconductor.org/packages/release/bioc/html/DESeq2.html) and will run differential expression analysis if not provided a results dataframe as well.
+The `shinyDE` function provides an interactive widget for exploring differential expression results from any analysis tool (DESeq2, edgeR, limma, etc.). It was heavily inspired by the `interactivate` function from the [InteractiveComplexHeatmap](https://bioconductor.org/packages/release/bioc/html/InteractiveComplexHeatmap.html) package.
 
 Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around, though adding labels will reset the position, so it's recommended to add all labels prior to re-positioning them. Gene sets can be highlighted easily if provided.
 
 Multiple comparisons can also be provided for switching between analyses quickly.
+
+### Using with DESeq2
+
+You can pass a DESeqDataSet directly to `shinyDE` with multiple comparisons:
 
 ```{r de, message = FALSE, warning = FALSE}
 deseq.res1 <- results(dds, contrast = c("dex", "trt", "untrt"))
@@ -151,8 +155,14 @@ res <- list("trt v untrt" = as.data.frame(deseq.res1),
             "N61311vN080611" = as.data.frame(deseq.res3), 
             "N080611vN61311" = as.data.frame(deseq.res4))
 
-shinyDESeq2(dds, res = res, genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
+# Pass DESeqDataSet directly - uses VST by default
+shinyDE(dds, res = res, genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
+
+# You can also specify a different transformation
+# shinyDE(dds, res = res, assay = "rlog", genesets = hs.msig, swap.rownames = "SYMBOLS", annot.by = c("cell", "dex"))
 ```
+
+For using results from edgeR (including direct DGEList usage), limma, or other DE tools, see `?shinyDE` for details on customizing column names and transformation options.
 
 ## Correlating DE Results
 

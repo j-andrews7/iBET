@@ -1,7 +1,9 @@
-#' Create an interactive Shiny app for DESeq2 analysis and results exploration
+#' Create an interactive Shiny app for differential expression results exploration
 #'
 #' This shiny app is composed of three tabs - an interactive heatmap, MA and volcano plots, and a table of full
 #' differential expression results. The interactive heatmap will generate a sub-heatmap for selected rows/columns.
+#' This function accepts DE results from any analysis tool (DESeq2, edgeR, limma, etc.) and allows customization
+#' of column names for significance, fold change, and abundance metrics.
 #'
 #' Gene labels can be added to the MAplot and volcano plot by clicking a point. The labels can also be dragged around,
 #' though adding labels will reset the positions, so it's recommended to add all labels prior to re-positioning them.
@@ -16,7 +18,7 @@
 #' @importFrom GetoptLong qq
 #' @import circlize
 #' @importFrom grid unit grid.newpage grid.text gpar
-#' @importFrom SummarizedExperiment colData assay
+#' @importFrom SummarizedExperiment colData assay rowData
 #' @importFrom grDevices dev.off pdf
 #' @importFrom graphics par
 #' @importFrom stats quantile loess fitted
@@ -33,65 +35,304 @@
 #' @importFrom colourpicker colourInput
 #' @importFrom methods is
 #' @importFrom htmlwidgets saveWidget
-#' @importFrom DESeq2 DESeq results lfcShrink resultsNames counts
+#' @importFrom DESeq2 vst rlog normTransform
+#' @importFrom edgeR cpm
 #'
-#' @param dds A \code{\link[DESeq2]{DESeqDataSet}} object.
-#' @param res Either the object returned by \code{\link[DESeq2]{results}} or \code{\link[DESeq2]{lfcShrink}} (recommended)
-#'   or a named list of such results. If a named list is provided, users will be
-#'   able to choose between the provided results and \code{coef} will be ignored.
-#'
-#'   If not provided, it will be generated from the \code{dds} object via \code{\link[DESeq2]{lfcShrink}}
-#'   or \code{\link[DESeq2]{results}} and \code{coef}.
-#' @param coef A string indicating the coefficient name for which results will be generated.
-#'   If not provided and \code{res} is \code{NULL}, the first non-intercept coefficient
-#'   provided by \code{\link[DESeq2]{resultsNames}} will be used.
-#' @param annot.by A string or character vector containing the names of sample metadata variables to be used as heatmap annotations.
-#'   If not provided, all variables used in the \code{design} will be used.
-#' @param use.lfcShrink Boolean indicating whether \code{\link[DESeq2]{lfcShrink}} should be used during results
-#'   generation. These are useful for ranking and visualization without the need for arbitrary filtering of low count genes.
-#' @param lfcThreshold Number passed to \code{\link[DESeq2]{lfcShrink}} or \code{\link[DESeq2]{results}} to set an LFC threshold.
-#'   p-values, s-values, and adjusted p-values returned will be for whether the LFC is significantly greater in absolute value than the threshold.
-#'   Ignored if \code{res} is not \code{NULL}.
-#' @param use.vst Boolean indicating whether \code{\link[DESeq2]{vst}} transformed counts should be used for heatmap generation (recommended). If \code{FALSE},
-#'   normalized counts will be used. The variance stabilizing transformation helps to reduce increased variance seen for low counts in log space.
-#'   This generally results in a better looking heatmap with fewer outliers.
+#' @param mat A numeric matrix of expression values (e.g., normalized counts, VST-transformed counts, log-CPM),
+#'   a \code{\link[DESeq2]{DESeqDataSet}} object, or a \code{\link[edgeR]{DGEList}} object.
+#'   Rows are features (genes) and columns are samples. Required.
+#' @param res A data frame or named list of data frames containing differential expression results.
+#'   Each data frame must contain columns for significance, fold change, and abundance (see sig.col, lfc.col, and abundance.col parameters).
+#'   If a named list is provided, users will be able to choose between results in the app. Required.
+#' @param metadata A data frame containing sample metadata. Rows should correspond to columns in \code{mat}.
+#'   If provided, can be used for heatmap annotations and sample filtering. 
+#'   If \code{mat} is a DESeqDataSet or DGEList with sample information, metadata will be extracted automatically if not provided. Optional.
+#' @param assay String specifying which transformation/assay to extract when \code{mat} is a DESeqDataSet or DGEList.
+#'   For DESeqDataSet: "vst" (default), "rlog", "normTransform", or a specific assay name.
+#'   For DGEList: "logCPM" (default), "cpm", or "counts".
+#'   Ignored if \code{mat} is already a matrix. Optional.
+#' @param annot.by A string or character vector containing the names of metadata columns to be used as heatmap annotations.
+#'   Only used if \code{metadata} is provided. Optional.
+#' @param sig.col String specifying the column name in \code{res} containing significance values (e.g., "padj", "FDR", "svalue").
+#'   Will be auto-detected from common column names if not provided.
+#' @param lfc.col String specifying the column name in \code{res} containing log2 fold change values (e.g., "log2FoldChange", "logFC").
+#'   Defaults to "log2FoldChange".
+#' @param abundance.col String specifying the column name in \code{res} containing abundance/expression values (e.g., "baseMean", "AveExpr").
+#'   Defaults to "baseMean".
 #' @param h.id String indicating unique ID for interactive heatmaps.
-#'   Required if multiple apps are run within the same Rmd file.
+#'   Required if multiple apps are run within the same Rmd file. Defaults to "ht1".
 #' @param genesets Optional named list containing genesets that can be interactively highlighted on the plots.
-#'   The elements of the list should each be a geneset with gene identifiers matching those used in the results.
-#' @param swap.rownames String. The column name of rowData(dds) \emph{and} res used to identify features instead of rownames(object).
-#'
-#'   Note if this column contains duplicates (e.g. gene symbols), they will be make unique via the addition of ".1", ".2", etc.
-#' @param height Number indicating height of app in pixels.
+#'   The elements of the list should each be a geneset with gene identifiers matching those used as rownames in \code{mat} and \code{res}.
+#' @param swap.rownames String. The column name in \code{res} used to identify features instead of rownames.
+#'   Note if this column contains duplicates (e.g. gene symbols), they will be made unique via the addition of ".1", ".2", etc.
+#' @param height Number indicating height of app in pixels. Defaults to 800.
 #'
 #' @return A Shiny app containing interconnected InteractiveComplexHeatmap, MAplot, and volcano plots along with full DE results.
 #'
+#' @examples
+#' \dontrun{
+#' # Example with DESeq2 - direct object usage
+#' library(DESeq2)
+#' dds <- DESeq(dds)
+#' res <- results(dds)
+#' shinyDE(dds, res = as.data.frame(res))
+#' 
+#' # Example with DESeq2 - multiple comparisons
+#' res1 <- results(dds, contrast = c("condition", "treated", "untreated"))
+#' res2 <- results(dds, contrast = c("condition", "treated2", "untreated"))
+#' res_list <- list("treated vs untreated" = as.data.frame(res1),
+#'                  "treated2 vs untreated" = as.data.frame(res2))
+#' shinyDE(dds, res = res_list, assay = "vst")
+#' 
+#' # Example with DESeq2 - using rlog transformation
+#' shinyDE(dds, res = as.data.frame(res), assay = "rlog")
+#' 
+#' # Example with DESeq2 - manual extraction
+#' mat <- assay(vst(dds))
+#' shinyDE(mat, res = as.data.frame(res), metadata = colData(dds))
+#' 
+#' # Example with edgeR - direct object usage
+#' library(edgeR)
+#' y <- DGEList(counts = counts)
+#' y <- calcNormFactors(y)
+#' # ... run DE analysis ...
+#' res <- topTags(qlf, n = Inf)$table
+#' shinyDE(y, res = res, lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
+#' 
+#' # Example with edgeR - using CPM without log
+#' shinyDE(y, res = res, assay = "cpm", lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
+#' 
+#' # Example with manual matrix
+#' shinyDE(mat, res = res, lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
+#' }
 #'
-#' @seealso
-#' \code{\link[DESeq2]{results}}, \code{\link[DESeq2]{lfcShrink}}, \code{\link[DESeq2]{resultsNames}}.
-#'
-#' @author Jared Andrews, based on code by Zuguang Gu.
+#' @author Jared Andrews
 #' @export
-shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
-                        use.lfcShrink = TRUE, lfcThreshold = 0, use.vst = TRUE,
-                        h.id = "ht1", genesets = NULL, swap.rownames = NULL, height = 800) {
-    # Swap rownames if necessary.
-    dds <- .swap_rownames(dds, swap.rownames = swap.rownames)
-
-    # Check is res is individual or named list.
+shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
+                    sig.col = NULL, lfc.col = "log2FoldChange", abundance.col = "baseMean",
+                    assay = NULL, h.id = "ht1", genesets = NULL, swap.rownames = NULL, height = 800) {
+    
+    # Store original mat object and feature metadata for swap.rownames handling
+    feature_metadata <- NULL
+    original_mat <- mat
+    
+    # Handle DESeqDataSet objects
+    if (is(mat, "DESeqDataSet")) {
+        # Extract feature metadata for swap.rownames
+        if (!is.null(swap.rownames)) {
+            feature_metadata <- as.data.frame(rowData(original_mat))
+        }
+        
+        # Extract metadata if not provided
+        if (is.null(metadata)) {
+            metadata <- as.data.frame(colData(mat))
+        }
+        
+        # Determine which assay/transformation to use
+        if (is.null(assay)) {
+            assay <- "vst"  # default
+        }
+        
+        # Extract the appropriate assay
+        if (assay == "vst") {
+            mat <- assay(vst(mat))
+        } else if (assay == "rlog") {
+            mat <- assay(rlog(mat))
+        } else if (assay == "normTransform") {
+            mat <- assay(normTransform(mat))
+        } else {
+            # Try to get a named assay
+            mat <- assay(mat, assay)
+        }
+        
+        # Set default column names for DESeq2
+        if (lfc.col == "log2FoldChange" && abundance.col == "baseMean") {
+            # These are already the defaults, no change needed
+        }
+    }
+    
+    # Handle DGEList objects
+    if (is(mat, "DGEList")) {
+        # Extract feature metadata for swap.rownames (edgeR stores in $genes)
+        if (!is.null(swap.rownames) && !is.null(original_mat$genes)) {
+            feature_metadata <- as.data.frame(original_mat$genes)
+        }
+        
+        # Extract metadata if not provided and available
+        if (is.null(metadata) && !is.null(mat$samples)) {
+            metadata <- mat$samples
+        }
+        
+        # Determine which assay to use
+        if (is.null(assay)) {
+            assay <- "logCPM"  # default
+        }
+        
+        # Extract the appropriate values
+        if (assay == "logCPM") {
+            mat <- cpm(mat, log = TRUE)
+        } else if (assay == "cpm") {
+            mat <- cpm(mat, log = FALSE)
+        } else if (assay == "counts") {
+            mat <- mat$counts
+        } else {
+            stop(paste0("Unknown assay type '", assay, "' for DGEList. Use 'logCPM', 'cpm', or 'counts'."))
+        }
+        
+        # Set default column names for edgeR if they match DESeq2 defaults
+        if (lfc.col == "log2FoldChange") {
+            lfc.col <- "logFC"
+        }
+        if (abundance.col == "baseMean") {
+            abundance.col <- "logCPM"
+        }
+        if (is.null(sig.col)) {
+            sig.col <- "FDR"
+        }
+    }
+    
+    # Validate res is provided (unless it was NULL and mat was DESeqDataSet with automatic generation)
+    if (is.null(res)) {
+        stop("res parameter is required. Please provide differential expression results.")
+    }
+    
+    # Validate inputs
+    if (!is.matrix(mat) && !is.data.frame(mat)) {
+        stop("mat must be a matrix, data frame, DESeqDataSet, or DGEList object")
+    }
+    
+    if (is.data.frame(mat)) {
+        mat <- as.matrix(mat)
+    }
+    
+    # Check if res is individual data frame or named list.
     multi.res <- FALSE
     res.list <- NULL
     if (is(res, "list")) {
         if (!is.null(names(res))) {
             multi.res <- TRUE
-            # Swap rownames if necessary.
-            res.list <- lapply(res, .swap_rownames, swap.rownames = swap.rownames)
+            res.list <- res
             res <- res.list[[1]]
         } else {
             stop("Results list elements should be named.")
         }
     }
+    
+    # Convert to data frame if needed
+    if (!is.data.frame(res)) {
+        res <- as.data.frame(res)
+    }
+    
+    # Handle swap.rownames: create mapping from original IDs to new IDs
+    if (!is.null(swap.rownames)) {
+        # Try to find the swap column in different sources
+        swap_values <- NULL
+        swap_source <- NULL
+        
+        # 1. Check feature_metadata (from rowData or genes)
+        if (!is.null(feature_metadata) && swap.rownames %in% colnames(feature_metadata)) {
+            swap_values <- feature_metadata[[swap.rownames]]
+            swap_source <- "feature_metadata"
+        }
+        # 2. Check results dataframe
+        else if (swap.rownames %in% colnames(res)) {
+            swap_values <- res[[swap.rownames]]
+            swap_source <- "results"
+        }
+        # 3. If res is a list, check all results for the column
+        else if (multi.res) {
+            for (i in seq_along(res.list)) {
+                if (swap.rownames %in% colnames(res.list[[i]])) {
+                    swap_values <- res.list[[i]][[swap.rownames]]
+                    swap_source <- paste0("results list element ", i)
+                    break
+                }
+            }
+        }
+        
+        if (is.null(swap_values)) {
+            stop(paste0("Column '", swap.rownames, "' not found in feature metadata (rowData/genes) or results dataframe."))
+        }
+        
+        # Create mapping from original rownames to new identifiers
+        original_ids <- rownames(mat)
+        
+        # Ensure swap_values matches mat dimensions
+        if (length(swap_values) != length(original_ids)) {
+            # Try to match by rownames if lengths differ
+            if (swap_source == "results" && all(rownames(res) %in% original_ids)) {
+                # Reorder swap_values to match mat
+                swap_values <- swap_values[match(original_ids, rownames(res))]
+            } else {
+                warning(paste0("Length mismatch between expression matrix (", length(original_ids), 
+                             ") and swap column (", length(swap_values), "). Using first match."))
+                min_len <- min(length(original_ids), length(swap_values))
+                original_ids <- original_ids[seq_len(min_len)]
+                swap_values <- swap_values[seq_len(min_len)]
+                mat <- mat[seq_len(min_len), , drop = FALSE]
+            }
+        }
 
+        # Make identifiers unique if needed
+        new_ids <- make.names(swap_values, unique = TRUE)
+
+        # Apply new rownames to mat
+        rownames(mat) <- new_ids
+
+        # Apply new rownames to res and res.list
+        # Create mapping: original rowname -> new rowname
+        id_mapping <- setNames(new_ids, original_ids)
+
+        res <- .swap_res_rownames(res, id_mapping, original_ids)
+
+        if (multi.res) {
+            res.list <- lapply(res.list, function(r) .swap_res_rownames(r, id_mapping, original_ids))
+        }
+
+        message(paste0("Swapped rownames using '", swap.rownames, "' from ", swap_source, 
+                       ". Matched ", nrow(res), " features."))
+    }
+
+    # Validate required columns exist
+    if (!lfc.col %in% colnames(res)) {
+        stop(paste0("Column '", lfc.col, "' not found in results. Please specify correct column name with lfc.col parameter."))
+    }
+    
+    if (!abundance.col %in% colnames(res)) {
+        stop(paste0("Column '", abundance.col, "' not found in results. Please specify correct column name with abundance.col parameter."))
+    }
+    
+    # Auto-detect significance column if not provided
+    if (is.null(sig.col)) {
+        common_sig_cols <- c("padj", "FDR", "adj.P.Val", "svalue", "qvalue", "pvalue", "PValue", "P.Value")
+        detected <- intersect(common_sig_cols, colnames(res))
+        if (length(detected) > 0) {
+            sig.col <- detected[1]
+            message(paste0("Auto-detected significance column: ", sig.col))
+        } else {
+            stop("Could not auto-detect significance column. Please specify with sig.col parameter. Common names include: padj, FDR, adj.P.Val, svalue, qvalue")
+        }
+    } else {
+        if (!sig.col %in% colnames(res)) {
+            stop(paste0("Column '", sig.col, "' not found in results. Please specify correct column name with sig.col parameter."))
+        }
+    }
+    
+    # Ensure mat and res have matching features
+    common_feats <- intersect(rownames(mat), rownames(res))
+    if (length(common_feats) == 0) {
+        stop("No matching features found between expression matrix and results. Check that rownames match.")
+    }
+    if (length(common_feats) < nrow(res)) {
+        warning(paste0("Only ", length(common_feats), " of ", nrow(res), 
+                      " features from results found in expression matrix. Subsetting to common features."))
+    }
+    mat <- mat[common_feats, , drop = FALSE]
+    res <- res[common_feats, , drop = FALSE]
+    if (multi.res) {
+        res.list <- lapply(res.list, function(r) r[intersect(rownames(r), common_feats), , drop = FALSE])
+    }
+    
     # Parameter validation.
     if (!is.null(genesets)) {
         if (is.null(names(genesets))) {
@@ -101,49 +342,25 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
         }
     }
 
-    if (!is.null(annot.by)) {
-        if (!all(annot.by %in% names(SummarizedExperiment::colData(dds)))) {
-            stop("Annotation variables not found in object colData")
+    if (!is.null(metadata) && !is.null(annot.by)) {
+        if (!all(annot.by %in% names(metadata))) {
+            stop("Annotation variables not found in metadata")
         }
-    }
-
-    # If gene dispersions not yet calculated, calculate them.
-    if (is.null(body(dds@dispersionFunction))) {
-        dds <- DESeq2::DESeq(dds)
-    }
-
-    # Get contrast name if results are not provided.
-    if (is.null(res)) {
-        if (is.null(coef)) {
-            coef <- resultsNames(dds)[resultsNames(dds) != "Intercept"][1]
-        }
-
-        if (use.lfcShrink) {
-            res <- DESeq2::lfcShrink(dds, coef = coef, lfcThreshold = lfcThreshold)
-        } else {
-            res <- DESeq2::results(dds, name = coef, lfcThreshold = lfcThreshold)
-        }
-    }
-
-    if (use.vst) {
-        mat <- SummarizedExperiment::assay(DESeq2::vst(dds))
-    } else {
-        mat <- as.matrix(DESeq2::counts(dds, normalized = TRUE))
     }
 
     env <- new.env()
+    env$lfc.col <- lfc.col
+    env$abundance.col <- abundance.col
+    env$sig.col <- sig.col
 
-    qa <- quantile(log10(res$baseMean + 1), 0.99)
-    baseMean_col_fun <- circlize::colorRamp2(c(0, qa / 2, qa), c("blue", "white", "red"))
+    qa <- quantile(log10(res[[abundance.col]] + 1), 0.99, na.rm = TRUE)
+    abundance_col_fun <- circlize::colorRamp2(c(0, qa / 2, qa), c("blue", "white", "red"))
 
-    qa <- quantile(abs(res$log2FoldChange[!is.na(res$log2FoldChange)]), 0.99)
+    qa <- quantile(abs(res[[lfc.col]][!is.na(res[[lfc.col]])]), 0.99, na.rm = TRUE)
     log2fc_col_fun <- circlize::colorRamp2(c(-qa, 0, qa), c("blue", "white", "red"))
 
-    if ("svalue" %in% colnames(res)) {
-        sig.term <- "svalue"
-    } else {
-        sig.term <- "padj"
-    }
+    sig.term <- sig.col
+    coef <- paste0(sig.col, " / ", lfc.col)  # For display purposes
 
     environment(.make_heatmap) <- env
 
@@ -492,17 +709,17 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                             tipify(
                                 selectInput("sig.term",
                                     label = "Significance term:", choices = colnames(res),
-                                    selected = ifelse("padj" %in% colnames(res), "padj", "svalue")
+                                    selected = sig.col
                                 ),
                                 "Significance term to use for DE filtering.", "right",
                                 options = list(container = "body")
                             ),
-                            tipify(numericInput("base_mean", label = "Minimal baseMean:", value = 0, step = 1),
-                                "Minimal baseMean (expression) required to consider a gene DE.", "right",
+                            tipify(numericInput("base_mean", label = paste0("Minimal ", abundance.col, ":"), value = 0, step = 1),
+                                paste0("Minimal ", abundance.col, " (abundance) required to consider a feature DE."), "right",
                                 options = list(container = "body")
                             ),
-                            tipify(numericInput("log2fc", label = "Minimal abs(log2 fold change):", value = 0, step = 0.1, min = 0),
-                                "log2 fold change magnitude threshold required to consider a gene DE.", "right",
+                            tipify(numericInput("log2fc", label = paste0("Minimal abs(", lfc.col, "):"), value = 0, step = 0.1, min = 0),
+                                paste0(lfc.col, " magnitude threshold required to consider a feature DE."), "right",
                                 options = list(container = "body")
                             ),
                             tipify(numericInput("row.km", label = "Row k-means groups:", value = 2, step = 1),
@@ -515,7 +732,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                             ),
                             tipify(
                                 pickerInput("anno.vars", "Annotate Heatmap by:",
-                                    choices = c("", names(SummarizedExperiment::colData(dds))),
+                                    choices = if (!is.null(metadata)) c("", names(metadata)) else c(""),
                                     multiple = TRUE, options = list(`live-search` = TRUE, `actions-box` = TRUE),
                                     selected = annot.by
                                 ),
@@ -610,11 +827,11 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
             input$metadata_rows_all,
             input$update
         ), {
-            annos <- SummarizedExperiment::colData(dds)
+            annos <- metadata
 
-            if (!is.null(input$anno.vars)) {
+            if (!is.null(annos) && !is.null(input$anno.vars)) {
                 annos <- annos[, input$anno.vars, drop = FALSE]
-            } else {
+            } else if (is.null(input$anno.vars)) {
                 annos <- NULL
             }
 
@@ -623,13 +840,13 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                 annos <- annos[, l, drop = FALSE]
             }
 
-            if (ncol(annos) == 0) {
+            if (!is.null(annos) && ncol(annos) == 0) {
                 annos <- NULL
             }
 
             # Filter samples.
             if (!is.null(input$metadata_rows_all)) {
-                annos <- annos[input$metadata_rows_all, ]
+                annos <- annos[input$metadata_rows_all, , drop = FALSE]
             }
 
             anno(annos)
@@ -655,7 +872,7 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                 # Update significance term choices to new column names.
                 updateSelectInput(session, "sig.term",
                     choices = colnames(ress()),
-                    selected = ifelse("padj" %in% colnames(res), "padj", "svalue")
+                    selected = sig.col
                 )
 
                 if (!is.null(input$metadata_rows_all)) {
@@ -663,8 +880,9 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                 }
 
                 pdf(NULL)
-                ht <- .make_heatmap(mat, ress(), anno(), baseMean_col_fun, log2fc_col_fun,
+                ht <- .make_heatmap(mat, ress(), anno(), abundance_col_fun, log2fc_col_fun,
                     sig.term = input$sig.term,
+                    lfc.col = lfc.col, abundance.col = abundance.col,
                     sig.thresh = as.numeric(input$sig.thresh), base_mean = input$base_mean, log2fc = input$log2fc,
                     row.km = input$row.km, col.km = input$col.km
                 )
@@ -690,20 +908,23 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
             row_index <- unique(unlist(df$row_index))
             selected <- env$row_index[row_index]
 
-            cnames <- c("stat", "pvalue", "padj", "svalue")[c("stat", "pvalue", "padj", "svalue") %in% colnames(ress())]
+            # Find available columns
+            display_cols <- c(abundance.col, lfc.col)
+            cnames <- c("stat", "pvalue", "padj", "svalue", "lfcSE")[c("stat", "pvalue", "padj", "svalue", "lfcSE") %in% colnames(ress())]
             if (!is.null(swap.rownames)) {
                 cnames <- c(cnames, "ORIGINAL_ROWS")
             }
+            all_cols <- c(display_cols, cnames)
 
             output[["res_table"]] <- DT::renderDataTable({
                 DT::formatRound(
-                    DT::datatable(as.data.frame(ress()[selected, c("baseMean", "log2FoldChange", cnames)]),
+                    DT::datatable(as.data.frame(ress()[selected, all_cols]),
                         rownames = TRUE, options = list(
                             lengthMenu = c(5, 10, 25),
                             pageLength = 20
                         )
                     ),
-                    columns = seq_along(c("baseMean", "log2FoldChange", cnames)), digits = 5
+                    columns = seq_along(all_cols), digits = 5
                 ) %>%
                     DT::formatStyle(0, target = "row", lineHeight = "40%")
             })
@@ -715,20 +936,24 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
 
             output[["res_table"]] <- DT::renderDataTable({
                 # Adjust output table columns based on results table.
-                cnames <- c(sig.term)
+                display_cols <- c(abundance.col, lfc.col)
+                cnames <- c(sig.col)
+                if ("lfcSE" %in% colnames(ress())) {
+                    display_cols <- c(display_cols, "lfcSE")
+                }
                 if (!is.null(swap.rownames)) {
                     cnames <- c(cnames, "ORIGINAL_ROWS")
                 }
-
-                df <- df[, c("baseMean", "log2FoldChange", "lfcSE", cnames)]
+                all_cols <- c(display_cols, cnames)
+                
                 DT::formatRound(
-                    DT::datatable(as.data.frame(ress()[selected, c("baseMean", "log2FoldChange", cnames)]),
+                    DT::datatable(as.data.frame(ress()[selected, all_cols]),
                         rownames = TRUE, options = list(
                             lengthMenu = c(5, 10, 25),
                             pageLength = 20
                         )
                     ),
-                    columns = 1:3, digits = 5
+                    columns = seq_len(length(display_cols)), digits = 5
                 ) %>%
                     DT::formatStyle(0, target = "row", lineHeight = "40%")
             })
@@ -782,6 +1007,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                 basemean.thresh = isolate(input$base_mean),
                 h.id = h.id,
                 sig.term = isolate(input$sig.term),
+                lfc.col = lfc.col,
+                abundance.col = abundance.col,
                 gs = genes$ma,
                 up.color = isolate(input$ma.up.color),
                 down.color = isolate(input$ma.down.color),
@@ -836,7 +1063,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                 basemean.thresh = isolate(input$base_mean),
                 h.id = h.id,
                 sig.term = isolate(input$sig.term),
-                lfc.term = "log2FoldChange",
+                lfc.term = lfc.col,
+                abundance.col = abundance.col,
                 feat.term = "rows",
                 fs = genes$volc,
                 up.color = isolate(input$vol.up.color),
@@ -875,9 +1103,10 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
             df <- as.data.frame(ress())
 
             # Collect proper output columns.
+            display_cols <- c(abundance.col, lfc.col)
             cnames <- NULL
 
-            for (term in c("stat", "pvalue", "padj", "svalue")) {
+            for (term in c("lfcSE", "stat", "pvalue", "padj", "svalue", "qvalue", "FDR")) {
                 if (term %in% colnames(df)) {
                     cnames <- c(cnames, term)
                 }
@@ -889,7 +1118,8 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                 snames <- "ORIGINAL_ROWS"
             }
 
-            df <- df[, c("baseMean", "log2FoldChange", "lfcSE", cnames, snames)]
+            all_cols <- c(display_cols, cnames, snames)
+            df <- df[, all_cols]
 
             DT::formatRound(
                 DT::datatable(df,
@@ -903,28 +1133,32 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                         buttons = c("copy", "csv", "excel", "pdf", "print")
                     )
                 ),
-                columns = c("baseMean", "log2FoldChange", cnames), digits = 5
+                columns = c(display_cols, cnames), digits = 5
             ) %>%
                 DT::formatStyle(1, target = "row", lineHeight = "40%")
         })
 
         # Metadata table.
         output$metadata <- DT::renderDT(server = FALSE, {
-            df <- as.data.frame(SummarizedExperiment::colData(dds))
-            DT::datatable(df,
-                filter = "top",
-                extensions = c("Buttons", "Scroller"),
-                options = list(
-                    search = list(regex = TRUE),
-                    lengthMenu = list(c(10, 25, 50, -1), c("10", "25", "50", "all")),
-                    dom = "Blfrtip",
-                    buttons = c("copy", "csv", "excel", "pdf", "print"),
-                    scrollX = TRUE,
-                    deferRender = TRUE,
-                    scrollY = 400,
-                    scroller = TRUE
+            if (!is.null(metadata)) {
+                df <- as.data.frame(metadata)
+                DT::datatable(df,
+                    filter = "top",
+                    extensions = c("Buttons", "Scroller"),
+                    options = list(
+                        search = list(regex = TRUE),
+                        lengthMenu = list(c(10, 25, 50, -1), c("10", "25", "50", "all")),
+                        dom = "Blfrtip",
+                        buttons = c("copy", "csv", "excel", "pdf", "print"),
+                        scrollX = TRUE,
+                        deferRender = TRUE,
+                        scrollY = 400,
+                        scroller = TRUE
+                    )
                 )
-            )
+            } else {
+                DT::datatable(data.frame(Message = "No metadata provided"))
+            }
         })
 
         # Only remake heatmap on button click.
@@ -941,8 +1175,9 @@ shinyDESeq2 <- function(dds, res = NULL, coef = NULL, annot.by = NULL,
                 }
 
                 pdf(NULL)
-                ht <- .make_heatmap(mat, ress(), anno(), baseMean_col_fun, log2fc_col_fun,
+                ht <- .make_heatmap(mat, ress(), anno(), abundance_col_fun, log2fc_col_fun,
                     sig.term = input$sig.term,
+                    lfc.col = lfc.col, abundance.col = abundance.col,
                     sig.thresh = as.numeric(input$sig.thresh), base_mean = input$base_mean, log2fc = input$log2fc,
                     row.km = input$row.km, col.km = input$col.km
                 )

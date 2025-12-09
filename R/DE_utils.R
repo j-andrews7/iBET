@@ -1,9 +1,10 @@
 # Make the heatmap for differentially expressed genes under certain cutoffs.
-.make_heatmap <- function(mat, res, anno, bm.col.func, lfc.col.func, sig.term,
+.make_heatmap <- function(mat, res, anno, abundance.col.func, lfc.col.func, sig.term,
+                          lfc.col, abundance.col,
                           sig.thresh = 0.05, base_mean = 0, log2fc = 0, row.km = 0, col.km = 0) {
 
   # Adjust for potential differences in the results table.
-  l <- res[[sig.term]] <= sig.thresh & res$baseMean >= base_mean & abs(res$log2FoldChange) >= log2fc; l[is.na(l)] = FALSE
+  l <- res[[sig.term]] <= sig.thresh & res[[abundance.col]] >= base_mean & abs(res[[lfc.col]]) >= log2fc; l[is.na(l)] = FALSE
 
 
   # If 0 or 1 gene meet the cutoffs, don't make heatmap.
@@ -36,10 +37,10 @@
     anno <- HeatmapAnnotation(df = anno, col = anno.colors)
   }
 
-  basem_df <- log10(res$baseMean[l]+1)
-  names(basem_df) <- rownames(m)
+  abundance_df <- log10(res[[abundance.col]][l] + 1)
+  names(abundance_df) <- rownames(m)
 
-  lfc_df <- res$log2FoldChange[l]
+  lfc_df <- res[[lfc.col]][l]
   names(lfc_df) <- rownames(m)
 
   ht <- Heatmap(m, name = "z-score",
@@ -47,12 +48,12 @@
                 show_row_names = FALSE, show_column_names = FALSE,
                 row_km = row.km, column_km = col.km,
                 column_title_gp = gpar(fontsize = 10),
-                column_title = paste0(sum(l), " significant genes \nwith ", sig.term," < ", sig.thresh),
+                column_title = paste0(sum(l), " significant features \nwith ", sig.term," < ", sig.thresh),
                 show_row_dend = FALSE) +
-    Heatmap(basem_df, show_row_names = FALSE, width = unit(5, "mm"),
-            name = "log10(baseMean+1)", col = bm.col.func, show_column_names = FALSE) +
+    Heatmap(abundance_df, show_row_names = FALSE, width = unit(5, "mm"),
+            name = paste0("log10(", abundance.col, "+1)"), col = abundance.col.func, show_column_names = FALSE) +
     Heatmap(lfc_df, show_row_names = FALSE, width = unit(5, "mm"),
-            name = "log2FoldChange", col = lfc.col.func, show_column_names = FALSE)
+            name = lfc.col, col = lfc.col.func, show_column_names = FALSE)
   ht <- draw(ht, merge_legend = TRUE)
   ht
 }
@@ -61,7 +62,7 @@
 # Generic volcano plot function.
 # TODO: Add defaults, document, and export.
 .make_volcano <- function(res, xlim, ylim, fc.thresh, fc.lines, hover.info = NULL,
-                          sig.line, h.id, feat.term, sig.term, lfc.term, down.color, up.color,
+                          sig.line, h.id, feat.term, sig.term, lfc.term, abundance.col, down.color, up.color,
                           insig.color, sig.thresh = 0.05, basemean.thresh = 0, fs = NULL, sig.size, insig.size,
                           sig.opacity, insig.opacity, label.size, webgl, webgl.ratio, show.counts,
                           show.hl.counts, counts.size, highlight.featsets, highlight.feats, featsets,
@@ -96,13 +97,13 @@
   }
 
   # Significance filter.
-  up.feats <- res[[sig.term]] < sig.thresh & res[[lfc.term]] > fc.thresh & res$baseMean > basemean.thresh
+  up.feats <- res[[sig.term]] < sig.thresh & res[[lfc.term]] > fc.thresh & res[[abundance.col]] > basemean.thresh
   res$col[up.feats] <- up.color
   res$cex[up.feats] <- sig.size
   res$order[up.feats] <- 1
   res$opacity[up.feats] <- sig.opacity
 
-  dn.feats <- res[[sig.term]] < sig.thresh & res[[lfc.term]] < -fc.thresh & res$baseMean > basemean.thresh
+  dn.feats <- res[[sig.term]] < sig.thresh & res[[lfc.term]] < -fc.thresh & res[[abundance.col]] > basemean.thresh
   res$col[dn.feats] <- down.color
   res$cex[dn.feats] <- sig.size
   res$order[dn.feats] <- 1
@@ -292,7 +293,7 @@
 }
 
 
-.make_maplot <- function(res, ylim, fc.thresh, fc.lines, h.id, sig.term,
+.make_maplot <- function(res, ylim, fc.thresh, fc.lines, h.id, sig.term, lfc.col, abundance.col,
                          down.color, up.color, insig.color, sig.size, insig.size, sig.thresh = 0.05,
                          gs = NULL, basemean.thresh = 0, sig.opacity, insig.opacity, label.size, webgl, webgl.ratio, show.counts,
                          counts.size, show.hl.counts, highlight.genesets, highlight.genes, genesets,
@@ -327,13 +328,13 @@
   }
 
   # Styling.
-  up.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange > fc.thresh & res$baseMean > basemean.thresh
+  up.degs <- res[[sig.term]] < sig.thresh & res[[lfc.col]] > fc.thresh & res[[abundance.col]] > basemean.thresh
   res$col[up.degs] <- up.color
   res$cex[up.degs] <- sig.size
   res$order[up.degs] <- 1
   res$opacity[up.degs] <- sig.opacity
 
-  dn.degs <- res[[sig.term]] < sig.thresh & res$log2FoldChange < -fc.thresh & res$baseMean > basemean.thresh
+  dn.degs <- res[[sig.term]] < sig.thresh & res[[lfc.col]] < -fc.thresh & res[[abundance.col]] > basemean.thresh
   res$col[dn.degs] <- down.color
   res$cex[dn.degs] <- sig.size
   res$order[dn.degs] <- 1
@@ -346,10 +347,10 @@
   n.dn.genes <- length(dn.degs[dn.degs == TRUE])
   n.genes <- nrow(res)
 
-  res$x <- res$baseMean
-  res$y <- res$log2FoldChange
-  res$sh <- ifelse(res$log2FoldChange > ylim, "triangle-up-open",
-                   ifelse(res$log2FoldChange < -ylim, "triangle-down-open", 0))
+  res$x <- res[[abundance.col]]
+  res$y <- res[[lfc.col]]
+  res$sh <- ifelse(res[[lfc.col]] > ylim, "triangle-up-open",
+                   ifelse(res[[lfc.col]] < -ylim, "triangle-down-open", 0))
   res$lw <- ifelse(res$sh != 0, 1, 0)
   res$y[res$y > ylim] <- ylim - 0.05
   res$y[res$y < -ylim] <- -ylim + 0.05
@@ -389,9 +390,9 @@
   }
 
   res$hover.string <- paste("</br><b>Gene:</b> ", res$Gene,
-                            "</br><b>log2 Fold Change:</b> ", format(round(res$log2FoldChange, 4), nsmall = 4),
+                            "</br><b>", lfc.col, ":</b> ", format(round(res[[lfc.col]], 4), nsmall = 4),
                             "</br><b>", sig.term, ":</b> ", format(round(res[[sig.term]], 4), nsmall = 4),
-                            "</br><b>baseMean (avg. Expression):</b> ", format(round(res$baseMean, 2), nsmall = 2))
+                            "</br><b>", abundance.col, ":</b> ", format(round(res[[abundance.col]], 2), nsmall = 2))
 
   res <- as.data.frame(res)
   res <- res[order(res$order),]
@@ -402,7 +403,7 @@
     mirror = TRUE,
     linecolor = toRGB("black"),
     linewidth = 0.5,
-    title = "log2(fold change)",
+    title = lfc.col,
     range = list(-ylim, ylim),
     showgrid = FALSE,
     layer = "below traces",
@@ -415,7 +416,7 @@
     mirror = TRUE,
     linecolor = toRGB("black"),
     linewidth = 0.5,
-    title = "log10(baseMean)",
+    title = paste0("log10(", abundance.col, ")"),
     showgrid = FALSE,
     layer = "below traces",
     zeroline = FALSE,
