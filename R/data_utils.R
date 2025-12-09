@@ -14,9 +14,8 @@
 #'   `ORIGINAL_ROWS` containing the original row names. If no matches are found,
 #'   returns an empty data frame with the same structure as `df`.
 #'
-#' @keywords internal
-#' @examples
-#' # Not intended for direct use.
+#' @rdname INTERNAL_swap_res_rownames
+#' @author Jared Andrews
 .swap_res_rownames <- function(df, id_map, orig_ids) {
     # Match result rownames to mat original rownames
     matched_indices <- match(rownames(df), orig_ids)

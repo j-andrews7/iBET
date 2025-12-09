@@ -18,7 +18,7 @@
 #' @importFrom GetoptLong qq
 #' @import circlize
 #' @importFrom grid unit grid.newpage grid.text gpar
-#' @importFrom SummarizedExperiment colData assay
+#' @importFrom SummarizedExperiment colData assay rowData
 #' @importFrom grDevices dev.off pdf
 #' @importFrom graphics par
 #' @importFrom stats quantile loess fitted
@@ -120,7 +120,7 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
     if (is(mat, "DESeqDataSet")) {
         # Extract feature metadata for swap.rownames
         if (!is.null(swap.rownames)) {
-            feature_metadata <- as.data.frame(SummarizedExperiment::rowData(original_mat))
+            feature_metadata <- as.data.frame(rowData(original_mat))
         }
         
         # Extract metadata if not provided
