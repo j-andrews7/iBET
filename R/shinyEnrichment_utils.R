@@ -1,17 +1,17 @@
-library(shiny)
-library(shinydashboard)
-library(plotly)
-library(shinyBS)
-library(shinyjs)
-library(dashboardthemes)
-library(bslib)
-library(shinyjqui)
-library(clusterProfiler)
-library(ggtree)
-library(enrichplot)
-library(org.Hs.eg.db)
-library(GOSemSim)
-library(forcats)
+# library(shiny)
+# library(shinydashboard)
+# library(plotly)
+# library(shinyBS)
+# library(shinyjs)
+# library(dashboardthemes)
+# library(bslib)
+# library(shinyjqui)
+# library(clusterProfiler)
+# library(ggtree)
+# library(enrichplot)
+# library(org.Hs.eg.db)
+# library(GOSemSim)
+# library(forcats)
 #' @title Dot Plot Enrichment Visualization
 #' @description Creates interactive dot plot for enrichment results
 #' @param enrich Enrichment result object (data.frame-like)
@@ -87,6 +87,7 @@ barPlotEnrichment <- function(enrich, numSets = 10, colourBy = "p.adjust", title
 #' @param numSets Number of top results to display (default: 10)
 #' @param colour Tile color for gene presence (default: "black")
 #' @param sizeText Axis text size (default: 10)
+#' @param title Title of the plot
 #' @return Interactive plotly object
 #' @importFrom ggplot2 ggplot aes geom_tile scale_fill_manual theme_minimal element_text labs
 #' @importFrom plotly ggplotly
@@ -135,15 +136,6 @@ heatPlotEnrichment <- function(enrich, numSets = 10, colour = "black", sizeText 
   return(heatPlotlyOut)
 }
 
-
-
-
-# dotPlotEnrichmentCustom <- ggplot(aes(x = enrich$))
-#Description: 
-#pvalue 
-#p.adjust 
-#GeneRatio 
-#Count
-test <- readRDS("/Volumes/JM/Development/iBET/Play/ExampleEnrichment.rds")
-test1 <- as.data.frame(test)
+# test <- readRDS("/Volumes/JM/Development/iBET/Play/ExampleEnrichment.rds")
+# test1 <- as.data.frame(test)
 

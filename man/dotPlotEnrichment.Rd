@@ -2,30 +2,39 @@
 % Please edit documentation in R/shinyEnrichment_utils.R
 \name{dotPlotEnrichment}
 \alias{dotPlotEnrichment}
-\title{DotPlot Function For Enrichment Results}
+\title{Dot Plot Enrichment Visualization}
 \usage{
 dotPlotEnrichment(
   enrich,
   numSets = 10,
   colourBy = "p.adjust",
   titleForPlot = "Title",
-  x_axis = "GeneRatio"
+  x_axis = "GeneRatio",
+  textSize = 10,
+  colour1 = "red",
+  colour2 = "blue"
 )
 }
 \arguments{
-\item{enrich}{ClusterProfiler enrichment Object from enrichGO() function}
+\item{enrich}{Enrichment result object (data.frame-like)}
 
-\item{numSets}{the number of gene sets you want to be displayed in the plot}
+\item{numSets}{Number of top results to show (default: 10)}
 
-\item{colourBy}{Either p.adjust, qvalue or pvalue. Determines how the dots are coloured on a colour scale.}
+\item{colourBy}{Column name for color gradient (default: "p.adjust")}
 
-\item{titleForPlot}{Title for the plot}
+\item{titleForPlot}{Plot title}
 
-\item{x_axis}{Whether the x axis represents the GeneRatio or Count}
+\item{x_axis}{X-axis variable ("GeneRatio" or "Count")}
+
+\item{textSize}{Y-axis text size}
+
+\item{colour1}{Low end color}
+
+\item{colour2}{High end color}
+}
+\value{
+plotly object
 }
 \description{
-DotPlot Function For Enrichment Results
-}
-\author{
-Jacob Martin
+Creates interactive dot plot for enrichment results
 }

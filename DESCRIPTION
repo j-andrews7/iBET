@@ -42,7 +42,11 @@ Imports:
     methods,
     htmlwidgets,
     clusterProfiler,
-    enrichplot
+    enrichplot,
+    GOSemSim,
+    shinyBS,
+    bslib,
+    rlang
 Suggests:
     airway,
     magrittr,

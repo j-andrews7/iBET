@@ -1,19 +1,36 @@
-library(devtools)
-source("/Volumes/JM/Development/iBET/R/shinyEnrichment_utils.R")
-library(shiny)
-library(shinydashboard)
-library(plotly)
-library(shinyBS)
-library(shinyjs)
-library(dashboardthemes)
-library(bslib)
-library(shinyjqui)
-library(clusterProfiler)
-library(ggtree)
-library(enrichplot)
-library(org.Hs.eg.db)
-library(GOSemSim)
-library(colourpicker)
+# library(devtools)
+# source("/Volumes/JM/Development/iBET/R/shinyEnrichment_utils.R")
+# library(shiny)
+# library(shinydashboard)
+# library(plotly)
+# library(shinyBS)
+# library(shinyjs)
+# library(dashboardthemes)
+# library(bslib)
+# library(shinyjqui)
+# library(clusterProfiler)
+# library(ggtree)
+# library(enrichplot)
+# library(GOSemSim)
+# library(colourpicker)
+
+#' @title Interactive Shiny Enrichment Dashboard
+#' @description Creates interactive Shiny dashboard for enrichment analysis visualization with Dot Plot, Bar Plot, and Heatmap tabs
+#' @param enrichmentObj Enrichment result object (e.g., from clusterProfiler enrichGO/enrichKEGG)
+#' @return Shiny application object (interactive dashboard)
+#' @importFrom shiny shinyApp dashboardPage dashboardHeader dashboardSidebar dashboardBody
+#' @importFrom shiny tabsetPanel tabPanel numericInput selectInput textInput colourInput
+#' @importFrom shiny renderPlotly plotlyOutput bsCollapse bsCollapsePanel
+#' @importFrom shinydashboard dashboardPage dashboardHeader dashboardSidebar dashboardBody
+#' @importFrom shinyBS bsCollapse bsCollapsePanel
+#' @importFrom shinyjs useShinyjs
+#' @importFrom shinyjqui jqui_resizable
+#' @importFrom plotly plotlyOutput
+#' @importFrom dashboardthemes shinyDashboardThemes
+#' @importFrom bslib bs_theme
+#' @importFrom clusterProfiler enrichGO enrichKEGG
+#' @author Jacob Martin
+#' @export
 shinyEnrichment <- function(enrichmentObj) {
     ui <- dashboardPage(
         dashboardHeader(disable = TRUE),
@@ -108,11 +125,6 @@ shinyEnrichment <- function(enrichmentObj) {
         )
     )    
     server <- function(input, output, session) {
-        # Creating Dot Plot Output:
-        # DotPlot Output:
-        # enrich_with_termsim <- pairwise_termsim(enrichmentObj, 
-        #                                method = "Wang", 
-        #                                semData = godata("org.Hs.eg.db", ont = "BP"))
         output$dotplot <- renderPlotly(
             dotPlotEnrichment(enrich = enrichmentObj, numSets = input$num_categoriesDot, colourBy = input$colour_by, titleForPlot = input$titleDotPlot, x_axis = input$x_axisSelection, textSize = input$dot_textSize, colour1 = input$my_color_Dot1, colour2 = input$my_color_Dot2)
         )
@@ -123,14 +135,11 @@ shinyEnrichment <- function(enrichmentObj) {
         output$heatPlot <- renderPlotly(
             heatPlotEnrichment(enrich = enrichmentObj, numSets = input$heat_categories, colour = input$colourHeat, sizeText = input$textHeat, title = input$titleHeat)
         )
-        # output$treePlot <- renderPlot(
-        #     treePlotEnrichment(enrich = enrich_with_termsim, numSets = 20)
-        # )
     }
 
     shinyApp(ui = ui, server = server, options = list(launch.browser = TRUE))
 }
-test <- readRDS("/Volumes/JM/Development/iBET/Play/ExampleEnrichment.rds")
-test <- as.data.frame(test)
-app <- shinyEnrichment(enrichmentObj = test)
-runApp(app)
+# test <- readRDS("/Volumes/JM/Development/iBET/Play/ExampleEnrichment.rds")
+# test <- as.data.frame(test)
+# app <- shinyEnrichment(enrichmentObj = test)
+# runApp(app)
