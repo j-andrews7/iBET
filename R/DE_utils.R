@@ -37,7 +37,7 @@
     anno <- HeatmapAnnotation(df = anno, col = anno.colors)
   }
 
-  abundance_df <- log10(res[[abundance.col]][l]+1)
+  abundance_df <- log10(res[[abundance.col]][l] + 1)
   names(abundance_df) <- rownames(m)
 
   lfc_df <- res[[lfc.col]][l]

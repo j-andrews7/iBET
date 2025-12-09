@@ -29,7 +29,7 @@ Each data frame must contain columns for significance, fold change, and abundanc
 If a named list is provided, users will be able to choose between results in the app. Required.}
 
 \item{metadata}{A data frame containing sample metadata. Rows should correspond to columns in \code{mat}.
-If provided, can be used for heatmap annotations and sample filtering. 
+If provided, can be used for heatmap annotations and sample filtering.
 If \code{mat} is a DESeqDataSet or DGEList with sample information, metadata will be extracted automatically if not provided. Optional.}
 
 \item{annot.by}{A string or character vector containing the names of metadata columns to be used as heatmap annotations.
@@ -112,7 +112,8 @@ shinyDE(y, res = res, assay = "cpm", lfc.col = "logFC", abundance.col = "logCPM"
 # Example with manual matrix
 shinyDE(mat, res = res, lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
 }
+
 }
 \author{
-Jared Andrews, based on code by Zuguang Gu.
+Jared Andrews
 }

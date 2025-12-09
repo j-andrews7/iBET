@@ -106,17 +106,26 @@
 #' shinyDE(mat, res = res, lfc.col = "logFC", abundance.col = "logCPM", sig.col = "FDR")
 #' }
 #'
-#' @author Jared Andrews, based on code by Zuguang Gu.
+#' @author Jared Andrews
 #' @export
 shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
                     sig.col = NULL, lfc.col = "log2FoldChange", abundance.col = "baseMean",
                     assay = NULL, h.id = "ht1", genesets = NULL, swap.rownames = NULL, height = 800) {
     
+    # Store original mat object and feature metadata for swap.rownames handling
+    feature_metadata <- NULL
+    original_mat <- mat
+    
     # Handle DESeqDataSet objects
-    if (methods::is(mat, "DESeqDataSet")) {
+    if (is(mat, "DESeqDataSet")) {
+        # Extract feature metadata for swap.rownames
+        if (!is.null(swap.rownames)) {
+            feature_metadata <- as.data.frame(SummarizedExperiment::rowData(original_mat))
+        }
+        
         # Extract metadata if not provided
         if (is.null(metadata)) {
-            metadata <- as.data.frame(SummarizedExperiment::colData(mat))
+            metadata <- as.data.frame(colData(mat))
         }
         
         # Determine which assay/transformation to use
@@ -126,14 +135,14 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
         
         # Extract the appropriate assay
         if (assay == "vst") {
-            mat <- SummarizedExperiment::assay(DESeq2::vst(mat))
+            mat <- assay(vst(mat))
         } else if (assay == "rlog") {
-            mat <- SummarizedExperiment::assay(DESeq2::rlog(mat))
+            mat <- assay(rlog(mat))
         } else if (assay == "normTransform") {
-            mat <- SummarizedExperiment::assay(DESeq2::normTransform(mat))
+            mat <- assay(normTransform(mat))
         } else {
             # Try to get a named assay
-            mat <- SummarizedExperiment::assay(mat, assay)
+            mat <- assay(mat, assay)
         }
         
         # Set default column names for DESeq2
@@ -143,7 +152,12 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
     }
     
     # Handle DGEList objects
-    if (methods::is(mat, "DGEList")) {
+    if (is(mat, "DGEList")) {
+        # Extract feature metadata for swap.rownames (edgeR stores in $genes)
+        if (!is.null(swap.rownames) && !is.null(original_mat$genes)) {
+            feature_metadata <- as.data.frame(original_mat$genes)
+        }
+        
         # Extract metadata if not provided and available
         if (is.null(metadata) && !is.null(mat$samples)) {
             metadata <- mat$samples
@@ -156,9 +170,9 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
         
         # Extract the appropriate values
         if (assay == "logCPM") {
-            mat <- edgeR::cpm(mat, log = TRUE)
+            mat <- cpm(mat, log = TRUE)
         } else if (assay == "cpm") {
-            mat <- edgeR::cpm(mat, log = FALSE)
+            mat <- cpm(mat, log = FALSE)
         } else if (assay == "counts") {
             mat <- mat$counts
         } else {
@@ -197,22 +211,10 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
     if (is(res, "list")) {
         if (!is.null(names(res))) {
             multi.res <- TRUE
-            # Swap rownames if necessary.
-            res.list <- lapply(res, function(r) {
-                if (!is.null(swap.rownames) && swap.rownames %in% colnames(r)) {
-                    .swap_rownames(r, swap.rownames = swap.rownames)
-                } else {
-                    r
-                }
-            })
+            res.list <- res
             res <- res.list[[1]]
         } else {
             stop("Results list elements should be named.")
-        }
-    } else {
-        # Swap rownames if necessary for single result.
-        if (!is.null(swap.rownames) && swap.rownames %in% colnames(res)) {
-            res <- .swap_rownames(res, swap.rownames = swap.rownames)
         }
     }
     
@@ -221,6 +223,76 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
         res <- as.data.frame(res)
     }
     
+    # Handle swap.rownames: create mapping from original IDs to new IDs
+    if (!is.null(swap.rownames)) {
+        # Try to find the swap column in different sources
+        swap_values <- NULL
+        swap_source <- NULL
+        
+        # 1. Check feature_metadata (from rowData or genes)
+        if (!is.null(feature_metadata) && swap.rownames %in% colnames(feature_metadata)) {
+            swap_values <- feature_metadata[[swap.rownames]]
+            swap_source <- "feature_metadata"
+        }
+        # 2. Check results dataframe
+        else if (swap.rownames %in% colnames(res)) {
+            swap_values <- res[[swap.rownames]]
+            swap_source <- "results"
+        }
+        # 3. If res is a list, check all results for the column
+        else if (multi.res) {
+            for (i in seq_along(res.list)) {
+                if (swap.rownames %in% colnames(res.list[[i]])) {
+                    swap_values <- res.list[[i]][[swap.rownames]]
+                    swap_source <- paste0("results list element ", i)
+                    break
+                }
+            }
+        }
+        
+        if (is.null(swap_values)) {
+            stop(paste0("Column '", swap.rownames, "' not found in feature metadata (rowData/genes) or results dataframe."))
+        }
+        
+        # Create mapping from original rownames to new identifiers
+        original_ids <- rownames(mat)
+        
+        # Ensure swap_values matches mat dimensions
+        if (length(swap_values) != length(original_ids)) {
+            # Try to match by rownames if lengths differ
+            if (swap_source == "results" && all(rownames(res) %in% original_ids)) {
+                # Reorder swap_values to match mat
+                swap_values <- swap_values[match(original_ids, rownames(res))]
+            } else {
+                warning(paste0("Length mismatch between expression matrix (", length(original_ids), 
+                             ") and swap column (", length(swap_values), "). Using first match."))
+                min_len <- min(length(original_ids), length(swap_values))
+                original_ids <- original_ids[seq_len(min_len)]
+                swap_values <- swap_values[seq_len(min_len)]
+                mat <- mat[seq_len(min_len), , drop = FALSE]
+            }
+        }
+
+        # Make identifiers unique if needed
+        new_ids <- make.names(swap_values, unique = TRUE)
+
+        # Apply new rownames to mat
+        rownames(mat) <- new_ids
+
+        # Apply new rownames to res and res.list
+        # Create mapping: original rowname -> new rowname
+        id_mapping <- setNames(new_ids, original_ids)
+
+        res <- .swap_res_rownames(res, id_mapping, original_ids)
+
+        if (multi.res) {
+            res.list <- lapply(res.list, function(r) .swap_res_rownames(r, id_mapping, original_ids))
+        }
+
+        message(paste0("Swapped rownames using '", swap.rownames, "' from ", swap_source, 
+                       ". Matched ", nrow(res), " features."))
+    }
+
     # Validate required columns exist
     if (!lfc.col %in% colnames(res)) {
         stop(paste0("Column '", lfc.col, "' not found in results. Please specify correct column name with lfc.col parameter."))
@@ -246,16 +318,19 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
         }
     }
     
-    # Swap rownames in mat if necessary
-    if (!is.null(swap.rownames)) {
-        mat_rownames <- rownames(res)
-        if (!all(mat_rownames %in% rownames(mat))) {
-            warning("Not all features in results are present in expression matrix")
-        }
-        # Subset and reorder mat to match res
-        common_feats <- intersect(rownames(mat), rownames(res))
-        mat <- mat[common_feats, , drop = FALSE]
-        res <- res[common_feats, , drop = FALSE]
+    # Ensure mat and res have matching features
+    common_feats <- intersect(rownames(mat), rownames(res))
+    if (length(common_feats) == 0) {
+        stop("No matching features found between expression matrix and results. Check that rownames match.")
+    }
+    if (length(common_feats) < nrow(res)) {
+        warning(paste0("Only ", length(common_feats), " of ", nrow(res), 
+                      " features from results found in expression matrix. Subsetting to common features."))
+    }
+    mat <- mat[common_feats, , drop = FALSE]
+    res <- res[common_feats, , drop = FALSE]
+    if (multi.res) {
+        res.list <- lapply(res.list, function(r) r[intersect(rownames(r), common_feats), , drop = FALSE])
     }
     
     # Parameter validation.
