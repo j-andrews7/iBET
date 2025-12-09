@@ -70,9 +70,9 @@ treePlotEnrichment <- function(enrich, numSets = 10, colourBy = "p.adjust"){
     plotlyHeatOut <- ggplotly(treePlot)
     return(plotlyHeatOut)
 }
-# test <- readRDS("/Volumes/JM/Development/iBET/Play/ExampleEnrichment.rds")
+test <- readRDS("/Volumes/JM/Development/iBET/Play/ExampleEnrichment.rds")
 # # Before calling treePlotEnrichment()
 # # test <- simplify(test, cutoff = 0.7, by = "p.adjust", select_fun = min)  # Populates @termsim
-# treePlotEnrichment(test, numSets = 10)
+treePlotEnrichment(test, numSets = 10)
 
 

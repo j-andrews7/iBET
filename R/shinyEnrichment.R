@@ -39,13 +39,7 @@ shinyEnrichment <- function(enrichmentObj) {
                     textInput("titleBarPlot", "Enter the title for the dot plot:"),
                     selectInput("x_axisSelectionBar", "X-axis:", c("Count", "GeneRatio"))
                 ),
-                # TREE PLOT UI
-                bsCollapsePanel(
-                    title = span(icon("plus"), "Tree Plot"),
-                    value = "TreePlot.settings", style = "primary",
-                    numericInput("Tree_num", "Categories:", value = 20, min = 1, max = 50),
-                    selectInput("colour_by_Tree", "Colour by:", c("p.adjust", "pvalue", "qvalue"))
-                ),
+                #Heat PLot
                 bsCollapsePanel(
                     title = span(icon("plus"), "HeatMap Plot"),
                     value = "HeatPlot.settings", style = "primary",
@@ -64,31 +58,65 @@ shinyEnrichment <- function(enrichmentObj) {
             tabsetPanel(
                 tabPanel(
                     "Dot Plot",
-                    plotlyOutput("dotplot")
+                    jqui_resizable(
+                        plotlyOutput("dotplot", height = "100%"),
+                            options = list(
+                            handles = "all",  
+                            minWidth = 300,
+                            minHeight = 300,
+                            maxWidth = 1200,
+                            maxHeight = 800
+                        )
+                    )
                 ),
                 tabPanel(
                     "BarPlot",
-                    plotlyOutput("barPlot")
+                    jqui_resizable(
+                        plotlyOutput("barPlot", height = "100%"),
+                            options = list(
+                            handles = "all",  
+                            minWidth = 300,
+                            minHeight = 300,
+                            maxWidth = 1200,
+                            maxHeight = 800
+                        )
+                    )                    
                 ),
                 tabPanel(
                     "HeatMap",
-                    plotlyOutput("heatPlot")
+                    jqui_resizable(
+                        plotlyOutput("heatPlot", height = "100%"),
+                            options = list(
+                            handles = "all",  
+                            minWidth = 300,
+                            minHeight = 300,
+                            maxWidth = 1200,
+                            maxHeight = 800
+                        )
+                    )                    
                 ),
                 tabPanel(
                     "Tree Plot",
-                    plotlyOutput("treePlot")
-                )
+                    jqui_resizable(
+                        plotOutput("treePlot", height = "100%"),
+                            options = list(
+                            handles = "all",  
+                            minWidth = 300,
+                            minHeight = 300,
+                            maxWidth = 1200,
+                            maxHeight = 800
+                        )
+                    )
+                )       
             )
         )
-    )
+    )    
     server <- function(input, output, session) {
         # Creating Dot Plot Output:
         # DotPlot Output:
-        treePlot <- reactive({
-            d <- godata("org.Hs.eg.db", ont = "BP")
-            ego2 <- pairwise_termsim(enrichmentObj, method = "Wang", semData = d)
-            return(ego2)
-        })
+        enrich_with_termsim <- pairwise_termsim(enrichmentObj, 
+                                       method = "Wang", 
+                                       semData = godata("org.Hs.eg.db", ont = "BP"))
         output$dotplot <- renderPlotly(
             dotPlotEnrichment(enrich = enrichmentObj, numSets = input$num_categoriesDot, colourBy = input$colour_by, titleForPlot = input$titleDotPlot, x_axis = input$x_axisSelection)
         )
@@ -99,8 +127,8 @@ shinyEnrichment <- function(enrichmentObj) {
         output$heatPlot <- renderPlotly(
             heatPlotEnrichment(enrich = enrichmentObj, numSets = input$heat_categories)
         )
-        output$treePlot <- renderPlotly(
-            treePlotEnrichment(enrich = treePlot(), numSets = input$Tree_num, colourBy = input$colour_by_Tree)
+        output$treePlot <- renderPlot(
+            treePlotEnrichment(enrich = enrich_with_termsim, numSets = 20)
         )
     }
 
