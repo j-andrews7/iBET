@@ -40,23 +40,22 @@
 shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                           center = TRUE, color.by = NULL, shape.by = NULL,
                           annot.by = NULL, height = 850) {
+    ui <- .create_pca_ui(metadata, removeVar, color.by, shape.by, center, scale)
+    server <- .create_pca_server(mat, metadata, annot.by)
 
-  ui <- .create_pca_ui(metadata, removeVar, color.by, shape.by, center, scale)
-  server <- .create_pca_server(mat, metadata, annot.by)
-  
-  shinyApp(ui, server, options = list(height = height))
+    shinyApp(ui, server, options = list(height = height))
 }
 
 
 # Internal function to create PCA UI
 .create_pca_ui <- function(metadata, removeVar, color.by, shape.by, center, scale) {
-  dashboardPage(
-    dashboardHeader(disable = TRUE),
-    dashboardSidebar(disable = TRUE),
-    dashboardBody(
-      tags$head(
-        # Note the wrapping of the string in HTML()
-        tags$style(HTML("
+    dashboardPage(
+        dashboardHeader(disable = TRUE),
+        dashboardSidebar(disable = TRUE),
+        dashboardBody(
+            tags$head(
+                # Note the wrapping of the string in HTML()
+                tags$style(HTML("
           .panel-body {
             padding: 5px;
           }
@@ -93,481 +92,659 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
             line-height: 1.1;
           }
         "))
-      ),
-      shinyDashboardThemes(
-        theme = "onenote"
-      ),
-      sidebarLayout(
-        sidebarPanel(width = 3,
-          bsCollapse(open = "biplot.settings",
-            bsCollapsePanel(
-              title = span(icon("plus"), "PCA Settings"), value = "pca.settings", style = "info",
-              conditionalPanel(
-                condition = "input['keep.top.n'] == false",
-                numericInput("var.remove", "Remove this proportion of features ranked by variance:",
-                             min = 0, max = 1, step = 0.01, value = removeVar)
-              ),
-              conditionalPanel(
-                condition = "input['keep.top.n'] == true",
-                numericInput("var.n.keep", "Number of features to retain by variance:",
-                            min = 2, max = Inf, step = 1, value = 500)
-              ),
-              fluidRow(
-                column(6,
-                       tipify(prettyCheckbox("center", strong("Center data"), TRUE, bigger = FALSE,
-                                             animation = "smooth", status = "success",
-                                             icon = icon("check"), width = "100%"),
-                              "Zero center the data before performing PCA.", "right", options = list(container = "body")),
-                       tipify(prettyCheckbox("keep.top.n", strong("Limit by top N features"), FALSE, bigger = FALSE,
-                                             animation = "smooth", status = "success",
-                                             icon = icon("check"), width = "100%"),
-                              "Limit PCA to top N features ranked by variance.", "right", options = list(container = "body"))
-                ),
-                column(6,
-                       tipify(prettyCheckbox("scale", strong("Scale data"), TRUE, bigger = FALSE,
-                                             animation = "smooth", status = "success",
-                                             icon = icon("check"), width = "100%"),
-                              "Scale the data to have unit variance before performing PCA.", "right", options = list(container = "body"))
-                )
-              ),
-              tipify(prettyCheckbox("meta.filt", strong("Filter via metadata table"), TRUE, bigger = FALSE,
+            ),
+            shinyDashboardThemes(
+                theme = "onenote"
+            ),
+            sidebarLayout(
+                sidebarPanel(
+                    width = 3,
+                    bsCollapse(
+                        open = "biplot.settings",
+                        bsCollapsePanel(
+                            title = span(icon("plus"), "PCA Settings"), value = "pca.settings", style = "info",
+                            conditionalPanel(
+                                condition = "input['keep.top.n'] == false",
+                                numericInput("var.remove", "Remove this proportion of features ranked by variance:",
+                                    min = 0, max = 1, step = 0.01, value = removeVar
+                                )
+                            ),
+                            conditionalPanel(
+                                condition = "input['keep.top.n'] == true",
+                                numericInput("var.n.keep", "Number of features to retain by variance:",
+                                    min = 2, max = Inf, step = 1, value = 500
+                                )
+                            ),
+                            fluidRow(
+                                column(
+                                    6,
+                                    tipify(
+                                        prettyCheckbox("center", strong("Center data"), TRUE,
+                                            bigger = FALSE,
+                                            animation = "smooth", status = "success",
+                                            icon = icon("check"), width = "100%"
+                                        ),
+                                        "Zero center the data before performing PCA.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(
+                                        prettyCheckbox("keep.top.n", strong("Limit by top N features"), FALSE,
+                                            bigger = FALSE,
+                                            animation = "smooth", status = "success",
+                                            icon = icon("check"), width = "100%"
+                                        ),
+                                        "Limit PCA to top N features ranked by variance.", "right",
+                                        options = list(container = "body")
+                                    )
+                                ),
+                                column(
+                                    6,
+                                    tipify(
+                                        prettyCheckbox("scale", strong("Scale data"), TRUE,
+                                            bigger = FALSE,
+                                            animation = "smooth", status = "success",
+                                            icon = icon("check"), width = "100%"
+                                        ),
+                                        "Scale the data to have unit variance before performing PCA.", "right",
+                                        options = list(container = "body")
+                                    )
+                                )
+                            ),
+                            tipify(
+                                prettyCheckbox("meta.filt", strong("Filter via metadata table"), TRUE,
+                                    bigger = FALSE,
                                     animation = "smooth", status = "success",
-                                    icon = icon("check"), width = "100%"),
-                     "Filter PCA samples to those in metadata table.", "right", options = list(container = "body"))
-            ),
-            bsCollapsePanel(title = span(icon("plus"), "Biplot Settings"), value = "biplot.settings", style = "info",
-              uiOutput("pca.comps"),
-              fluidRow(
-                column(6, tipify(selectInput("bip.color", "Color by:",
-                                             choices = c("", colnames(metadata)), selected = color.by),
-                                 "Metadata variable by which samples are colored.", "right", options = list(container = "body"))),
-                column(6, tipify(selectInput("bip.shape", "Shape by:",
-                                             choices = c("", colnames(metadata)), selected = shape.by),
-                                 "Metadata variable by which samples are shaped.", "right", options = list(container = "body")))
-              ),
-              fluidRow(
-                column(6,
-                       tipify(prettyCheckbox("bip.twod", strong("Limit to 2D"), TRUE, bigger = FALSE,
-                                             animation = "smooth", status = "success",
-                                             icon = icon("check"), width = "100%"),
-                              "Limit PCA biplot to 2D.", "right", options = list(container = "body"))
+                                    icon = icon("check"), width = "100%"
+                                ),
+                                "Filter PCA samples to those in metadata table.", "right",
+                                options = list(container = "body")
+                            )
+                        ),
+                        bsCollapsePanel(
+                            title = span(icon("plus"), "Biplot Settings"), value = "biplot.settings", style = "info",
+                            uiOutput("pca.comps"),
+                            fluidRow(
+                                column(6, tipify(
+                                    selectInput("bip.color", "Color by:",
+                                        choices = c("", colnames(metadata)), selected = color.by
+                                    ),
+                                    "Metadata variable by which samples are colored.", "right",
+                                    options = list(container = "body")
+                                )),
+                                column(6, tipify(
+                                    selectInput("bip.shape", "Shape by:",
+                                        choices = c("", colnames(metadata)), selected = shape.by
+                                    ),
+                                    "Metadata variable by which samples are shaped.", "right",
+                                    options = list(container = "body")
+                                ))
+                            ),
+                            fluidRow(
+                                column(
+                                    6,
+                                    tipify(
+                                        prettyCheckbox("bip.twod", strong("Limit to 2D"), TRUE,
+                                            bigger = FALSE,
+                                            animation = "smooth", status = "success",
+                                            icon = icon("check"), width = "100%"
+                                        ),
+                                        "Limit PCA biplot to 2D.", "right",
+                                        options = list(container = "body")
+                                    )
+                                ),
+                                column(
+                                    6,
+                                    tipify(
+                                        prettyCheckbox("bip.loadings", strong("Plot Loadings"), FALSE,
+                                            bigger = FALSE,
+                                            animation = "smooth", status = "success",
+                                            icon = icon("check"), width = "100%"
+                                        ),
+                                        "Plot top PCA loadings for each PC.", "right",
+                                        options = list(container = "body")
+                                    )
+                                )
+                            ),
+                            tipify(
+                                numericInput("bip.n.loadings", "Loadings:",
+                                    min = 0, max = 100, step = 1, value = 5
+                                ),
+                                "Number of PCA loadings to plot (if checked).", "right",
+                                options = list(container = "body")
+                            )
+                        ),
+                        bsCollapsePanel(
+                            title = span(icon("plus"), "Screeplot Settings"), value = "scree.settings", style = "info",
+                            fluidRow(
+                                column(
+                                    6,
+                                    tipify(
+                                        numericInput("scree.components", "Components:",
+                                            min = 1, max = 50, step = 1, value = 30
+                                        ),
+                                        "Number of PCs to plot.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    colourInput("scree.bar.col", "Bar color:", value = "#1E90FF"),
+                                    colourInput("scree.sumline.col", "Sum line color:", value = "#EE0000"),
+                                    numericInput("scree.sumline.cex", "Sum line size:", value = 1.5, min = 0.01, step = 0.1),
+                                    colourInput("scree.sumpts.col", "Sum points color:", value = "#EE0000"),
+                                    numericInput("scree.sumpts.cex", "Sum points size:", value = 2, min = 0.01, step = 0.1)
+                                ),
+                                column(
+                                    6,
+                                    textInput("scree.main", "Main title:", value = "", placeholder = "Enter text"),
+                                    tipify(numericInput("scree.hline.val", "Hline value:", value = 80, min = 0.01, step = 0.5),
+                                        "% variance explained (y-axis) at which to draw horizontal line.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(
+                                        prettyCheckbox("scree.horns", strong("Plot Horn's parallel"), FALSE,
+                                            bigger = FALSE,
+                                            animation = "smooth", status = "success",
+                                            icon = icon("check"), width = "100%"
+                                        ),
+                                        "Plot Horn\\'s Parallel to determine optimal PCs.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(
+                                        prettyCheckbox("scree.elbow", strong("Plot elbow point"), FALSE,
+                                            bigger = FALSE,
+                                            animation = "smooth", status = "success",
+                                            icon = icon("check"), width = "100%"
+                                        ),
+                                        "Plot elbow plot to determine optimal PCs.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(
+                                        prettyCheckbox("scree.sumline", strong("Draw sum line"), TRUE,
+                                            bigger = FALSE,
+                                            animation = "smooth", status = "success",
+                                            icon = icon("check"), width = "100%"
+                                        ),
+                                        "Draw line for summed variance.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(
+                                        prettyCheckbox("scree.sumpts", strong("Draw sum points"), TRUE,
+                                            bigger = FALSE,
+                                            animation = "smooth", status = "success",
+                                            icon = icon("check"), width = "100%"
+                                        ),
+                                        "Draw points for summed variance.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    prettyCheckbox("scree.grid.maj", strong("Draw gridlines"), TRUE,
+                                        bigger = FALSE,
+                                        animation = "smooth", status = "success",
+                                        icon = icon("check"), width = "100%"
+                                    ),
+                                    prettyCheckbox("scree.hline", strong("Draw horizontal line"), FALSE,
+                                        bigger = FALSE,
+                                        animation = "smooth", status = "success",
+                                        icon = icon("check"), width = "100%"
+                                    )
+                                )
+                            )
+                        ),
+                        bsCollapsePanel(
+                            title = span(icon("plus"), "Eigencorplot Settings"), value = "eigen.settings", style = "info",
+                            fluidRow(
+                                column(
+                                    6,
+                                    tipify(
+                                        numericInput("eig.components", "Components:",
+                                            min = 1, max = 50, step = 1, value = 10
+                                        ),
+                                        "Number of PCs to plot.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(
+                                        selectInput("eig.corfun", "Correlation:",
+                                            choices = c("pearson", "spearman", "kendall"),
+                                            selected = "pearson"
+                                        ),
+                                        "Correlation method.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    colourInput("eig.max.col", "Max color:", value = "#8B0000"),
+                                    colourInput("eig.mid.col", "Midpoint color:", value = "#FFFFFF"),
+                                    colourInput("eig.min.col", "Min color:", value = "#00008B"),
+                                    textInput("eig.main", "Main title:", value = "", placeholder = "Enter text"),
+                                    numericInput("eig.main.cex", "Main title size:", value = 2, min = 0.01, step = 0.1),
+                                    selectInput("eig.main.style", "Main title style:",
+                                        choices = list("plain", "bold", "italic"),
+                                        selected = "bold"
+                                    ),
+                                    tipify(numericInput("eig.corr.cex", "Corr values size:", value = 1, min = 0.01, step = 0.1),
+                                        "Text size of correlation values.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    selectInput("eig.corr.style", "Corr values style:",
+                                        choices = list("plain", "bold", "italic"),
+                                        selected = "plain"
+                                    ),
+                                    tipify(colourInput("eig.corr.col", "Corr values color:", value = "#000000"),
+                                        "Text color of correlation values.", "right",
+                                        options = list(container = "body")
+                                    )
+                                ),
+                                column(
+                                    6,
+                                    uiOutput("eigen.vars"),
+                                    tipify(
+                                        prettyCheckbox("eig.rsquare", strong("Plot R Square"), FALSE,
+                                            bigger = FALSE,
+                                            animation = "smooth", status = "success",
+                                            icon = icon("check"), width = "100%"
+                                        ),
+                                        "Plot correlation coefficient value.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(
+                                        selectInput("eig.cormulttest", "Multiple Test Correction:",
+                                            choices = p.adjust.methods, selected = "none"
+                                        ),
+                                        "Method to use for multiple test correction.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    textInput("eig.x", "X title:", value = "", placeholder = "Enter text"),
+                                    numericInput("eig.x.cex", "X title size:", value = 1, min = 0.01, step = 0.1),
+                                    selectInput("eig.x.style", "X title style:",
+                                        choices = list("plain", "bold", "italic")
+                                    ),
+                                    textInput("eig.y", "Y title:", value = "", placeholder = "Enter text"),
+                                    numericInput("eig.y.cex", "Y title size:", value = 1, min = 0.01, step = 0.1),
+                                    selectInput("eig.y.style", "Y title style:",
+                                        choices = list("plain", "bold", "italic")
+                                    ),
+                                    tipify(
+                                        selectInput("eig.posKey", "Key position:",
+                                            choices = list("right", "left", "top", "bottom")
+                                        ),
+                                        "Position of legend.", "right",
+                                        options = list(container = "body")
+                                    )
+                                )
+                            )
+                        ),
+                        bsCollapsePanel(
+                            title = span(icon("plus"), "Distance Matrix Settings"), value = "dist.settings", style = "info",
+                            fluidRow(
+                                column(
+                                    6,
+                                    colourInput("dist.min.col", "Min color:", value = "darkblue"),
+                                    colourInput("dist.max.col", "Max color:", value = "#FFFFFF"),
+                                    numericInput("dist.row.cex", "Row font size:", value = 10, min = 1, step = 0.25)
+                                ),
+                                column(
+                                    6,
+                                    tipify(
+                                        selectInput("dist.method", "Method:",
+                                            choices = c("euclidean", "maximum", "manhattan", "canberra", "minkowski"),
+                                            selected = "euclidean"
+                                        ),
+                                        "Distance method to use.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    prettyCheckbox("dist.rownames",
+                                        label = "Show row names", value = TRUE,
+                                        animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")
+                                    ),
+                                    prettyCheckbox("dist.colnames",
+                                        label = "Show column names", value = FALSE,
+                                        animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")
+                                    ),
+                                    numericInput("dist.col.cex", "Col font size:", value = 10, min = 1, step = 0.25)
+                                )
+                            ),
+                            fluidRow(
+                                uiOutput("dist.anno.opts")
+                            )
+                        )
+                    ),
+                    div(actionButton("update", "Update Plots"), align = "center")
                 ),
-                column(6,
-                       tipify(prettyCheckbox("bip.loadings", strong("Plot Loadings"), FALSE, bigger = FALSE,
-                                             animation = "smooth", status = "success",
-                                             icon = icon("check"), width = "100%"),
-                              "Plot top PCA loadings for each PC.", "right", options = list(container = "body"))
+                mainPanel(
+                    width = 9,
+                    tabsetPanel(
+                        tabPanel("biplot", div(withSpinner(jqui_resizable(plotlyOutput("biplot", height = "700px", width = "1000px"))),
+                            br(), downloadButton("download_plotly_biplot", "Download Interactive Biplot"),
+                            align = "center"
+                        )),
+                        tabPanel("screeplot", div(withSpinner(jqui_resizable(plotlyOutput("screeplot"))),
+                            br(), downloadButton("download_plotly_screeplot", "Download Interactive Screeplot"),
+                            align = "center"
+                        )),
+                        tabPanel("eigencorplot", div(withSpinner(jqui_resizable(plotOutput("eigencorplot"))),
+                            br(), downloadButton("download_eigencorplot", "Download Eigencorplot"),
+                            align = "center"
+                        )),
+                        tabPanel("Distance Matrix", div(withSpinner(jqui_resizable(plotOutput("distmatrix"))),
+                            br(), downloadButton("download_distmat", "Download Distance Matrix"),
+                            align = "center"
+                        )),
+                        tabPanel("Metadata (Filtering)", div(br(), DTOutput("metadata"), style = "font-size:80%"))
+                    )
                 )
-              ),
-              tipify(numericInput("bip.n.loadings", "Loadings:",
-                                  min = 0, max = 100, step = 1, value = 5),
-                     "Number of PCA loadings to plot (if checked).", "right", options = list(container = "body"))
-            ),
-            bsCollapsePanel(title = span(icon("plus"), "Screeplot Settings"), value = "scree.settings", style = "info",
-              fluidRow(
-                column(6,
-                       tipify(numericInput("scree.components", "Components:",
-                                    min = 1, max = 50, step = 1, value = 30),
-                              "Number of PCs to plot.", "right", options = list(container = "body")),
-                       colourInput("scree.bar.col", "Bar color:", value = "#1E90FF"),
-                       colourInput("scree.sumline.col", "Sum line color:", value = "#EE0000"),
-                       numericInput("scree.sumline.cex", "Sum line size:", value = 1.5, min = 0.01, step = 0.1),
-                       colourInput("scree.sumpts.col", "Sum points color:", value = "#EE0000"),
-                       numericInput("scree.sumpts.cex", "Sum points size:", value = 2, min = 0.01, step = 0.1)
-                ),
-                column(6,
-                       textInput("scree.main", "Main title:", value = "", placeholder = "Enter text"),
-                       tipify(numericInput("scree.hline.val", "Hline value:", value = 80, min = 0.01, step = 0.5),
-                              "% variance explained (y-axis) at which to draw horizontal line.", "right", options = list(container = "body")),
-                       tipify(prettyCheckbox("scree.horns", strong("Plot Horn's parallel"), FALSE, bigger = FALSE,
-                                      animation = "smooth", status = "success",
-                                      icon = icon("check"), width = "100%"),
-                              "Plot Horn\\'s Parallel to determine optimal PCs.", "right", options = list(container = "body")),
-                       tipify(prettyCheckbox("scree.elbow", strong("Plot elbow point"), FALSE, bigger = FALSE,
-                                      animation = "smooth", status = "success",
-                                      icon = icon("check"), width = "100%"),
-                              "Plot elbow plot to determine optimal PCs.", "right", options = list(container = "body")),
-                       tipify(prettyCheckbox("scree.sumline", strong("Draw sum line"), TRUE, bigger = FALSE,
-                                      animation = "smooth", status = "success",
-                                      icon = icon("check"), width = "100%"),
-                              "Draw line for summed variance.", "right", options = list(container = "body")),
-                       tipify(prettyCheckbox("scree.sumpts", strong("Draw sum points"), TRUE, bigger = FALSE,
-                                      animation = "smooth", status = "success",
-                                      icon = icon("check"), width = "100%"),
-                              "Draw points for summed variance.", "right", options = list(container = "body")),
-                       prettyCheckbox("scree.grid.maj", strong("Draw gridlines"), TRUE, bigger = FALSE,
-                                      animation = "smooth", status = "success",
-                                      icon = icon("check"), width = "100%"),
-                       prettyCheckbox("scree.hline", strong("Draw horizontal line"), FALSE, bigger = FALSE,
-                                      animation = "smooth", status = "success",
-                                      icon = icon("check"), width = "100%")
-                )
-              )
-            ),
-            bsCollapsePanel(title = span(icon("plus"), "Eigencorplot Settings"), value = "eigen.settings", style = "info",
-              fluidRow(
-                column(6,
-                  tipify(numericInput("eig.components", "Components:",
-                               min = 1, max = 50, step = 1, value = 10),
-                         "Number of PCs to plot.", "right", options = list(container = "body")),
-                  tipify(selectInput("eig.corfun", "Correlation:", choices = c("pearson", "spearman", "kendall"),
-                              selected = "pearson"),
-                         "Correlation method.", "right", options = list(container = "body")),
-                  colourInput("eig.max.col", "Max color:", value = "#8B0000"),
-                  colourInput("eig.mid.col", "Midpoint color:", value = "#FFFFFF"),
-                  colourInput("eig.min.col", "Min color:", value = "#00008B"),
-                  textInput("eig.main", "Main title:", value = "", placeholder = "Enter text"),
-                  numericInput("eig.main.cex", "Main title size:", value = 2, min = 0.01, step = 0.1),
-                  selectInput("eig.main.style", "Main title style:",
-                              choices = list("plain", "bold", "italic"),
-                              selected = "bold"),
-                  tipify(numericInput("eig.corr.cex", "Corr values size:", value = 1, min = 0.01, step = 0.1),
-                         "Text size of correlation values.", "right", options = list(container = "body")),
-                  selectInput("eig.corr.style", "Corr values style:",
-                              choices = list("plain", "bold", "italic"),
-                              selected = "plain"),
-                  tipify(colourInput("eig.corr.col", "Corr values color:", value = "#000000"),
-                         "Text color of correlation values.", "right", options = list(container = "body"))
-                ),
-                column(6,
-                  uiOutput("eigen.vars"),
-                  tipify(prettyCheckbox("eig.rsquare", strong("Plot R Square"), FALSE, bigger = FALSE,
-                                 animation = "smooth", status = "success",
-                                 icon = icon("check"), width = "100%"),
-                         "Plot correlation coefficient value.", "right", options = list(container = "body")),
-                  tipify(selectInput("eig.cormulttest", "Multiple Test Correction:",
-                              choices = p.adjust.methods, selected = "none"),
-                         "Method to use for multiple test correction.", "right", options = list(container = "body")),
-                  textInput("eig.x", "X title:", value = "", placeholder = "Enter text"),
-                  numericInput("eig.x.cex", "X title size:", value = 1, min = 0.01, step = 0.1),
-                  selectInput("eig.x.style", "X title style:",
-                              choices = list("plain", "bold", "italic")),
-                  textInput("eig.y", "Y title:", value = "", placeholder = "Enter text"),
-                  numericInput("eig.y.cex", "Y title size:", value = 1, min = 0.01, step = 0.1),
-                  selectInput("eig.y.style", "Y title style:",
-                              choices = list("plain", "bold", "italic")),
-                  tipify(selectInput("eig.posKey", "Key position:",
-                              choices = list("right", "left", "top", "bottom")),
-                         "Position of legend.", "right", options = list(container = "body"))
-                )
-              )
-            ),
-            bsCollapsePanel(title = span(icon("plus"), "Distance Matrix Settings"), value = "dist.settings", style = "info",
-              fluidRow(
-                column(6,
-                  colourInput("dist.min.col", "Min color:", value = "darkblue"),
-                  colourInput("dist.max.col", "Max color:", value = "#FFFFFF"),
-                  numericInput("dist.row.cex", "Row font size:", value = 10, min = 1, step = 0.25)
-                ),
-                column(6,
-                  tipify(selectInput("dist.method", "Method:",
-                              choices = c("euclidean", "maximum", "manhattan", "canberra", "minkowski"),
-                              selected = "euclidean"),
-                         "Distance method to use.", "right", options = list(container = "body")),
-                  prettyCheckbox("dist.rownames", label = "Show row names", value = TRUE,
-                                 animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-                  prettyCheckbox("dist.colnames", label = "Show column names", value = FALSE,
-                                 animation = "smooth", status = "success", bigger = TRUE, icon = icon("check")),
-                  numericInput("dist.col.cex", "Col font size:", value = 10, min = 1, step = 0.25)
-                )
-              ),
-              fluidRow(
-                uiOutput("dist.anno.opts")
-              )
             )
-          ),
-          div(actionButton("update", "Update Plots"), align = "center")
-        ),
-        mainPanel(width = 9,
-          tabsetPanel(
-            tabPanel("biplot", div(withSpinner(jqui_resizable(plotlyOutput("biplot", height = "700px", width = "1000px"))),
-                                   br(), downloadButton("download_plotly_biplot", "Download Interactive Biplot"), align = "center")),
-            tabPanel("screeplot", div(withSpinner(jqui_resizable(plotlyOutput("screeplot"))),
-                                      br(), downloadButton("download_plotly_screeplot", "Download Interactive Screeplot"), align = "center")),
-            tabPanel("eigencorplot", div(withSpinner(jqui_resizable(plotOutput("eigencorplot"))),
-                                         br(), downloadButton("download_eigencorplot", "Download Eigencorplot"), align = "center")),
-            tabPanel("Distance Matrix", div(withSpinner(jqui_resizable(plotOutput("distmatrix"))),
-                                            br(), downloadButton("download_distmat", "Download Distance Matrix"), align = "center")),
-            tabPanel("Metadata (Filtering)", div(br(), DTOutput("metadata"), style = "font-size:80%"))
-          )
         )
-      )
     )
-  )
 }
 
 
 # Internal function to create PCA server
 .create_pca_server <- function(mat, metadata, annot.by) {
-  function(input, output, session) {
+    function(input, output, session) {
+        matty <- reactive({
+            matt <- mat
 
-    matty <- reactive({
-      matt <- mat
+            if (!is.null(input$metadata_rows_all) & input$meta.filt) {
+                matt <- matt[, input$metadata_rows_all]
+            }
 
-      if (!is.null(input$metadata_rows_all) & input$meta.filt) {
-        matt <- matt[,input$metadata_rows_all]
-      }
+            # Remove features with no variance.
+            matt <- matt[rowVars(matt) > 0, ]
 
-      # Remove features with no variance.
-      matt <- matt[rowVars(matt) > 0,]
+            # If necessary, limit to top N features by variance.
+            if (input$keep.top.n) {
+                matt <- matt[order(rowVars(matt), decreasing = TRUE), ]
 
-      # If necessary, limit to top N features by variance.
-      if (input$keep.top.n) {
-        matt <- matt[order(rowVars(matt), decreasing = TRUE),]
+                if (input$var.n.keep < nrow(matt)) {
+                    matt <- matt[1:input$var.n.keep, ]
+                }
+            }
 
-        if (input$var.n.keep < nrow(matt)) {
-          matt <- matt[1:input$var.n.keep,]
-        }
-      }
+            matt
+        })
 
-      matt
-    })
+        # Used to hold plots for download.
+        plot_store <- reactiveValues()
 
-    # Used to hold plots for download.
-    plot_store <- reactiveValues()
+        pc <- reactive({
+            req(input$var.remove)
+            meta <- metadata
+            mat <- matty()
 
-    pc <- reactive({
-      req(input$var.remove)
-      meta <- metadata
-      mat <- matty()
+            if (!is.null(input$metadata_rows_all) & input$meta.filt) {
+                meta <- metadata[input$metadata_rows_all, ]
+            }
 
-      if (!is.null(input$metadata_rows_all) & input$meta.filt) {
-        meta <- metadata[input$metadata_rows_all,]
-      }
+            # If input to use top N features instead rather than percent-based feature removal, account for that
+            var.remove <- ifelse(input$keep.top.n, 0, input$var.remove)
 
-      # If input to use top N features instead rather than percent-based feature removal, account for that
-      var.remove <- ifelse(input$keep.top.n, 0, input$var.remove)
+            pca(mat, metadata = meta, removeVar = var.remove, scale = input$scale, center = input$center)
+        })
 
-      pca(mat, metadata = meta, removeVar = var.remove, scale = input$scale, center = input$center)
-    })
+        nonnum_vars <- reactive({
+            req(pc)
 
-    nonnum_vars <- reactive({
-      req(pc)
+            pcs <- pc()
+            pcs$metadata[, !unlist(lapply(pcs$metadata, is.numeric))]
+        })
 
-      pcs <- pc()
-      pcs$metadata[,!unlist(lapply(pcs$metadata, is.numeric))]
-    })
+        output$dist.anno.opts <- renderUI({
+            req(nonnum_vars)
+            local({
+                nonnum_var <- nonnum_vars()
 
-    output$dist.anno.opts <- renderUI({
-      req(nonnum_vars)
-      local({
-        nonnum_var <- nonnum_vars()
+                tagList(
+                    column(
+                        6,
+                        selectInput("dist.top.anno", "Top annotation:", choices = c("", names(nonnum_var)), multiple = TRUE),
+                        selectInput("dist.bot.anno", "Bottom annotation:", choices = c("", names(nonnum_var)), multiple = TRUE)
+                    ),
+                    column(
+                        6,
+                        selectInput("dist.right.anno", "Right annotation:", choices = c("", names(nonnum_var)), multiple = TRUE),
+                        selectInput("dist.left.anno", "Left annotation:", choices = c("", names(nonnum_var)), multiple = TRUE)
+                    )
+                )
+            })
+        })
 
-        tagList(
-          column(6,
-                 selectInput("dist.top.anno", "Top annotation:", choices = c("", names(nonnum_var)), multiple = TRUE),
-                 selectInput("dist.bot.anno", "Bottom annotation:", choices = c("", names(nonnum_var)), multiple = TRUE)
-          ),
-          column(6,
-                 selectInput("dist.right.anno", "Right annotation:", choices = c("", names(nonnum_var)), multiple = TRUE),
-                 selectInput("dist.left.anno", "Left annotation:", choices = c("", names(nonnum_var)), multiple = TRUE)
-          )
-        )
-      })
-    })
+        # Populate UI with all PCs.
+        # TODO: Write check for only 2 PCs.
+        output$pca.comps <- renderUI({
+            req(pc)
+            local({
+                pcs <- pc()
 
-    # Populate UI with all PCs.
-    # TODO: Write check for only 2 PCs.
-    output$pca.comps <- renderUI({
-      req(pc)
-      local({
-        pcs <- pc()
+                tagList(
+                    fluidRow(
+                        column(4, selectInput("dim1", "Dim1:", choices = pcs$components, selected = "PC1")),
+                        column(4, selectInput("dim2", "Dim2:", choices = pcs$components, selected = "PC2")),
+                        column(4, selectInput("dim3", "Dim3:", choices = pcs$components, selected = "PC3"))
+                    )
+                )
+            })
+        })
 
-        tagList(
-          fluidRow(
-            column(4, selectInput("dim1", "Dim1:", choices = pcs$components, selected = "PC1")),
-            column(4, selectInput("dim2", "Dim2:", choices = pcs$components, selected = "PC2")),
-            column(4, selectInput("dim3", "Dim3:", choices = pcs$components, selected = "PC3"))
-          )
-        )
-      })
-    })
+        # Populate eigencorplot UI with only the numeric metadata variables as choices.
+        output$eigen.vars <- renderUI({
+            req(pc)
+            local({
+                pcs <- pc()
 
-    # Populate eigencorplot UI with only the numeric metadata variables as choices.
-    output$eigen.vars <- renderUI({
-      req(pc)
-      local({
-        pcs <- pc()
+                mets <- pcs$metadata[, unlist(lapply(pcs$metadata, is.numeric))]
 
-        mets <- pcs$metadata[,unlist(lapply(pcs$metadata, is.numeric))]
+                tagList(
+                    pickerInput("eig.vars", "Variables:",
+                        choices = c("", names(mets)),
+                        multiple = TRUE, options = list(
+                            `live-search` = TRUE,
+                            `actions-box` = TRUE
+                        )
+                    )
+                )
+            })
+        })
 
-        tagList(
-          pickerInput("eig.vars", "Variables:", choices = c("", names(mets)),
-                      multiple = TRUE, options = list(`live-search` = TRUE,
-                                                      `actions-box` = TRUE))
-        )
-      })
-    })
+        output$metadata <- renderDT(server = FALSE, {
+            DT::datatable(as.data.frame(metadata),
+                rownames = FALSE,
+                filter = "top",
+                extensions = c("Buttons", "Scroller"),
+                options = list(
+                    search = list(regex = TRUE),
+                    lengthMenu = list(c(10, 25, 50, -1), c("10", "25", "50", "all")),
+                    dom = "Blfrtip",
+                    buttons = c("copy", "csv", "excel", "pdf", "print"),
+                    scrollX = TRUE,
+                    deferRender = TRUE,
+                    scrollY = 600,
+                    scroller = TRUE
+                )
+            ) %>% DT::formatStyle(0, target = "row", lineHeight = "40%")
+        })
 
-    output$metadata <- renderDT(server = FALSE, {
-      DT::datatable(as.data.frame(metadata),
-                    rownames = FALSE,
-                    filter = "top",
-                    extensions = c("Buttons", "Scroller"),
-                    options = list(
-                      search = list(regex = TRUE),
-                      lengthMenu = list(c(10, 25, 50, -1), c("10", "25", "50", "all")),
-                      dom = 'Blfrtip',
-                      buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
-                      scrollX = TRUE,
-                      deferRender = TRUE,
-                      scrollY = 600,
-                      scroller = TRUE)
-      ) %>% DT::formatStyle(0, target = "row", lineHeight = '40%')
-    })
+        output$biplot <- renderPlotly({
+            req(pc, input$dim1, input$dim2, input$dim3)
+            input$update
 
-    output$biplot <- renderPlotly({
-      req(pc, input$dim1, input$dim2, input$dim3)
-      input$update
+            pc.res <- isolate(pc())
 
-      pc.res <- isolate(pc())
+            pl.cols <- NULL
+            pl.shapes <- NULL
+            pl.col <- "black"
+            hov.text <- NULL
 
-      pl.cols <- NULL
-      pl.shapes <- NULL
-      pl.col <- "black"
-      hov.text <- NULL
+            # Get marker aesthetics mappings.
+            # Drop unused factor levels if possible.
+            if (isolate(input$bip.color) != "") {
+                pl.cols <- pc.res$metadata[, isolate(input$bip.color), drop = TRUE]
+                if (is.factor(pl.cols)) {
+                    pl.cols <- droplevels(pl.cols)
+                }
+                pl.col <- dittoColors()[seq_along(unique(pc.res$metadata[, isolate(input$bip.color), drop = TRUE]))]
+            }
 
-      # Get marker aesthetics mappings.
-      # Drop unused factor levels if possible.
-      if (isolate(input$bip.color) != "") {
-        pl.cols <- pc.res$metadata[,isolate(input$bip.color), drop = TRUE]
-        if (is.factor(pl.cols)) {
-          pl.cols <- droplevels(pl.cols)
-        }
-        pl.col <- dittoColors()[seq_along(unique(pc.res$metadata[,isolate(input$bip.color), drop = TRUE]))]
-      }
+            if (isolate(input$bip.shape) != "") {
+                pl.shapes <- pc.res$metadata[, isolate(input$bip.shape), drop = TRUE]
+                if (is.factor(pl.shapes)) {
+                    pl.shapes <- droplevels(pl.shapes)
+                }
+            }
 
-      if (isolate(input$bip.shape) != "") {
-        pl.shapes <- pc.res$metadata[,isolate(input$bip.shape), drop = TRUE]
-        if (is.factor(pl.shapes)) {
-          pl.shapes <- droplevels(pl.shapes)
-        }
-      }
+            if (!is.null(annot.by)) {
+                hov <- list()
+                for (i in seq_along(annot.by)) {
+                    hov[[i]] <- paste0("</br><b>", annot.by[i], ":</b> ", pc.res$metadata[[annot.by[i]]])
+                }
 
-      if (!is.null(annot.by)) {
-        hov <- list()
-        for (i in seq_along(annot.by)) {
-          hov[[i]] <- paste0("</br><b>",annot.by[i], ":</b> ", pc.res$metadata[[annot.by[i]]])
-        }
+                hov.text <- do.call(paste0, hov)
+            }
 
-        hov.text <- do.call(paste0, hov)
-      }
+            # Check if 2D is wanted.
+            if (isolate(input$bip.twod)) {
+                fig <- plot_ly(pc.res$rotated,
+                    x = as.formula(paste0("~", isolate(input$dim1))),
+                    y = as.formula(paste0("~", isolate(input$dim2))),
+                    type = "scatter",
+                    mode = "markers",
+                    marker = list(size = 15),
+                    color = pl.cols,
+                    colors = pl.col,
+                    symbol = pl.shapes,
+                    symbols = c(
+                        "circle", "square", "diamond", "cross",
+                        "diamond-open", "circle-open", "square-open", "x"
+                    ),
+                    text = hov.text,
+                    hoverinfo = "text"
+                ) %>%
+                    layout(
+                        xaxis = list(
+                            showgrid = FALSE, showline = TRUE, mirror = TRUE, zeroline = FALSE,
+                            title = paste0(
+                                isolate(input$dim1),
+                                " (", format(round(pc.res$variance[isolate(input$dim1)], 2), nsmall = 2), "%)"
+                            )
+                        ),
+                        yaxis = list(
+                            showgrid = FALSE, showline = TRUE, mirror = TRUE, zeroline = FALSE,
+                            title = paste0(
+                                isolate(input$dim2),
+                                " (", format(round(pc.res$variance[isolate(input$dim2)], 2), nsmall = 2), "%)"
+                            )
+                        )
+                    )
 
-      # Check if 2D is wanted.
-      if (isolate(input$bip.twod)) {
-        fig <- plot_ly(pc.res$rotated, x = as.formula(paste0("~", isolate(input$dim1))),
-                y = as.formula(paste0("~", isolate(input$dim2))),
-                type = "scatter",
-                mode = "markers",
-                marker = list(size = 15),
-                color = pl.cols,
-                colors = pl.col,
-                symbol = pl.shapes,
-                symbols = c("circle", "square", "diamond", "cross",
-                            "diamond-open", "circle-open", "square-open", "x"),
-                text = hov.text,
-                hoverinfo = "text") %>%
-          layout(xaxis = list(showgrid = FALSE, showline = TRUE, mirror = TRUE, zeroline = FALSE,
-                              title = paste0(isolate(input$dim1),
-                                             " (", format(round(pc.res$variance[isolate(input$dim1)], 2), nsmall = 2),"%)")),
-                 yaxis = list(showgrid = FALSE, showline = TRUE, mirror = TRUE, zeroline = FALSE,
-                              title = paste0(isolate(input$dim2),
-                                             " (", format(round(pc.res$variance[isolate(input$dim2)], 2), nsmall = 2),"%)")))
+                fig <- fig %>% toWebGL()
 
-        fig <- fig %>% toWebGL()
+                # Plot loadings.
+                if (isolate(input$bip.loadings)) {
+                    lengthLoadingsArrowsFactor <- 1.5
 
-        # Plot loadings.
-        if (isolate(input$bip.loadings)) {
-          lengthLoadingsArrowsFactor <- 1.5
+                    # Get number of loadings to display.
+                    xidx <- order(abs(pc.res$loadings[, isolate(input$dim1)]), decreasing = TRUE)
+                    yidx <- order(abs(pc.res$loadings[, isolate(input$dim2)]), decreasing = TRUE)
+                    vars <- unique(c(
+                        rownames(pc.res$loadings)[xidx][seq_len(isolate(input$bip.n.loadings))],
+                        rownames(pc.res$loadings)[yidx][seq_len(isolate(input$bip.n.loadings))]
+                    ))
 
-          # Get number of loadings to display.
-          xidx <- order(abs(pc.res$loadings[,isolate(input$dim1)]), decreasing = TRUE)
-          yidx <- order(abs(pc.res$loadings[,isolate(input$dim2)]), decreasing = TRUE)
-          vars <- unique(c(
-            rownames(pc.res$loadings)[xidx][seq_len(isolate(input$bip.n.loadings))],
-            rownames(pc.res$loadings)[yidx][seq_len(isolate(input$bip.n.loadings))]))
+                    # get scaling parameter to match between variable loadings and rotated loadings
+                    # This is cribbed almost verbatim from PCAtools code.
+                    r <- min(
+                        (max(pc.res$rotated[, isolate(input$dim1)]) - min(pc.res$rotated[, isolate(input$dim1)]) /
+                            (max(pc.res$loadings[, isolate(input$dim1)]) - min(pc.res$loadings[, isolate(input$dim1)]))),
+                        (max(pc.res$rotated[, isolate(input$dim2)]) - min(pc.res$rotated[, isolate(input$dim2)]) /
+                            (max(pc.res$loadings[, isolate(input$dim2)]) - min(pc.res$loadings[, isolate(input$dim2)])))
+                    )
 
-          # get scaling parameter to match between variable loadings and rotated loadings
-          # This is cribbed almost verbatim from PCAtools code.
-          r <- min(
-            (max(pc.res$rotated[,isolate(input$dim1)]) - min(pc.res$rotated[,isolate(input$dim1)]) /
-               (max(pc.res$loadings[,isolate(input$dim1)]) - min(pc.res$loadings[,isolate(input$dim1)]))),
-            (max(pc.res$rotated[,isolate(input$dim2)]) - min(pc.res$rotated[,isolate(input$dim2)]) /
-               (max(pc.res$loadings[,isolate(input$dim2)]) - min(pc.res$loadings[,isolate(input$dim2)]))))
+                    fig <- fig %>%
+                        add_segments(
+                            x = 0, xend = pc.res$loadings[vars, isolate(input$dim1)] * r * lengthLoadingsArrowsFactor,
+                            y = 0, yend = pc.res$loadings[vars, isolate(input$dim2)] * r * lengthLoadingsArrowsFactor,
+                            line = list(color = "black"), inherit = FALSE, showlegend = FALSE, hoverinfo = "text"
+                        ) %>%
+                        add_annotations(
+                            x = pc.res$loadings[vars, isolate(input$dim1)] * r * lengthLoadingsArrowsFactor,
+                            y = pc.res$loadings[vars, isolate(input$dim2)] * r * lengthLoadingsArrowsFactor,
+                            ax = 0, ay = 0, text = vars, xanchor = "center", yanchor = "bottom"
+                        )
+                }
+            } else {
+                # Generate plot.
+                fig <- plot_ly(pc.res$rotated,
+                    x = as.formula(paste0("~", isolate(input$dim1))),
+                    y = as.formula(paste0("~", isolate(input$dim2))),
+                    z = as.formula(paste0("~", isolate(input$dim3))),
+                    type = "scatter3d",
+                    mode = "markers",
+                    color = pl.cols,
+                    colors = pl.col,
+                    symbol = pl.shapes,
+                    symbols = c(
+                        "circle", "square", "diamond", "cross", "diamond-open",
+                        "circle-open", "square-open", "x"
+                    ),
+                    text = hov.text,
+                    hoverinfo = "text"
+                ) %>%
+                    layout(scene = list(
+                        xaxis = list(title = paste0(
+                            isolate(input$dim1), " (",
+                            format(round(pc.res$variance[isolate(input$dim1)], 2), nsmall = 2), "%)"
+                        )),
+                        yaxis = list(title = paste0(
+                            isolate(input$dim2), " (",
+                            format(round(pc.res$variance[isolate(input$dim2)], 2), nsmall = 2), "%)"
+                        )),
+                        zaxis = list(title = paste0(
+                            isolate(input$dim3), " (",
+                            format(round(pc.res$variance[isolate(input$dim3)], 2), nsmall = 2), "%)"
+                        )),
+                        camera = list(eye = list(x = 1.5, y = 1.8, z = 0.4))
+                    ))
+            }
+            fig <- fig %>%
+                config(
+                    edits = list(
+                        annotationPosition = TRUE,
+                        annotationTail = FALSE
+                    ),
+                    toImageButtonOptions = list(format = "svg"),
+                    displaylogo = FALSE,
+                    plotGlPixelRatio = 7
+                )
 
-          fig <- fig %>%
-            add_segments(x = 0, xend = pc.res$loadings[vars,isolate(input$dim1)] * r * lengthLoadingsArrowsFactor,
-                         y = 0, yend = pc.res$loadings[vars,isolate(input$dim2)] * r * lengthLoadingsArrowsFactor,
-                         line = list(color = 'black'), inherit = FALSE, showlegend = FALSE, hoverinfo = "text") %>%
-            add_annotations(x = pc.res$loadings[vars,isolate(input$dim1)] * r * lengthLoadingsArrowsFactor,
-                            y = pc.res$loadings[vars,isolate(input$dim2)] * r * lengthLoadingsArrowsFactor,
-                            ax = 0, ay = 0, text = vars, xanchor = 'center', yanchor= 'bottom')
-        }
-      } else {
+            plot_store$biplot <- fig
 
-        # Generate plot.
-        fig <- plot_ly(pc.res$rotated, x = as.formula(paste0("~", isolate(input$dim1))),
-                y = as.formula(paste0("~", isolate(input$dim2))),
-                z = as.formula(paste0("~", isolate(input$dim3))),
-                type = "scatter3d",
-                mode = "markers",
-                color = pl.cols,
-                colors = pl.col,
-                symbol = pl.shapes,
-                symbols = c("circle", "square", "diamond", "cross", "diamond-open",
-                            "circle-open", "square-open", "x"),
-                text = hov.text,
-                hoverinfo = "text") %>%
-          layout(scene = list(
-            xaxis = list(title = paste0(isolate(input$dim1), " (",
-                                        format(round(pc.res$variance[isolate(input$dim1)], 2), nsmall = 2),"%)")),
-            yaxis = list(title = paste0(isolate(input$dim2), " (",
-                                        format(round(pc.res$variance[isolate(input$dim2)], 2), nsmall = 2),"%)")),
-            zaxis = list(title = paste0(isolate(input$dim3), " (",
-                                        format(round(pc.res$variance[isolate(input$dim3)], 2), nsmall = 2),"%)")),
-            camera = list(eye = list(x=1.5, y = 1.8, z = 0.4))))
-      }
-      fig <- fig %>%
-        config(edits = list(annotationPosition = TRUE,
-                            annotationTail = FALSE),
-               toImageButtonOptions = list(format = "svg"),
-               displaylogo = FALSE,
-               plotGlPixelRatio = 7)
+            plot_store$biplot
+        })
 
-      plot_store$biplot <- fig
+        output$screeplot <- renderPlotly({
+            req(pc)
+            input$update
 
-      plot_store$biplot
-    })
+            pc.res <- isolate(pc())
 
-    output$screeplot <- renderPlotly({
-      req(pc)
-      input$update
+            # Limit the components to those that exist.
+            comps <- ifelse(isolate(input$scree.components) > length(pc.res$components),
+                length(pc.res$components), isolate(input$scree.components)
+            )
 
-      pc.res <- isolate(pc())
+            horn <- NULL
+            if (isolate(input$scree.horns)) {
+                horn <- parallelPCA(matty())
+                horn <- horn$n
+            }
 
-      # Limit the components to those that exist.
-      comps <- ifelse(isolate(input$scree.components) > length(pc.res$components),
-                      length(pc.res$components), isolate(input$scree.components))
+            elbow <- NULL
+            if (isolate(input$scree.elbow)) {
+                elbow <- findElbowPoint(pc.res$variance)
+            }
 
-      horn <- NULL
-      if (isolate(input$scree.horns)) {
-        horn <- parallelPCA(matty())
-        horn <- horn$n
-      }
+            # Check/get hline value.
+            hline <- NULL
+            if (isolate(input$scree.hline)) {
+                hline <- isolate(input$scree.hline.val)
+            }
 
-      elbow <- NULL
-      if (isolate(input$scree.elbow)) {
-        elbow <- findElbowPoint(pc.res$variance)
-      }
-
-      # Check/get hline value.
-      hline <- NULL
-      if (isolate(input$scree.hline)) {
-        hline <- isolate(input$scree.hline.val)
-      }
-
-      # Make plot.
-      gg <- screeplot(pc.res,
+            # Make plot.
+            gg <- screeplot(pc.res,
                 components = getComponents(pc.res, seq_len(comps)),
                 colBar = isolate(input$scree.bar.col),
                 colCumulativeSumLine = isolate(input$scree.sumline.col),
@@ -580,191 +757,208 @@ shinyPCAtools <- function(mat, metadata, removeVar = 0.3, scale = FALSE,
                 gridlines.major = isolate(input$scree.grid.maj),
                 hline = hline,
                 vline = c(horn, elbow),
-                xlabAngle = 45)
+                xlabAngle = 45
+            )
 
-      fig <- ggplotly(gg, tooltip = c("x", "y")) %>%
-        config(edits = list(annotationPosition = TRUE,
-                            annotationTail = FALSE),
-               toImageButtonOptions = list(format = "svg"),
-               displaylogo = FALSE,
-               plotGlPixelRatio = 7)
+            fig <- ggplotly(gg, tooltip = c("x", "y")) %>%
+                config(
+                    edits = list(
+                        annotationPosition = TRUE,
+                        annotationTail = FALSE
+                    ),
+                    toImageButtonOptions = list(format = "svg"),
+                    displaylogo = FALSE,
+                    plotGlPixelRatio = 7
+                )
 
-      # Add vline annotations if plotted.
-      if (!is.null(horn)) {
-        fig <- fig %>% add_annotations(x = c(horn),
-                         y = c(50),
-                         text = c("Horn's"),
-                         showarrow = FALSE,
-                         font = list(size = 16))
-      }
+            # Add vline annotations if plotted.
+            if (!is.null(horn)) {
+                fig <- fig %>% add_annotations(
+                    x = c(horn),
+                    y = c(50),
+                    text = c("Horn's"),
+                    showarrow = FALSE,
+                    font = list(size = 16)
+                )
+            }
 
-      if (!is.null(elbow)) {
-        fig <- fig %>% add_annotations(x = c(elbow),
-                                       y = c(50),
-                                       text = c("Elbow point"),
-                                       showarrow = FALSE,
-                                       font = list(size = 16))
-      }
+            if (!is.null(elbow)) {
+                fig <- fig %>% add_annotations(
+                    x = c(elbow),
+                    y = c(50),
+                    text = c("Elbow point"),
+                    showarrow = FALSE,
+                    font = list(size = 16)
+                )
+            }
 
-      plot_store$screeplot <- fig
+            plot_store$screeplot <- fig
 
-      plot_store$screeplot
-    })
+            plot_store$screeplot
+        })
 
-    output$eigencorplot <- renderPlot({
-      req(pc)
-      input$update
+        output$eigencorplot <- renderPlot({
+            req(pc)
+            input$update
 
-      pc.res <- isolate(pc())
+            pc.res <- isolate(pc())
 
-      # Limit the components to those that exist.
-      comps <- ifelse(isolate(input$eig.components) > length(pc.res$components),
-                      length(pc.res$components), isolate(input$eig.components))
+            # Limit the components to those that exist.
+            comps <- ifelse(isolate(input$eig.components) > length(pc.res$components),
+                length(pc.res$components), isolate(input$eig.components)
+            )
 
-      if (!is.null(isolate(input$eig.vars)) & length(isolate(input$eig.vars)) > 1) {
-        gg <- eigencorplot(pcaobj = pc.res,
-                     components = getComponents(pc.res, seq_len(comps)),
-                     metavars = isolate(input$eig.vars),
-                     col = c(isolate(input$eig.min.col), isolate(input$eig.mid.col), isolate(input$eig.max.col)),
-                     plotRsquared = isolate(input$eig.rsquare),
-                     corMultipleTestCorrection = isolate(input$eig.cormulttest),
-                     corFUN = isolate(input$eig.corfun),
-                     main = isolate(input$eig.main),
-                     cexMain = isolate(input$eig.main.cex),
-                     fontMain = isolate(input$eig.main.style),
-                     titleX = isolate(input$eig.x),
-                     cexTitleX = isolate(input$eig.x.cex),
-                     fontTitleX = isolate(input$eig.x.style),
-                     titleY = isolate(input$eig.y),
-                     cexTitleY = isolate(input$eig.y.cex),
-                     fontTitleY = isolate(input$eig.y.style),
-                     rotTitleY = 90,
-                     rotLabX = 45,
-                     cexCorval = isolate(input$eig.corr.cex),
-                     fontCorval = isolate(input$eig.corr.style),
-                     colCorval = isolate(input$eig.corr.col),
-                     posColKey = isolate(input$eig.posKey))
+            if (!is.null(isolate(input$eig.vars)) & length(isolate(input$eig.vars)) > 1) {
+                gg <- eigencorplot(
+                    pcaobj = pc.res,
+                    components = getComponents(pc.res, seq_len(comps)),
+                    metavars = isolate(input$eig.vars),
+                    col = c(isolate(input$eig.min.col), isolate(input$eig.mid.col), isolate(input$eig.max.col)),
+                    plotRsquared = isolate(input$eig.rsquare),
+                    corMultipleTestCorrection = isolate(input$eig.cormulttest),
+                    corFUN = isolate(input$eig.corfun),
+                    main = isolate(input$eig.main),
+                    cexMain = isolate(input$eig.main.cex),
+                    fontMain = isolate(input$eig.main.style),
+                    titleX = isolate(input$eig.x),
+                    cexTitleX = isolate(input$eig.x.cex),
+                    fontTitleX = isolate(input$eig.x.style),
+                    titleY = isolate(input$eig.y),
+                    cexTitleY = isolate(input$eig.y.cex),
+                    fontTitleY = isolate(input$eig.y.style),
+                    rotTitleY = 90,
+                    rotLabX = 45,
+                    cexCorval = isolate(input$eig.corr.cex),
+                    fontCorval = isolate(input$eig.corr.style),
+                    colCorval = isolate(input$eig.corr.col),
+                    posColKey = isolate(input$eig.posKey)
+                )
 
-        plot_store$eigencorplot <- gg
+                plot_store$eigencorplot <- gg
 
-        plot_store$eigencorplot
-      } else {
-        grid.newpage()
-        grid.text("Select at least two numeric metadata values.")
-      }
-    })
+                plot_store$eigencorplot
+            } else {
+                grid.newpage()
+                grid.text("Select at least two numeric metadata values.")
+            }
+        })
 
-    output$distmatrix <- renderPlot({
-      req(matty)
-      input$update
+        output$distmatrix <- renderPlot({
+            req(matty)
+            input$update
 
-      ds.colors <- dittoColors()
+            ds.colors <- dittoColors()
 
-      # Get metadata for samples remaining.
-      meta <- metadata
-      if (!is.null(isolate(input$metadata_rows_all))) {
-        meta <- metadata[isolate(input$metadata_rows_all),]
-      }
+            # Get metadata for samples remaining.
+            meta <- metadata
+            if (!is.null(isolate(input$metadata_rows_all))) {
+                meta <- metadata[isolate(input$metadata_rows_all), ]
+            }
 
-      left.anno <- NULL
-      right.anno <- NULL
-      top.anno <- NULL
-      bot.anno <- NULL
+            left.anno <- NULL
+            right.anno <- NULL
+            top.anno <- NULL
+            bot.anno <- NULL
 
-      if (!is.null(isolate(input$dist.left.anno))) {
-        left.anno <- .create_anno(input$dist.left.anno, meta, ds.colors, anno_type = "row", side = "top")
-      }
+            if (!is.null(isolate(input$dist.left.anno))) {
+                left.anno <- .create_anno(input$dist.left.anno, meta, ds.colors, anno_type = "row", side = "top")
+            }
 
-      if (!is.null(isolate(input$dist.right.anno))) {
-        right.anno <- .create_anno(input$dist.right.anno, meta, ds.colors, anno_type = "row", side = "bottom")
-      }
+            if (!is.null(isolate(input$dist.right.anno))) {
+                right.anno <- .create_anno(input$dist.right.anno, meta, ds.colors, anno_type = "row", side = "bottom")
+            }
 
-      if (!is.null(isolate(input$dist.top.anno))) {
-        top.anno <- .create_anno(input$dist.top.anno, meta, ds.colors, anno_type = "column", side = "right")
-      }
+            if (!is.null(isolate(input$dist.top.anno))) {
+                top.anno <- .create_anno(input$dist.top.anno, meta, ds.colors, anno_type = "column", side = "right")
+            }
 
-      if (!is.null(isolate(input$dist.bot.anno))) {
-        bot.anno <- .create_anno(input$dist.bot.anno, meta, ds.colors, anno_type = "column", side = "left")
-      }
+            if (!is.null(isolate(input$dist.bot.anno))) {
+                bot.anno <- .create_anno(input$dist.bot.anno, meta, ds.colors, anno_type = "column", side = "left")
+            }
 
-      dists <- dist(t(matty()), method = isolate(input$dist.method))
-      sampleDistMatrix <- as.matrix(dists)
+            dists <- dist(t(matty()), method = isolate(input$dist.method))
+            sampleDistMatrix <- as.matrix(dists)
 
-      colors <- c(isolate(input$dist.min.col), isolate(input$dist.max.col))
+            colors <- c(isolate(input$dist.min.col), isolate(input$dist.max.col))
 
-      gg <- ComplexHeatmap::pheatmap(sampleDistMatrix,
-               clustering_distance_rows = dists,
-               clustering_distance_cols = dists,
-               col = colors,
-               row_km = isolate(input$dist.row.km),
-               column_km = isolate(input$dist.col.km),
-               fontsize_row = isolate(input$dist.row.cex),
-               fontsize_col = isolate(input$dist.col.cex),
-               show_colnames = isolate(input$dist.colnames),
-               show_rownames = isolate(input$dist.rownames),
-               left_annotation = left.anno,
-               right_annotation = right.anno,
-               top_annotation = top.anno,
-               bottom_annotation = bot.anno,
-               heatmap_legend_param = list(title = paste0(isolate(input$dist.method), " Distance")))
+            gg <- ComplexHeatmap::pheatmap(sampleDistMatrix,
+                clustering_distance_rows = dists,
+                clustering_distance_cols = dists,
+                col = colors,
+                row_km = isolate(input$dist.row.km),
+                column_km = isolate(input$dist.col.km),
+                fontsize_row = isolate(input$dist.row.cex),
+                fontsize_col = isolate(input$dist.col.cex),
+                show_colnames = isolate(input$dist.colnames),
+                show_rownames = isolate(input$dist.rownames),
+                left_annotation = left.anno,
+                right_annotation = right.anno,
+                top_annotation = top.anno,
+                bottom_annotation = bot.anno,
+                heatmap_legend_param = list(title = paste0(isolate(input$dist.method), " Distance"))
+            )
 
-      plot_store$distmat <- gg
+            plot_store$distmat <- gg
 
-      plot_store$distmat
-    })
+            plot_store$distmat
+        })
 
-    # Download interactive plots as html.
-    output$download_plotly_biplot <- downloadHandler(
-      filename = function() {
-        paste("biplot-", Sys.Date(), ".html", sep = "")
-      },
-      content = function(file) {
-        # export plotly html widget as a temp file to download.
-        saveWidget(jqui_resizable(plot_store$biplot),
-                   file, selfcontained = TRUE)
-      }
-    )
+        # Download interactive plots as html.
+        output$download_plotly_biplot <- downloadHandler(
+            filename = function() {
+                paste("biplot-", Sys.Date(), ".html", sep = "")
+            },
+            content = function(file) {
+                # export plotly html widget as a temp file to download.
+                saveWidget(jqui_resizable(plot_store$biplot),
+                    file,
+                    selfcontained = TRUE
+                )
+            }
+        )
 
-    output$download_plotly_screeplot <- downloadHandler(
-      filename = function() {
-        paste("screeplot-", Sys.Date(), ".html", sep = "")
-      },
-      content = function(file) {
-        # export plotly html widget as a temp file to download.
-        saveWidget(jqui_resizable(plot_store$screeplot),
-                   file, selfcontained = TRUE)
-      }
-    )
+        output$download_plotly_screeplot <- downloadHandler(
+            filename = function() {
+                paste("screeplot-", Sys.Date(), ".html", sep = "")
+            },
+            content = function(file) {
+                # export plotly html widget as a temp file to download.
+                saveWidget(jqui_resizable(plot_store$screeplot),
+                    file,
+                    selfcontained = TRUE
+                )
+            }
+        )
 
-    output$download_eigencorplot <- downloadHandler(
-      filename = function() {
-        paste("eigencorplot-", Sys.Date(), ".pdf", sep = "")
-      },
-      content = function(file) {
-        # export plotly html widget as a temp file to download.
-        pdf(file,  width = 7, height = 3)
-        print(plot_store$eigencorplot)
-        dev.off()
-      }
-    )
+        output$download_eigencorplot <- downloadHandler(
+            filename = function() {
+                paste("eigencorplot-", Sys.Date(), ".pdf", sep = "")
+            },
+            content = function(file) {
+                # export plotly html widget as a temp file to download.
+                pdf(file, width = 7, height = 3)
+                print(plot_store$eigencorplot)
+                dev.off()
+            }
+        )
 
-    output$download_distmat <- downloadHandler(
-      filename = function() {
-        paste("distmat-", Sys.Date(), ".pdf", sep = "")
-      },
-      content = function(file) {
-        # export plotly html widget as a temp file to download.
-        pdf(file,  width = 7, height = 3)
-        draw(plot_store$distmat)
-        dev.off()
-      }
-    )
+        output$download_distmat <- downloadHandler(
+            filename = function() {
+                paste("distmat-", Sys.Date(), ".pdf", sep = "")
+            },
+            content = function(file) {
+                # export plotly html widget as a temp file to download.
+                pdf(file, width = 7, height = 3)
+                draw(plot_store$distmat)
+                dev.off()
+            }
+        )
 
-    # Initialize plots by simulating button click once.
-    o <- observe({
-      req(pc, input$dim1, input$dim2, input$dim3)
-      shinyjs::click("update")
-      o$destroy
-    })
-  }
+        # Initialize plots by simulating button click once.
+        o <- observe({
+            req(pc, input$dim1, input$dim2, input$dim3)
+            shinyjs::click("update")
+            o$destroy
+        })
+    }
 }
