@@ -4,10 +4,12 @@
 \alias{shinyEnrichment}
 \title{Interactive Shiny Enrichment Dashboard}
 \usage{
-shinyEnrichment(enrichmentObj)
+shinyEnrichment(enrichmentObj, simMatrix = NULL)
 }
 \arguments{
 \item{enrichmentObj}{Enrichment result object (e.g., from clusterProfiler enrichGO/enrichKEGG)}
+
+\item{simMatrix}{Reduced enrichment data frame from the rrvgo package using calculateSimMatrix() and reduceSimMatrix() to produce Tree plot}
 }
 \value{
 Shiny application object (interactive dashboard)

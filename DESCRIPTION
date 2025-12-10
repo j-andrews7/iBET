@@ -2,15 +2,15 @@ Package: iBET
 Title: Interactive Bioinformatics Exploratory Tools
 Version: 0.0.0.9000
 Authors@R: 
-    person(given = "Jared",
-           family = "Andrews",
-           role = c("aut", "cre"),
-           email = "jared.andrews@stjude.org",
-           comment = c(ORCID = "0000-0002-0780-6248")),
-    person(given = "Jacob",
-           family = "Martin",
-           role = "aut",
-           email = "Jacob.Martin@stjude.org")
+    c(person(given = "Jared",
+             family = "Andrews",
+             role = c("aut", "cre"),
+             email = "jared.andrews@stjude.org",
+             comment = c(ORCID = "0000-0002-0780-6248")),
+      person(given = "Jacob",
+             family = "Martin",
+             role = c("aut"),
+             email = "Jacob.Martin@stjude.org"))
 Description: A collection of drop-in Shiny widgets for common bioinformatics 
     analyses and classes, designed for embedding in Rmd reports and interactive exploration.
 License: Apache License (>= 2)
@@ -50,7 +50,9 @@ Imports:
     GOSemSim,
     shinyBS,
     bslib,
-    rlang
+    rlang, 
+    treemap,
+    RColorBrewer
 Suggests:
     airway,
     magrittr,
@@ -58,6 +60,7 @@ Suggests:
     scater,
     scran,
     scuttle,
-    org.Hs.eg.db
+    org.Hs.eg.db,
+    rrvgo
 Depends:
     shinyBS

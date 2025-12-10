@@ -123,3 +123,20 @@ heatPlotEnrichment <- function(enrich, numSets = 10, colour = "black", sizeText 
   return(heatPlotlyOut)
 }
 
+#' @title Treemap Enrichment Visualization
+#' @description Generates a treemap of reduced enrichment terms, grouped by parent term and sized by score.
+#' @param reduceTerms Data frame of reduced enrichment terms with columns \code{parentTerm}, \code{term}, and \code{score}.
+#' @param title Title of the treemap plot (default: "Title").
+#' @param colourPalette a RColorBrewer::display.brewer.all() Colour pallete as a string
+#' @return A treemap object (list) returned by {treemap::treemap()}.
+#' @importFrom treemap treemap
+#' @author Jacob Martin
+#' @export
+
+
+treeEnrichment <- function(reduceTerms, title = "Title", colourPalette = "Grey"){
+    plot <- treemap::treemap(reduceTerms, index = c("parentTerm", "term"), vSize = "score", type = "index",
+                    title = title, palette = colourPalette, fontcolor.labels = c("#FFFFFFDD", "#00000080"), 
+                    bg.labels = 0, border.col = "#00000080")
+    return(plot)
+}

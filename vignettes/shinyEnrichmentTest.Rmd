@@ -17,16 +17,58 @@ library(enrichplot)
 library(GOSemSim)
 library(colourpicker)
 library(forcats)
+library(org.Hs.eg.db)
+
 devtools::load_all()
+
+```
+```{R}
+#New Libraries: 
+
+library(rrvgo)
+library(treemap)
+library(RColorBrewer)
 ```
 
 General Test Script: 
 
 ```{R}
 test <- readRDS("/Users/jmarti16/Desktop/ExampleUpdate.rds")
-test@result$GeneRatio <- as.numeric(sapply(strsplit(test@result$GeneRatio, "/"), function(x) as.numeric(x[1]) / as.numeric(x[2]))) # Covert string GeneRatio Fractions into numeric Fractions. 
+test1 <- test
+test1@result$GeneRatio <- as.numeric(sapply(strsplit(test@result$GeneRatio, "/"), function(x) as.numeric(x[1]) / as.numeric(x[2]))) # Covert string GeneRatio Fractions into numeric Fractions. 
 
 y <- "Hello"
-shinyEnrichment(test, simMatrix = y)
+# shinyEnrichment(test, simMatrix = y)
 
 ```
+Tree Plot test
+```{R}
+go_terms <- test$ID
+go_terms <- unname(go_terms)
+simMatrix <- calculateSimMatrix(go_terms, orgdb = "org.Hs.eg.db", ont = "MF", method = "Rel")
+
+```
+
+```{R}
+scores <- setNames(-log10(test$qvalue), test$ID)
+reduceTerms <- reduceSimMatrix(simMatrix, scores, threshold = 0.7, orgdb = "org.Hs.eg.db")
+```
+```{R}
+shinyEnrichment(test1, simMatrix = reduceTerms)
+
+```
+
+```{R}
+
+
+treeEnrichment <- function(reduceTerms, title = "Title"){
+    plot <- treemap::treemap(reduceTerms, index = c("parentTerm", "term"), vSize = "score", type = "index",
+                    title = title, palette = "Greys", fontcolor.labels = c("#FFFFFFDD", "#00000080"), 
+                    bg.labels = 0, border.col = "#00000080")
+    return(plot)
+}
+
+treeEnrichment(reduceTerms, title = "Hello")
+```
+
+```{R}

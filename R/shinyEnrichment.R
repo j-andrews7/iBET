@@ -1,6 +1,7 @@
 #' @title Interactive Shiny Enrichment Dashboard
 #' @description Creates interactive Shiny dashboard for enrichment analysis visualization with Dot Plot, Bar Plot, and Heatmap tabs
 #' @param enrichmentObj Enrichment result object (e.g., from clusterProfiler enrichGO/enrichKEGG)
+#' @param simMatrix Reduced enrichment data frame from the rrvgo package using calculateSimMatrix() and reduceSimMatrix() to produce Tree plot
 #' @return Shiny application object (interactive dashboard)
 #' @importFrom shiny shinyApp dashboardPage dashboardHeader dashboardSidebar dashboardBody
 #' @importFrom shiny tabsetPanel tabPanel numericInput selectInput textInput colourInput
@@ -55,10 +56,13 @@ shinyEnrichment <- function(enrichmentObj, simMatrix = NULL) {
                 bsCollapsePanel(
                     title = span(icon("plus"), "Tree Plot"),
                     value = "TreePlot.settings", style = "primary",
-                    numericInput("heat_categories", "Categories:", value = 10, min = 1, max = 50),
-                    colourInput("colourHeat", "Select a color", value = "blue"),
-                    numericInput("textHeat", "Font Size of Y axis: ", value = 10, min = 1, max = 50),
-                    textInput("titleHeat", "Enter the title for the dot plot:")
+                    textInput("titleTree", "Enter the title for the dot plot:"),
+                    selectInput("colour_palette", "RColorBrewerPalette: ", 
+                    c("Blues", "BuGn", "BuPu", "GnBu", "Greens", "Greys", 
+                      "Oranges", "OrRd", "PuBu", "PuBuGn", "PuRd", "Purples", 
+                      "RdPu", "Reds", "YlGn", "YlGnBu", "YlOrBr", "YlOrRd", "Viridis",
+                      "BrBG", "PiYG", "PRGn", "PuOr", "RdBu", "RdGy", "RdYlBu", "RdYlGn", "Spectral",
+                      "Accent", "Dark2", "Paired", "Pastel1", "Pastel2", "Set1", "Set2", "Set3"))
                 )
             )
         )
@@ -201,19 +205,14 @@ shinyEnrichment <- function(enrichmentObj, simMatrix = NULL) {
                         ),
                         tabPanel(
                             "TreePlot",
-                            jqui_resizable(
-                                plotlyOutput("TreePlot", height = "100%"),
-                                    options = list(
-                                    handles = "all",  
-                                    minWidth = 300,
-                                    minHeight = 300,
-                                    maxWidth = 1200,
-                                    maxHeight = 800
-                                )
-                            )                    
-                        )       
-                    )
+
+                            plotOutput("TreePlot", height = "700px", width = "100%"),
+
+                        )
+                    )                    
+                               
                 )
+                
     ui <- dashboardPage(
             dashboardHeader(disable = TRUE),
                 if (is.null(simMatrix)) sidebar_without_tree else sidebar_with_tree, # Condtion of simMatrix to determine whether Tree Panel will be visible
@@ -230,6 +229,9 @@ shinyEnrichment <- function(enrichmentObj, simMatrix = NULL) {
         )
         output$heatPlot <- renderPlotly(
             heatPlotEnrichment(enrich = enrichmentObj, numSets = input$heat_categories, colour = input$colourHeat, sizeText = input$textHeat, title = input$titleHeat)
+        )
+        output$TreePlot <- renderPlot(
+            treeEnrichment(reduceTerms = simMatrix, title = input$titleTree, colourPalette = input$colour_palette)
         )
     }
 
