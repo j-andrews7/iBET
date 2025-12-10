@@ -353,6 +353,19 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
 
     environment(.make_heatmap) <- env
 
+    ui <- .create_de_ui(metadata, annot.by, sig.col, lfc.col, abundance.col, genesets, 
+                        multi.res, res.list, coef, h.id)
+    server <- .create_de_server(mat, res, metadata, sig.col, lfc.col, abundance.col, 
+                                 h.id, genesets, multi.res, res.list, swap.rownames, env, 
+                                 abundance_col_fun, log2fc_col_fun, annot.by)
+    
+    shinyApp(ui, server, options = list(height = height))
+}
+
+
+# Internal function to create DE UI
+.create_de_ui <- function(metadata, annot.by, sig.col, lfc.col, abundance.col, genesets, 
+                           multi.res, res.list, coef, h.id) {
     body <- mainPanel(
         width = 10,
         tabsetPanel(
@@ -798,8 +811,14 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
             )
         )
     )
+}
 
-    server <- function(input, output, session) {
+
+# Internal function to create DE server
+.create_de_server <- function(mat, res, metadata, sig.col, lfc.col, abundance.col, 
+                               h.id, genesets, multi.res, res.list, swap.rownames, env, 
+                               abundance_col_fun, log2fc_col_fun, annot.by) {
+    function(input, output, session) {
         if (multi.res) {
             shinyjs::show("mres")
         }
@@ -1214,6 +1233,4 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
             }
         )
     }
-
-    shinyApp(ui, server, options = list(height = height))
 }

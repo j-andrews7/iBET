@@ -48,59 +48,67 @@
 #' @export
 shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
                         gene.col = NULL, expr.col = NULL, genesets = NULL, height = 800) {
-
-  # Parameter validation.TODO functionize this and move to utils.
-  if (is(res[[1]], "list")) {
-    multiset <- TRUE
-  } else {
-    multiset <- FALSE
-  }
-
-  if (is.null(names(res))) {
-    if (multiset) {
-      stop("Dataset list must be named")
+    if (is(res[[1]], "list")) {
+        multiset <- TRUE
     } else {
-      stop("Results lists must be named")
+        multiset <- FALSE
     }
-  } else if (is.null(names(res[[1]])) & multiset) {
-    stop("Results lists must be named")
-  }
 
-  if (multiset) {
-    for (i in seq_along(res)) {
-      if (length(res[[i]]) < 2) {
-        stop("Results list must contain at least 2 elements")
-      } else if (length(res[[i]]) > 4) {
-        stop("A maximum of 4 DE results can be provided")
-      }
+    if (is.null(names(res))) {
+        if (multiset) {
+            stop("Dataset list must be named")
+        } else {
+            stop("Results lists must be named")
+        }
+    } else if (is.null(names(res[[1]])) & multiset) {
+        stop("Results lists must be named")
     }
-  }
 
-  if (!is.null(genesets)) {
-    if (is.null(names(genesets))) {
-      stop("Genesets list must be named")
-    } else if (!is(genesets, "list")) {
-      stop("Genesets must be provided as a named list")
+    if (multiset) {
+        for (i in seq_along(res)) {
+            if (length(res[[i]]) < 2) {
+                stop("Results list must contain at least 2 elements")
+            } else if (length(res[[i]]) > 4) {
+                stop("A maximum of 4 DE results can be provided")
+            }
+        }
     }
-  }
 
-  body <- mainPanel(width = 9,
-    fluidRow(
-      uiOutput("row1")
-    ),
-    fluidRow(
-      uiOutput("row2")
+    if (!is.null(genesets)) {
+        if (is.null(names(genesets))) {
+            stop("Genesets list must be named")
+        } else if (!is(genesets, "list")) {
+            stop("Genesets must be provided as a named list")
+        }
+    }
+
+    ui <- .create_decorr_ui(res, multiset, genesets, sig.thresh)
+    server <- .create_decorr_server(res, multiset, sig.col, lfc.col, gene.col, expr.col, genesets)
+
+    shinyApp(ui, server, options = list(height = height))
+}
+
+
+# Internal function to create DECorr UI
+.create_decorr_ui <- function(res, multiset, genesets, sig.thresh) {
+    body <- mainPanel(
+        width = 9,
+        fluidRow(
+            uiOutput("row1")
+        ),
+        fluidRow(
+            uiOutput("row2")
+        )
     )
-  )
 
-  # Side bar contains settings for certain cutoffs to select significant genes.
-  ui <- dashboardPage(
-    dashboardHeader(disable = TRUE),
-    dashboardSidebar(disable = TRUE),
-    dashboardBody(
-      tags$head(
-        # Note the wrapping of the string in HTML()
-        tags$style(HTML("
+    # Side bar contains settings for certain cutoffs to select significant genes.
+    ui <- dashboardPage(
+        dashboardHeader(disable = TRUE),
+        dashboardSidebar(disable = TRUE),
+        dashboardBody(
+            tags$head(
+                # Note the wrapping of the string in HTML()
+                tags$style(HTML("
           .panel-body {
             padding: 5px;
           }
@@ -118,334 +126,442 @@ shinyDECorr <- function(res, sig.col = NULL, sig.thresh = 0.05, lfc.col = NULL,
             height: 24px;
           }
         "))
-      ),
-      useShinyjs(),
-      shinyDashboardThemes(theme = "onenote"),
-      sidebarLayout(
-        sidebarPanel(
-          width = 3,
-          bsCollapse(open = "settings",
-            bsCollapsePanel(title = span(icon("plus"), "Plot Settings"), value = "settings", style = "info",
-              hidden(pickerInput("comp.set", label = "Comparison Set:", choices = names(res))),
-              splitLayout(
-                tipify(numericInput("sig", label = "Sig. threshold:", value = 0.05, step = 0.001, min = 0.0001),
-                       "Significance threshold for coloring and points to plot.", "right", options = list(container = "body")),
-                tipify(numericInput("log2fc", label = "log2FC threshold:", value = 0, step = 0.1, min = 0),
-                       "log2 fold change threshold for coloring and points to plot.", "right", options = list(container = "body")),
-              ),
-              splitLayout(
-                numericInput("ylim", label = "Y-axis limit:", value = 10, step = 0.1, min = 0),
-                numericInput("xlim", label = "X-axis limit:", value = 10, step = 0.1, min = 0)
-              ),
-              tipify(pickerInput("show", label = "Display genes:", choices = c("Both Significant", "X-axis Significant",
-                                                                       "Y-axis Significant", "Not Significant"),
-                          selected = c("Both Significant", "X-axis Significant",
-                                       "Y-axis Significant"), multiple = TRUE),
-                     "Groups of genes to plot.", "right", options = list(container = "body")),
-              prettyCheckbox("draw.reg", strong("Draw regression line"), TRUE, bigger = TRUE,
-                             animation = "smooth", status = "success",
-                             icon = icon("check"), width = "100%"),
-              tipify(prettyCheckbox("webgl", strong("Use webGL"), FALSE, bigger = TRUE,
-                             animation = "smooth", status = "success",
-                             icon = icon("check"), width = "100%"),
-                     "Use webgl for plotting. Faster, but sometimes has visual artifacts.", "right", options = list(container = "body")),
-              tipify(numericInput("webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1),
-                     "Pixel ratio for export of webgl plots. Higher is better resolution. Not recommended to change.",
-                     "right", options = list(container = "body")),
-              tipify(prettyCheckbox("counts", strong("Show counts"), TRUE, bigger = TRUE,
-                             animation = "smooth", status = "success",
-                             icon = icon("check"), width = "100%"),
-                     "Show gene counts on plot.", "right", options = list(container = "body")),
-              tipify(prettyCheckbox("hl.counts", strong("Show highlight counts"), FALSE, bigger = TRUE,
-                             animation = "smooth", status = "success",
-                             icon = icon("check"), width = "100%"),
-                     "Show counts for highlighted genes and genesets.", "right", options = list(container = "body")),
-              splitLayout(
-                tipify(numericInput("aggr.size", label = "Corr stats size:", value = 8, step = 0.1, min = 0),
-                       "Text size of correlation stats label.", "right", options = list(container = "body")),
-                tipify(numericInput("counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
-                       "Text size of gene counts label.", "right", options = list(container = "body"))
-              )
             ),
-            bsCollapsePanel(title = span(icon("plus"), "Point Aesthetics"), value = "aesthetics", style = "info",
-              numericInput("lab.size", label = "Label Size:", value = 10, step = 0.5, min = 1),
-              fluidRow(
-                column(6,
-                       tipify(numericInput("x.opa", label = "X-sig opacity:", value = 1, step = 0.05, min = 0),
-                              "Opacity of x\\-axis significant genes.", "right", options = list(container = "body")),
-                       tipify(numericInput("y.opa", label = "Y-sig opacity:", value = 1, step = 0.05, min = 0),
-                              "Opacity of y\\-axis significant genes.", "right", options = list(container = "body")),
-                       tipify(numericInput("x.size", label = "X-sig pt size:", value = 5, step = 0.1, min = 0),
-                              "Point size of x\\-axis significant genes.", "right", options = list(container = "body")),
-                       tipify(numericInput("y.size", label = "Y-sig pt size:", value = 5, step = 0.1, min = 0),
-                              "Point size of y\\-axis significant genes.", "right", options = list(container = "body")),
-                       tipify(colourInput("comp1.sig", "X-axis Signif", value = "#E69F00"),
-                              "Color of x\\-axis significant genes.", "right", options = list(container = "body")),
-                       tipify(colourInput("both.sig", "Both Signif", value = "#009E73"),
-                              "Color of y\\-axis significant genes.", "right", options = list(container = "body"))),
-                column(6,
-                       tipify(numericInput("both.opa", label = "Both opacity:", value = 1, step = 0.05, min = 0),
-                              "Color of overlapping significant genes.", "right", options = list(container = "body")),
-                       tipify(numericInput("insig.opa", label = "Insig opacity:", value = 1, step = 0.05, min = 0),
-                              "Opacity of overlapping significant genes.", "right", options = list(container = "body")),
-                       tipify(numericInput("both.size", label = "Both pt size:", value = 5, step = 0.1, min = 0),
-                              "Size of overlapping significant genes.", "right", options = list(container = "body")),
-                       tipify(numericInput("insig.size", label = "Insig pt size:", value = 3, step = 0.1, min = 0),
-                              "Size of insignificant genes.", "right", options = list(container = "body")),
-                       tipify(colourInput("comp2.sig", "Y-axis Signif", value = "#BC57EB"),
-                              "Color of y\\-axis significant genes.", "right", options = list(container = "body")),
-                       tipify(colourInput("insig.color", "Insignificant", value = "#666666"),
-                              "Color of insignificant genes.", "right", options = list(container = "body")))
-              )
-            ),
-            bsCollapsePanel(title = span(icon("plus"), "Highlight Gene(sets)"), value = "genesets", style = "info",
-              tipify(textAreaInput("hl.genes", "Highlight Genes:", value = "", rows = 3,
-                            placeholder = "Enter space, comma, or newline delimited genes"),
-                     "Genes to highlight on plot.", "right", options = list(container = "body")),
-              tipify(pickerInput("hl.genesets", "Highlight Genesets:", choices = c("", names(genesets)),
-                          multiple = TRUE, options = list(`live-search` = TRUE,
-                                                          `actions-box` = TRUE)),
-                     "Genesets to highlight on plot.", "right", options = list(container = "body")),
-              fluidRow(
-                column(6,
-                  tipify(numericInput("hl.genes.opa", label = "Genes opacity:", value = 1, step = 0.05, min = 0),
-                         "Opacity of highlighted genes.", "right", options = list(container = "body")),
-                  tipify(numericInput("hl.genes.size", label = "Genes pt size:", value = 7, step = 0.1, min = 0),
-                         "Point size of highlighted genes.", "right", options = list(container = "body")),
-                  tipify(numericInput("hl.genes.lw", label = "Genes border width:", value = 0.5, step = 0.05, min = 0),
-                         "Width of border for highlighted genes.", "right", options = list(container = "body")),
-                  tipify(colourInput("hl.genes.col", "Genes color:", value = "#FFFF19"),
-                         "Color of genes to highlight.", "right", options = list(container = "body")),
-                  tipify(colourInput("hl.genes.lcol", "Genes border:", value = "#000000"),
-                         "Border color of genes to highlight.", "right", options = list(container = "body"))
+            useShinyjs(),
+            shinyDashboardThemes(theme = "onenote"),
+            sidebarLayout(
+                sidebarPanel(
+                    width = 3,
+                    bsCollapse(
+                        open = "settings",
+                        bsCollapsePanel(
+                            title = span(icon("plus"), "Plot Settings"), value = "settings", style = "info",
+                            hidden(pickerInput("comp.set", label = "Comparison Set:", choices = names(res))),
+                            splitLayout(
+                                tipify(numericInput("sig", label = "Sig. threshold:", value = 0.05, step = 0.001, min = 0.0001),
+                                    "Significance threshold for coloring and points to plot.", "right",
+                                    options = list(container = "body")
+                                ),
+                                tipify(numericInput("log2fc", label = "log2FC threshold:", value = 0, step = 0.1, min = 0),
+                                    "log2 fold change threshold for coloring and points to plot.", "right",
+                                    options = list(container = "body")
+                                ),
+                            ),
+                            splitLayout(
+                                numericInput("ylim", label = "Y-axis limit:", value = 10, step = 0.1, min = 0),
+                                numericInput("xlim", label = "X-axis limit:", value = 10, step = 0.1, min = 0)
+                            ),
+                            tipify(
+                                pickerInput("show",
+                                    label = "Display genes:", choices = c(
+                                        "Both Significant", "X-axis Significant",
+                                        "Y-axis Significant", "Not Significant"
+                                    ),
+                                    selected = c(
+                                        "Both Significant", "X-axis Significant",
+                                        "Y-axis Significant"
+                                    ), multiple = TRUE
+                                ),
+                                "Groups of genes to plot.", "right",
+                                options = list(container = "body")
+                            ),
+                            prettyCheckbox("draw.reg", strong("Draw regression line"), TRUE,
+                                bigger = TRUE,
+                                animation = "smooth", status = "success",
+                                icon = icon("check"), width = "100%"
+                            ),
+                            tipify(
+                                prettyCheckbox("webgl", strong("Use webGL"), FALSE,
+                                    bigger = TRUE,
+                                    animation = "smooth", status = "success",
+                                    icon = icon("check"), width = "100%"
+                                ),
+                                "Use webgl for plotting. Faster, but sometimes has visual artifacts.", "right",
+                                options = list(container = "body")
+                            ),
+                            tipify(numericInput("webgl.ratio", label = "webGL pixel ratio:", value = 7, step = 0.1, min = 1),
+                                "Pixel ratio for export of webgl plots. Higher is better resolution. Not recommended to change.",
+                                "right",
+                                options = list(container = "body")
+                            ),
+                            tipify(
+                                prettyCheckbox("counts", strong("Show counts"), TRUE,
+                                    bigger = TRUE,
+                                    animation = "smooth", status = "success",
+                                    icon = icon("check"), width = "100%"
+                                ),
+                                "Show gene counts on plot.", "right",
+                                options = list(container = "body")
+                            ),
+                            tipify(
+                                prettyCheckbox("hl.counts", strong("Show highlight counts"), FALSE,
+                                    bigger = TRUE,
+                                    animation = "smooth", status = "success",
+                                    icon = icon("check"), width = "100%"
+                                ),
+                                "Show counts for highlighted genes and genesets.", "right",
+                                options = list(container = "body")
+                            ),
+                            splitLayout(
+                                tipify(numericInput("aggr.size", label = "Corr stats size:", value = 8, step = 0.1, min = 0),
+                                    "Text size of correlation stats label.", "right",
+                                    options = list(container = "body")
+                                ),
+                                tipify(numericInput("counts.size", label = "Counts size:", value = 8, step = 0.1, min = 0),
+                                    "Text size of gene counts label.", "right",
+                                    options = list(container = "body")
+                                )
+                            )
+                        ),
+                        bsCollapsePanel(
+                            title = span(icon("plus"), "Point Aesthetics"), value = "aesthetics", style = "info",
+                            numericInput("lab.size", label = "Label Size:", value = 10, step = 0.5, min = 1),
+                            fluidRow(
+                                column(
+                                    6,
+                                    tipify(numericInput("x.opa", label = "X-sig opacity:", value = 1, step = 0.05, min = 0),
+                                        "Opacity of x\\-axis significant genes.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(numericInput("y.opa", label = "Y-sig opacity:", value = 1, step = 0.05, min = 0),
+                                        "Opacity of y\\-axis significant genes.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(numericInput("x.size", label = "X-sig pt size:", value = 5, step = 0.1, min = 0),
+                                        "Point size of x\\-axis significant genes.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(numericInput("y.size", label = "Y-sig pt size:", value = 5, step = 0.1, min = 0),
+                                        "Point size of y\\-axis significant genes.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(colourInput("comp1.sig", "X-axis Signif", value = "#E69F00"),
+                                        "Color of x\\-axis significant genes.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(colourInput("both.sig", "Both Signif", value = "#009E73"),
+                                        "Color of y\\-axis significant genes.", "right",
+                                        options = list(container = "body")
+                                    )
+                                ),
+                                column(
+                                    6,
+                                    tipify(numericInput("both.opa", label = "Both opacity:", value = 1, step = 0.05, min = 0),
+                                        "Color of overlapping significant genes.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(numericInput("insig.opa", label = "Insig opacity:", value = 1, step = 0.05, min = 0),
+                                        "Opacity of overlapping significant genes.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(numericInput("both.size", label = "Both pt size:", value = 5, step = 0.1, min = 0),
+                                        "Size of overlapping significant genes.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(numericInput("insig.size", label = "Insig pt size:", value = 3, step = 0.1, min = 0),
+                                        "Size of insignificant genes.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(colourInput("comp2.sig", "Y-axis Signif", value = "#BC57EB"),
+                                        "Color of y\\-axis significant genes.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(colourInput("insig.color", "Insignificant", value = "#666666"),
+                                        "Color of insignificant genes.", "right",
+                                        options = list(container = "body")
+                                    )
+                                )
+                            )
+                        ),
+                        bsCollapsePanel(
+                            title = span(icon("plus"), "Highlight Gene(sets)"), value = "genesets", style = "info",
+                            tipify(
+                                textAreaInput("hl.genes", "Highlight Genes:",
+                                    value = "", rows = 3,
+                                    placeholder = "Enter space, comma, or newline delimited genes"
+                                ),
+                                "Genes to highlight on plot.", "right",
+                                options = list(container = "body")
+                            ),
+                            tipify(
+                                pickerInput("hl.genesets", "Highlight Genesets:",
+                                    choices = c("", names(genesets)),
+                                    multiple = TRUE, options = list(
+                                        `live-search` = TRUE,
+                                        `actions-box` = TRUE
+                                    )
+                                ),
+                                "Genesets to highlight on plot.", "right",
+                                options = list(container = "body")
+                            ),
+                            fluidRow(
+                                column(
+                                    6,
+                                    tipify(numericInput("hl.genes.opa", label = "Genes opacity:", value = 1, step = 0.05, min = 0),
+                                        "Opacity of highlighted genes.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(numericInput("hl.genes.size", label = "Genes pt size:", value = 7, step = 0.1, min = 0),
+                                        "Point size of highlighted genes.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(numericInput("hl.genes.lw", label = "Genes border width:", value = 0.5, step = 0.05, min = 0),
+                                        "Width of border for highlighted genes.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(colourInput("hl.genes.col", "Genes color:", value = "#FFFF19"),
+                                        "Color of genes to highlight.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(colourInput("hl.genes.lcol", "Genes border:", value = "#000000"),
+                                        "Border color of genes to highlight.", "right",
+                                        options = list(container = "body")
+                                    )
+                                ),
+                                column(
+                                    6,
+                                    tipify(numericInput("hl.genesets.opa", label = "Sets opacity:", value = 1, step = 0.05, min = 0),
+                                        "Opacity of highlighted genesets.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(numericInput("hl.genesets.size", label = "Sets pt size:", value = 7, step = 0.1, min = 0),
+                                        "Point size of highlighted genesets.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(numericInput("hl.genesets.lw", label = "Sets border width:", value = 0.5, step = 0.05, min = 0),
+                                        "Width of border for highlighted genesets.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(colourInput("hl.genesets.col", "Sets color:", value = "#38FFF2"),
+                                        "Color of genesets to highlight.", "right",
+                                        options = list(container = "body")
+                                    ),
+                                    tipify(colourInput("hl.genesets.lcol", "Sets border:", value = "#000000"),
+                                        "Border color of genesets to highlight.", "right",
+                                        options = list(container = "body")
+                                    )
+                                )
+                            )
+                        )
+                    ),
+                    div(actionButton("update", "Update Plots"), align = "center")
                 ),
-                column(6,
-                  tipify(numericInput("hl.genesets.opa", label = "Sets opacity:", value = 1, step = 0.05, min = 0),
-                         "Opacity of highlighted genesets.", "right", options = list(container = "body")),
-                  tipify(numericInput("hl.genesets.size", label = "Sets pt size:", value = 7, step = 0.1, min = 0),
-                         "Point size of highlighted genesets.", "right", options = list(container = "body")),
-                  tipify(numericInput("hl.genesets.lw", label = "Sets border width:", value = 0.5, step = 0.05, min = 0),
-                         "Width of border for highlighted genesets.", "right", options = list(container = "body")),
-                  tipify(colourInput("hl.genesets.col", "Sets color:", value = "#38FFF2"),
-                         "Color of genesets to highlight.", "right", options = list(container = "body")),
-                  tipify(colourInput("hl.genesets.lcol", "Sets border:", value = "#000000"),
-                         "Border color of genesets to highlight.", "right", options = list(container = "body")))
-              )
+                body
             )
-          ),
-          div(actionButton("update", "Update Plots"), align = "center")
-        ),
-        body
-      )
-    )
-  )
-
-  server <- function(input, output, session) {
-
-    if (multiset) {
-      shinyjs::show("comp.set")
-    }
-
-    # If multiple comparisons sets provided, grab the selected one.
-    rezzy <- reactive({
-      if (multiset) {
-        res[[input$comp.set]]
-      } else {
-        res
-      }
-    })
-
-    # Get all combinations and rows needed.
-    res.comb <- reactive({
-      req(rezzy)
-      rc <- combn(names(rezzy()), 2)
-      colnames(rc) <- apply(rc, 2, paste0, collapse = "")
-      rc
-    })
-
-    row1 <- reactiveVal()
-    row2 <- reactiveVal()
-
-    # Keep track of which genes have been clicked
-    genes <- reactiveValues()
-
-    # Track if plot clicks already have an observer made so that they aren't re-made.
-    click.obs <- reactiveVal()
-
-    # On click, the key field of the event data contains the gene symbol
-    # Add that gene to the set of all "selected" genes
-    observe({
-      req(genes, res.comb, click.obs)
-
-      lapply(1:length(colnames(res.comb())), FUN = function(x) {
-        n <- colnames(res.comb())[x]
-        ev.obs <- paste0(input$comp.set, n)
-
-        # Create new observer if not already made (e.g. comparison set switch back and forth)
-        if (!ev.obs %in% click.obs()) {
-          click.obs(c(click.obs(), ev.obs))
-          observeEvent(event_data("plotly_click", source = ev.obs, priority = "event"), {
-            gene <- event_data("plotly_click", source = ev.obs)
-            gene_old_new <- rbind(genes[[ev.obs]], gene)
-            keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata)==1)),]
-
-            if (nrow(keep) == 0) {
-              genes[[ev.obs]] <- NULL
-            } else {
-              genes[[ev.obs]] <- keep
-            }
-          })
-        }
-      })
-    })
-
-    # Track if plot double clicks already have an observer made so that they aren't re-made.
-    dclick.obs <- reactiveVal()
-
-    # clear the set of genes when a double-click occurs
-    observe({
-      req(genes, res.comb)
-
-      lapply(1:length(colnames(res.comb())), FUN = function(x) {
-        n <- colnames(res.comb())[x]
-        ev.obs <- paste0(input$comp.set, n)
-
-        # Create new observer if not already made (e.g. comparison set switch back and forth)
-        if (!ev.obs %in% dclick.obs()) {
-          dclick.obs(c(dclick.obs(), ev.obs))
-          observeEvent(event_data("plotly_doubleclick", source = ev.obs), {
-            genes[[ev.obs]] <- NULL
-          })
-        }
-      })
-    })
-
-    output$row1 <- renderUI({
-      req(genes, row1)
-
-      # dynamically allocate rows/columns based on number of plots
-      row1_plots <- lapply(1:length(row1()), function(x) {
-        column(width = 4,
-           withSpinner(jqui_resizable(
-              plotlyOutput(row1()[x], height = "350px", width = "350px")
-            )
-           )
         )
-      })
+    )
+}
 
-      # Necessary for the list of items to display properly
-      do.call(tagList, row1_plots)
-    })
 
-    observeEvent(input$comp.set, {
-      for (g in names(reactiveValuesToList(genes))) {
-        genes[[g]] <- NULL
-      }
+# Internal function to create DECorr server
+.create_decorr_server <- function(res, multiset, sig.col, lfc.col, gene.col, expr.col, genesets) {
+    function(input, output, session) {
+        if (multiset) {
+            shinyjs::show("comp.set")
+        }
 
-      if (ncol(res.comb()) > 3) {
-        row1(colnames(res.comb())[1:3])
-        row2(colnames(res.comb())[4:ncol(res.comb())])
-      } else {
-        row1(colnames(res.comb())[1:ncol(res.comb())])
-        row2(NULL)
-      }
+        # If multiple comparisons sets provided, grab the selected one.
+        rezzy <- reactive({
+            if (multiset) {
+                res[[input$comp.set]]
+            } else {
+                res
+            }
+        })
 
-      if (!is.null(row2())) {
-        output$row2 <- renderUI({
+        # Get all combinations and rows needed.
+        res.comb <- reactive({
+            req(rezzy)
+            rc <- combn(names(rezzy()), 2)
+            colnames(rc) <- apply(rc, 2, paste0, collapse = "")
+            rc
+        })
 
-          row2_plots <- lapply(1:length(row2()), function(x) {
-            column(width = 4,
-               withSpinner(jqui_resizable(
-                  plotlyOutput(row2()[x], height = "350px", width = "350px")
+        row1 <- reactiveVal()
+        row2 <- reactiveVal()
+
+        # Keep track of which genes have been clicked
+        genes <- reactiveValues()
+
+        # Track if plot clicks already have an observer made so that they aren't re-made.
+        click.obs <- reactiveVal()
+
+        # On click, the key field of the event data contains the gene symbol
+        # Add that gene to the set of all "selected" genes
+        observe({
+            req(genes, res.comb, click.obs)
+
+            lapply(1:length(colnames(res.comb())), FUN = function(x) {
+                n <- colnames(res.comb())[x]
+                ev.obs <- paste0(input$comp.set, n)
+
+                # Create new observer if not already made (e.g. comparison set switch back and forth)
+                if (!ev.obs %in% click.obs()) {
+                    click.obs(c(click.obs(), ev.obs))
+                    observeEvent(event_data("plotly_click", source = ev.obs, priority = "event"), {
+                        gene <- event_data("plotly_click", source = ev.obs)
+                        gene_old_new <- rbind(genes[[ev.obs]], gene)
+                        keep <- gene_old_new[gene_old_new$customdata %in% names(which(table(gene_old_new$customdata) == 1)), ]
+
+                        if (nrow(keep) == 0) {
+                            genes[[ev.obs]] <- NULL
+                        } else {
+                            genes[[ev.obs]] <- keep
+                        }
+                    })
+                }
+            })
+        })
+
+        # Track if plot double clicks already have an observer made so that they aren't re-made.
+        dclick.obs <- reactiveVal()
+
+        # clear the set of genes when a double-click occurs
+        observe({
+            req(genes, res.comb)
+
+            lapply(1:length(colnames(res.comb())), FUN = function(x) {
+                n <- colnames(res.comb())[x]
+                ev.obs <- paste0(input$comp.set, n)
+
+                # Create new observer if not already made (e.g. comparison set switch back and forth)
+                if (!ev.obs %in% dclick.obs()) {
+                    dclick.obs(c(dclick.obs(), ev.obs))
+                    observeEvent(event_data("plotly_doubleclick", source = ev.obs), {
+                        genes[[ev.obs]] <- NULL
+                    })
+                }
+            })
+        })
+
+        output$row1 <- renderUI({
+            req(genes, row1)
+
+            # dynamically allocate rows/columns based on number of plots
+            row1_plots <- lapply(1:length(row1()), function(x) {
+                column(
+                    width = 4,
+                    withSpinner(jqui_resizable(
+                        plotlyOutput(row1()[x], height = "350px", width = "350px")
+                    ))
                 )
-               )
-            )
-          })
+            })
 
-          # Necessary for the list of items to display properly
-          do.call(tagList, row2_plots)
+            # Necessary for the list of items to display properly
+            do.call(tagList, row1_plots)
         })
-      } else {
-        output$row2 <- renderUI({div()})
-      }
 
-      shinyjs::click("update")
-    })
+        observeEvent(input$comp.set, {
+            for (g in names(reactiveValuesToList(genes))) {
+                genes[[g]] <- NULL
+            }
 
-    # Iteratively make plots.
-    observeEvent(input$update, {
-      req(row1, row2, res.comb, genes)
+            if (ncol(res.comb()) > 3) {
+                row1(colnames(res.comb())[1:3])
+                row2(colnames(res.comb())[4:ncol(res.comb())])
+            } else {
+                row1(colnames(res.comb())[1:ncol(res.comb())])
+                row2(NULL)
+            }
 
-      for (n in colnames(res.comb())) {
-        local({
-          my_n <- n
-          rezzes <- rezzy()
-          df1 <- res.comb()
-          df2 <- res.comb()
+            if (!is.null(row2())) {
+                output$row2 <- renderUI({
+                    row2_plots <- lapply(1:length(row2()), function(x) {
+                        column(
+                            width = 4,
+                            withSpinner(jqui_resizable(
+                                plotlyOutput(row2()[x], height = "350px", width = "350px")
+                            ))
+                        )
+                    })
 
-          df1 <- df1[[1, my_n]]
-          df2 <- df2[[2, my_n]]
+                    # Necessary for the list of items to display properly
+                    do.call(tagList, row2_plots)
+                })
+            } else {
+                output$row2 <- renderUI({
+                    div()
+                })
+            }
 
-          ev.obs <- paste0(input$comp.set, my_n)
-
-          df.vars <- .get_plot_vars(rezzes[df1], rezzes[df2], sig.col = sig.col,
-                                    lfc.col = lfc.col, expr.col = expr.col)
-
-          output[[my_n]] <- renderPlotly({
-            .make_xyplot(rezzes[df1], rezzes[df2],
-                         df.vars = df.vars,
-                         sig.thresh = isolate(input$sig),
-                         lfc.thresh = isolate(input$log2fc),
-                         gene.col = gene.col,
-                         source = ev.obs,
-                         regr = isolate(input$draw.reg),
-                         genes.labeled = genes[[ev.obs]],
-                         res1.color = isolate(input$comp1.sig),
-                         res2.color = isolate(input$comp2.sig),
-                         both.color = isolate(input$both.sig),
-                         insig.color = isolate(input$insig.color),
-                         xlim = isolate(input$xlim),
-                         ylim = isolate(input$ylim),
-                         show = isolate(input$show),
-                         label.size = isolate(input$lab.size),
-                         webgl = isolate(input$webgl),
-                         webgl.ratio = isolate(input$webgl.ratio),
-                         show.counts = isolate(input$counts),
-                         counts.size = isolate(input$counts.size),
-                         show.hl.counts = isolate(input$hl.counts),
-                         aggr.size = isolate(input$aggr.size),
-                         res1.size = isolate(input$x.size),
-                         res2.size = isolate(input$y.size),
-                         both.size = isolate(input$both.size),
-                         insig.size = isolate(input$insig.size),
-                         res1.opac = isolate(input$x.opa),
-                         res2.opac = isolate(input$y.opa),
-                         both.opac = isolate(input$both.opa),
-                         insig.opac = isolate(input$insig.opa),
-                         highlight.genesets = isolate(input$hl.genesets),
-                         highlight.genes = isolate(input$hl.genes),
-                         genesets = genesets,
-                         highlight.genes.color = isolate(input$hl.genes.col),
-                         highlight.genes.size = isolate(input$hl.genes.size),
-                         highlight.genes.opac = isolate(input$hl.genes.opa),
-                         highlight.genes.linecolor = isolate(input$hl.genes.lcol),
-                         highlight.genes.linewidth = isolate(input$hl.genes.lw),
-                         highlight.genesets.color = isolate(input$hl.genesets.col),
-                         highlight.genesets.size = isolate(input$hl.genesets.size),
-                         highlight.genesets.opac = isolate(input$hl.genesets.opa),
-                         highlight.genesets.linecolor = isolate(input$hl.genesets.lcol),
-                         highlight.genesets.linewidth = isolate(input$hl.genesets.lw))
-          })
+            shinyjs::click("update")
         })
-      }
-    })
 
-    # Initialize plots by simulating button click once.
-    o <- observe({
-      shinyjs::click("update")
-      o$destroy
-    })
-  }
+        # Iteratively make plots.
+        observeEvent(input$update, {
+            req(row1, row2, res.comb, genes)
 
-  shinyApp(ui, server, options = list(height = height))
+            for (n in colnames(res.comb())) {
+                local({
+                    my_n <- n
+                    rezzes <- rezzy()
+                    df1 <- res.comb()
+                    df2 <- res.comb()
+
+                    df1 <- df1[[1, my_n]]
+                    df2 <- df2[[2, my_n]]
+
+                    ev.obs <- paste0(input$comp.set, my_n)
+
+                    df.vars <- .get_plot_vars(rezzes[df1], rezzes[df2],
+                        sig.col = sig.col,
+                        lfc.col = lfc.col, expr.col = expr.col
+                    )
+
+                    output[[my_n]] <- renderPlotly({
+                        .make_xyplot(rezzes[df1], rezzes[df2],
+                            df.vars = df.vars,
+                            sig.thresh = isolate(input$sig),
+                            lfc.thresh = isolate(input$log2fc),
+                            gene.col = gene.col,
+                            source = ev.obs,
+                            regr = isolate(input$draw.reg),
+                            genes.labeled = genes[[ev.obs]],
+                            res1.color = isolate(input$comp1.sig),
+                            res2.color = isolate(input$comp2.sig),
+                            both.color = isolate(input$both.sig),
+                            insig.color = isolate(input$insig.color),
+                            xlim = isolate(input$xlim),
+                            ylim = isolate(input$ylim),
+                            show = isolate(input$show),
+                            label.size = isolate(input$lab.size),
+                            webgl = isolate(input$webgl),
+                            webgl.ratio = isolate(input$webgl.ratio),
+                            show.counts = isolate(input$counts),
+                            counts.size = isolate(input$counts.size),
+                            show.hl.counts = isolate(input$hl.counts),
+                            aggr.size = isolate(input$aggr.size),
+                            res1.size = isolate(input$x.size),
+                            res2.size = isolate(input$y.size),
+                            both.size = isolate(input$both.size),
+                            insig.size = isolate(input$insig.size),
+                            res1.opac = isolate(input$x.opa),
+                            res2.opac = isolate(input$y.opa),
+                            both.opac = isolate(input$both.opa),
+                            insig.opac = isolate(input$insig.opa),
+                            highlight.genesets = isolate(input$hl.genesets),
+                            highlight.genes = isolate(input$hl.genes),
+                            genesets = genesets,
+                            highlight.genes.color = isolate(input$hl.genes.col),
+                            highlight.genes.size = isolate(input$hl.genes.size),
+                            highlight.genes.opac = isolate(input$hl.genes.opa),
+                            highlight.genes.linecolor = isolate(input$hl.genes.lcol),
+                            highlight.genes.linewidth = isolate(input$hl.genes.lw),
+                            highlight.genesets.color = isolate(input$hl.genesets.col),
+                            highlight.genesets.size = isolate(input$hl.genesets.size),
+                            highlight.genesets.opac = isolate(input$hl.genesets.opa),
+                            highlight.genesets.linecolor = isolate(input$hl.genesets.lcol),
+                            highlight.genesets.linewidth = isolate(input$hl.genesets.lw)
+                        )
+                    })
+                })
+            }
+        })
+
+        # Initialize plots by simulating button click once.
+        o <- observe({
+            shinyjs::click("update")
+            o$destroy
+        })
+    }
 }
