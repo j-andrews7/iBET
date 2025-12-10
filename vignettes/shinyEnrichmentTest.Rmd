@@ -1,0 +1,32 @@
+Librarys: 
+
+```{R}
+
+library(devtools)
+library(shiny)
+library(shinydashboard)
+library(plotly)
+library(shinyBS)
+library(shinyjs)
+library(dashboardthemes)
+library(bslib)
+library(shinyjqui)
+library(clusterProfiler)
+library(ggtree)
+library(enrichplot)
+library(GOSemSim)
+library(colourpicker)
+library(forcats)
+devtools::load_all()
+```
+
+General Test Script: 
+
+```{R}
+test <- readRDS("/Users/jmarti16/Desktop/ExampleUpdate.rds")
+test@result$GeneRatio <- as.numeric(sapply(strsplit(test@result$GeneRatio, "/"), function(x) as.numeric(x[1]) / as.numeric(x[2]))) # Covert string GeneRatio Fractions into numeric Fractions. 
+
+y <- "Hello"
+shinyEnrichment(test, simMatrix = y)
+
+```

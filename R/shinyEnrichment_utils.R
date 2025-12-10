@@ -1,17 +1,4 @@
-# library(shiny)
-# library(shinydashboard)
-# library(plotly)
-# library(shinyBS)
-# library(shinyjs)
-# library(dashboardthemes)
-# library(bslib)
-# library(shinyjqui)
-# library(clusterProfiler)
-# library(ggtree)
-# library(enrichplot)
-# library(org.Hs.eg.db)
-# library(GOSemSim)
-# library(forcats)
+
 #' @title Dot Plot Enrichment Visualization
 #' @description Creates interactive dot plot for enrichment results
 #' @param enrich Enrichment result object (data.frame-like)
@@ -135,7 +122,4 @@ heatPlotEnrichment <- function(enrich, numSets = 10, colour = "black", sizeText 
   heatPlotlyOut <- ggplotly(heat, tooltip = c("x", "y", "fill"))
   return(heatPlotlyOut)
 }
-
-# test <- readRDS("/Volumes/JM/Development/iBET/Play/ExampleEnrichment.rds")
-# test1 <- as.data.frame(test)
 
