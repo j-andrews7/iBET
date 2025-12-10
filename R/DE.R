@@ -76,17 +76,17 @@
 #' dds <- DESeq(dds)
 #' res <- results(dds)
 #' shinyDE(dds, res = as.data.frame(res))
-#' 
+#'
 #' # Example with DESeq2 - multiple comparisons
 #' res1 <- results(dds, contrast = c("condition", "treated", "untreated"))
 #' res2 <- results(dds, contrast = c("condition", "treated2", "untreated"))
 #' res_list <- list("treated vs untreated" = as.data.frame(res1),
 #'                  "treated2 vs untreated" = as.data.frame(res2))
 #' shinyDE(dds, res = res_list, assay = "vst")
-#' 
+#'
 #' # Example with DESeq2 - using rlog transformation
 #' shinyDE(dds, res = as.data.frame(res), assay = "rlog")
-#' 
+#'
 #' # Example with DESeq2 - manual extraction
 #' mat <- assay(vst(dds))
 #' shinyDE(mat, res = as.data.frame(res), metadata = colData(dds))
@@ -111,28 +111,26 @@
 shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
                     sig.col = NULL, lfc.col = "log2FoldChange", abundance.col = "baseMean",
                     assay = NULL, h.id = "ht1", genesets = NULL, swap.rownames = NULL, height = 800) {
-    
+
     # Store original mat object and feature metadata for swap.rownames handling
     feature_metadata <- NULL
     original_mat <- mat
-    
+
     # Handle DESeqDataSet objects
     if (is(mat, "DESeqDataSet")) {
         # Extract feature metadata for swap.rownames
         if (!is.null(swap.rownames)) {
             feature_metadata <- as.data.frame(rowData(original_mat))
         }
-        
-        # Extract metadata if not provided
+
         if (is.null(metadata)) {
             metadata <- as.data.frame(colData(mat))
         }
-        
-        # Determine which assay/transformation to use
+
         if (is.null(assay)) {
             assay <- "vst"  # default
         }
-        
+
         # Extract the appropriate assay
         if (assay == "vst") {
             mat <- assay(vst(mat))
@@ -144,11 +142,6 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
             # Try to get a named assay
             mat <- assay(mat, assay)
         }
-        
-        # Set default column names for DESeq2
-        if (lfc.col == "log2FoldChange" && abundance.col == "baseMean") {
-            # These are already the defaults, no change needed
-        }
     }
     
     # Handle DGEList objects
@@ -157,17 +150,16 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
         if (!is.null(swap.rownames) && !is.null(original_mat$genes)) {
             feature_metadata <- as.data.frame(original_mat$genes)
         }
-        
-        # Extract metadata if not provided and available
+
         if (is.null(metadata) && !is.null(mat$samples)) {
             metadata <- mat$samples
         }
-        
+
         # Determine which assay to use
         if (is.null(assay)) {
             assay <- "logCPM"  # default
         }
-        
+
         # Extract the appropriate values
         if (assay == "logCPM") {
             mat <- cpm(mat, log = TRUE)
@@ -178,7 +170,7 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
         } else {
             stop(paste0("Unknown assay type '", assay, "' for DGEList. Use 'logCPM', 'cpm', or 'counts'."))
         }
-        
+
         # Set default column names for edgeR if they match DESeq2 defaults
         if (lfc.col == "log2FoldChange") {
             lfc.col <- "logFC"
@@ -190,21 +182,21 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
             sig.col <- "FDR"
         }
     }
-    
-    # Validate res is provided (unless it was NULL and mat was DESeqDataSet with automatic generation)
+
+    # Validate res is provided
     if (is.null(res)) {
         stop("res parameter is required. Please provide differential expression results.")
     }
-    
+
     # Validate inputs
     if (!is.matrix(mat) && !is.data.frame(mat)) {
         stop("mat must be a matrix, data frame, DESeqDataSet, or DGEList object")
     }
-    
+
     if (is.data.frame(mat)) {
         mat <- as.matrix(mat)
     }
-    
+
     # Check if res is individual data frame or named list.
     multi.res <- FALSE
     res.list <- NULL
@@ -217,18 +209,18 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
             stop("Results list elements should be named.")
         }
     }
-    
+
     # Convert to data frame if needed
     if (!is.data.frame(res)) {
         res <- as.data.frame(res)
     }
-    
+
     # Handle swap.rownames: create mapping from original IDs to new IDs
     if (!is.null(swap.rownames)) {
         # Try to find the swap column in different sources
         swap_values <- NULL
         swap_source <- NULL
-        
+
         # 1. Check feature_metadata (from rowData or genes)
         if (!is.null(feature_metadata) && swap.rownames %in% colnames(feature_metadata)) {
             swap_values <- feature_metadata[[swap.rownames]]
@@ -249,14 +241,14 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
                 }
             }
         }
-        
+
         if (is.null(swap_values)) {
             stop(paste0("Column '", swap.rownames, "' not found in feature metadata (rowData/genes) or results dataframe."))
         }
-        
+
         # Create mapping from original rownames to new identifiers
         original_ids <- rownames(mat)
-        
+
         # Ensure swap_values matches mat dimensions
         if (length(swap_values) != length(original_ids)) {
             # Try to match by rownames if lengths differ
@@ -275,14 +267,11 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
 
         # Make identifiers unique if needed
         new_ids <- make.names(swap_values, unique = TRUE)
-
-        # Apply new rownames to mat
         rownames(mat) <- new_ids
 
         # Apply new rownames to res and res.list
         # Create mapping: original rowname -> new rowname
         id_mapping <- setNames(new_ids, original_ids)
-
         res <- .swap_res_rownames(res, id_mapping, original_ids)
 
         if (multi.res) {
@@ -297,7 +286,7 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
     if (!lfc.col %in% colnames(res)) {
         stop(paste0("Column '", lfc.col, "' not found in results. Please specify correct column name with lfc.col parameter."))
     }
-    
+
     if (!abundance.col %in% colnames(res)) {
         stop(paste0("Column '", abundance.col, "' not found in results. Please specify correct column name with abundance.col parameter."))
     }
@@ -332,7 +321,7 @@ shinyDE <- function(mat, res = NULL, metadata = NULL, annot.by = NULL,
     if (multi.res) {
         res.list <- lapply(res.list, function(r) r[intersect(rownames(r), common_feats), , drop = FALSE])
     }
-    
+
     # Parameter validation.
     if (!is.null(genesets)) {
         if (is.null(names(genesets))) {
