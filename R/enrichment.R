@@ -32,8 +32,12 @@ shinyEnrichment <- function(enrichment.obj, sim.matrix = NULL) {
                     textInput("title.dot.plot", "Enter the title for the plot:"),
                     selectInput("x.axis.selection", "X-axis:", c("Count", "GeneRatio")),
                     numericInput("dot.text.size", "Y Axis Text Size: ", value = 10, min = 1, max = 50),
-                    colourInput("my.color.dot1", "Select a color", value = "red"),
-                    colourInput("my.color.dot2", "Select a color", value = "blue")
+                    colourInput("my.color.dot1", "Select a color", value = "#FF0000"),
+                    colourInput("my.color.dot2", "Select a color", value = "blue"), 
+                    selectInput("download.type.dot", "Format for downloading plot:", c("png", "svg")), 
+                    selectInput("font.type.dot", "Font for title and axes: ", c("Arial", "Balto", "Courier New", "Droid Sans", "Droid Serif", "Droid Sans Mono", "Gravitas One",
+                                                                                "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman", "Verdana", 
+                                                                                "sans-serif", "serif", "monospace"))
                 ),
                 # Bar Plot Button UI
                 bsCollapsePanel(
@@ -45,7 +49,11 @@ shinyEnrichment <- function(enrichment.obj, sim.matrix = NULL) {
                     selectInput("x.axis.selectionBar", "X-axis:", c("Count", "GeneRatio")),
                     numericInput("bar.text.size", "Y Axis Text Size: ", value = 10, min = 1, max = 50),
                     colourInput("my.color.bar1", "Select a color", value = "red"),
-                    colourInput("my.color.bar2", "Select a color", value = "blue")
+                    colourInput("my.color.bar2", "Select a color", value = "blue"),
+                    selectInput("download.type.bar", "Format for downloading plot:", c("png", "svg")),
+                    selectInput("font.type.bar", "Font for title and axes: ", c("Arial", "Balto", "Courier New", "Droid Sans", "Droid Serif", "Droid Sans Mono", "Gravitas One",
+                                                                                "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman", "Verdana", 
+                                                                                "sans-serif", "serif", "monospace"))
                 ),
                 #Heat PLot
                 bsCollapsePanel(
@@ -54,7 +62,11 @@ shinyEnrichment <- function(enrichment.obj, sim.matrix = NULL) {
                     numericInput("heat.categories", "Categories:", value = 10, min = 1, max = 50),
                     colourInput("colour.heat", "Select a color", value = "blue"),
                     numericInput("text.heat", "Font Size of Y axis: ", value = 10, min = 1, max = 50),
-                    textInput("title.heat", "Enter the title for the plot:")
+                    textInput("title.heat", "Enter the title for the plot:"),
+                    selectInput("download.type.heat", "Format for downloading plot:", c("png", "svg")),
+                    selectInput("font.type.heat", "Font for title and axes: ", c("Arial", "Balto", "Courier New", "Droid Sans", "Droid Serif", "Droid Sans Mono", "Gravitas One",
+                                                                                "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman", "Verdana", 
+                                                                                "sans-serif", "serif", "monospace"))
                 ),
                 bsCollapsePanel(
                     title = span(icon("plus"), "Tree Plot"),
@@ -148,13 +160,21 @@ shinyEnrichment <- function(enrichment.obj, sim.matrix = NULL) {
             }
         )
         output$dotplot <- renderPlotly(
-            make_dot_plot(enrich = enrichment.obj, num.sets = input$num.categories.dot, colour.by = input$colour.by, title.for.plot = input$title.dot.plot, x.axis = input$x.axis.selection, text.size = input$dot.text.size, colour1 = input$my.color.dot1, colour2 = input$my.color.dot2)
+            make_dot_plot(enrich = enrichment.obj, num.sets = input$num.categories.dot, colour.by = input$colour.by, 
+                        title.for.plot = input$title.dot.plot, x.axis = input$x.axis.selection, text.size = input$dot.text.size, 
+                        colour1 = input$my.color.dot1, colour2 = input$my.color.dot2, download.type = input$download.type.dot,
+                        font.type = input$font.type.dot)
         )
         output$barPlot <- renderPlotly(
-            make_bar_plot(enrich = enrichment.obj, num.sets = input$num.categories.bar, colour.by = input$colour.by.bar, title.for.plot = input$title.bar.plot, x.axis = input$x.axis.selectionBar, colour1 = input$my.color.bar1, colour2 = input$my.color.bar2, text.size = input$bar.text.size)
+            make_bar_plot(enrich = enrichment.obj, num.sets = input$num.categories.bar, colour.by = input$colour.by.bar, 
+                        title.for.plot = input$title.bar.plot, x.axis = input$x.axis.selectionBar, colour1 = input$my.color.bar1, 
+                        colour2 = input$my.color.bar2, text.size = input$bar.text.size, download.type = input$download.type.bar,
+                        font.type = input$font.type.bar)
         )
         output$heatPlot <- renderPlotly(
-            make_binary_heatmap(enrich = enrichment.obj, num.sets = input$heat.categories, colour = input$colour.heat, size.text = input$text.heat, title = input$title.heat)
+            make_binary_heatmap(enrich = enrichment.obj, num.sets = input$heat.categories, colour = input$colour.heat, 
+                                size.text = input$text.heat, title = input$title.heat, download.type = input$download.type.heat,
+                                font.type = input$font.type.heat)
         )
         output$TreePlot <- renderPlot(
             treemap::treemap(sim.matrix, index = c("parentTerm", "term"), vSize = "score", type = "index",

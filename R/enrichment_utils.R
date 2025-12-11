@@ -15,7 +15,9 @@
 #' @importFrom plotly ggplotly
 #' @author Jacob Martin
 #' @export
-make_dot_plot <- function(enrich, num.sets = 10, colour.by = "p.adjust", title.for.plot = "Title", x.axis = "GeneRatio", text.size = 10, colour1 = "red", colour2 = "blue"){
+make_dot_plot <- function(enrich, num.sets = 10, colour.by = "p.adjust", title.for.plot = "Title", 
+                        x.axis = "GeneRatio", text.size = 10, colour1 = "red", colour2 = "blue", 
+                        download.type = "png", font.type = "Arial"){
     enrich <- enrich[order(enrich$p.adjust), ]
     enrich <- enrich[seq(num.sets), ]
     dotPlot <- ggplot(enrich, 
@@ -30,10 +32,15 @@ make_dot_plot <- function(enrich, num.sets = 10, colour.by = "p.adjust", title.f
         labs(x = paste(x.axis, "(log10)"), y = "Description", title = title.for.plot)+
         scale_color_gradient(low = colour1, high = colour2, name = colour.by)
     
-    plotlyOut <- ggplotly(dotPlot, tooltip = c("text", "x", "size", colour.by))
+    plotlyOut <- ggplotly(dotPlot, tooltip = c("text", "x", "size", colour.by)) |>
+        layout(title = list(text = "Click To Edit Title", font = font.type, x = 0.5, xanchor = "center", y = 0.98, yanchor = "top"),  # Editing the Plotly axis titles and download button 
+               xaxis = list(title = list(text = x.axis, font = list(size = 18, familly = font.type, color = "black")))) |>
+                    config(editable = TRUE, edits = list(titleText = TRUE, axisTitleText = TRUE), 
+                        toImageButtonOptions = list(format = download.type, filename = "dot_plot", height = 500, width = 700, scale = 1),
+                        displaylogo = FALSE) # Hiding Plotly Logo
+
     return(plotlyOut)
-    plotlyOut <- ggplotly(dotPlot, tooltip = c("x", "y", "size", colour.by))
-    return(plotlyOut)
+
 }
 #' @title Bar Plot Enrichment Visualization
 #' @description Creates interactive horizontal bar plot for enrichment analysis results
@@ -51,10 +58,12 @@ make_dot_plot <- function(enrich, num.sets = 10, colour.by = "p.adjust", title.f
 #' @importFrom ggplot2 element_text coord_flip
 #' @importFrom plotly ggplotly
 #' @author Jacob Martin
-#' @export
-make_bar_plot <- function(enrich, num.sets = 10, colour.by = "p.adjust", title.for.plot = "Title", x.axis = "GeneRatio", text.size = 10, colour1 = "red", colour2 = "blue"){
+#' @export 
+make_bar_plot <- function(enrich, num.sets = 10, colour.by = "p.adjust", title.for.plot = "Title", 
+                        x.axis = "GeneRatio", text.size = 10, colour1 = "red", colour2 = "blue",
+                        download.type = "png", font.type = "Arial"){
     
-    enrich_df <- as.data.frame(enrich)[order(as.data.frame(enrich)[[colour.by]]), ][1:num.sets, ]
+    enrich_df <- as.data.frame(enrich)[order(as.data.frame(enrich)[[colour.by]]), ][seq(num.sets), ]
     enrich_df[[x.axis]] <- as.numeric(as.character(enrich_df[[x.axis]]))
     barPlot <- ggplot(enrich_df, aes(x = reorder(Description, !!sym(x.axis)), y = !!sym(x.axis), fill = .data[[colour.by]], text = Description)) +
         geom_col(alpha = 0.8, width = 0.7) +
@@ -65,7 +74,14 @@ make_bar_plot <- function(enrich, num.sets = 10, colour.by = "p.adjust", title.f
               axis.text.y = element_text(color = "black", size = text.size)) +
         coord_flip()  # Horizontal bars for long descriptions
     
-    plotlyOut <- ggplotly(barPlot, tooltip = c("text", "y", "fill"))
+    plotlyOut <- ggplotly(barPlot, tooltip = c("text", "y", "fill")) |> 
+        layout(title = list(text = "Click To Edit Title", font = font.type, x = 0.5, xanchor = "center", y = 0.98, yanchor = "top"), # Editing the Plotly axis titles and download button 
+               xaxis = list(title = list(text = x.axis, font = list(size = 18, familly = font.type, color = "black")))) |>
+                    config(editable = TRUE, edits = list(titleText = TRUE, axisTitleText = TRUE),
+                    toImageButtonOptions = list(format = download.type, filename = "bar_plot", height = 500, width = 700, scale = 1), 
+                    displaylogo = FALSE) # Hiding Plotly Logo 
+    
+
     return(plotlyOut)
 }
 #' @title Heatmap Enrichment Visualization
@@ -80,44 +96,49 @@ make_bar_plot <- function(enrich, num.sets = 10, colour.by = "p.adjust", title.f
 #' @importFrom plotly ggplotly
 #' @author Jacob Martin
 #' @export
-make_binary_heatmap <- function(enrich, num.sets = 10, colour = "black", size.text = 10, title = NULL){
+make_binary_heatmap <- function(enrich, num.sets = 10, colour = "black", size.text = 10, title = NULL, download.type = "png", font.type = "Arial"){
 
-  top_terms <- head(enrich, num.sets)
-  gene_list <- strsplit(top_terms$geneID, "/")
-  names(gene_list) <- top_terms$Description
-  
-  long_df <- data.frame(
-    pathway = rep(names(gene_list), lengths(gene_list)),
-    gene    = unlist(gene_list),
-    presence = 1L
-  )
-  
-  # Rest of your code stays the same
-  all_genes    <- sort(unique(long_df$gene))
-  all_pathways <- sort(unique(long_df$pathway))
+    top_terms <- head(enrich, num.sets)
+    gene_list <- strsplit(top_terms$geneID, "/")
+    names(gene_list) <- top_terms$Description
 
-  full_grid <- expand.grid(
-    gene    = all_genes,
-    pathway = all_pathways,
-    KEEP.OUT.ATTRS = FALSE,
-    stringsAsFactors = FALSE
-  )
+    long_df <- data.frame(
+        pathway = rep(names(gene_list), lengths(gene_list)),
+        gene    = unlist(gene_list),
+        presence = 1L
+    )
 
-  plot_data <- merge(full_grid, long_df, by = c("gene", "pathway"), all.x = TRUE)
-  plot_data$presence[is.na(plot_data$presence)] <- 0L
-  plot_data$presence <- factor(plot_data$presence, levels = c(0, 1))
+    # Rest of your code stays the same
+    all_genes    <- sort(unique(long_df$gene))
+    all_pathways <- sort(unique(long_df$pathway))
 
-  heat <- ggplot(plot_data, aes(x = gene, y = pathway, fill = presence)) +
-    geom_tile(color = "white", linewidth = 1) +
-    scale_fill_manual(values = c("0" = "white", "1" = colour)) +
-    theme_minimal(base_size = 11) +
-    theme(
-      axis.text.x = element_text(angle = 90, hjust = 1, size = 9),
-      axis.text.y = element_text(size = size.text)
-    ) +
-    labs(x = "Genes", y = "Enriched GO Terms", fill = "Gene\nPresence", 
-         title = title)
-         
-  heatPlotlyOut <- ggplotly(heat, tooltip = c("x", "y", "fill"))
-  return(heatPlotlyOut)
-}
+    full_grid <- expand.grid(
+        gene    = all_genes,
+        pathway = all_pathways,
+        KEEP.OUT.ATTRS = FALSE,
+        stringsAsFactors = FALSE
+    )
+#Above shows the data.frame generated to plot the gg heat map in a binary fashion 
+    plot_data <- merge(full_grid, long_df, by = c("gene", "pathway"), all.x = TRUE)
+    plot_data$presence[is.na(plot_data$presence)] <- 0L
+    plot_data$presence <- factor(plot_data$presence, levels = c(0, 1))
+
+    heat <- ggplot(plot_data, aes(x = gene, y = pathway, fill = presence)) +
+        geom_tile(color = "white", linewidth = 1) +
+        scale_fill_manual(values = c("0" = "white", "1" = colour)) +
+        theme_minimal(base_size = 11) +
+        theme(
+        axis.text.x = element_text(angle = 90, hjust = 1, size = 9),
+        axis.text.y = element_text(size = size.text)
+        ) +
+        labs(x = "Genes", y = "Enriched GO Terms", fill = "Gene\nPresence", 
+            title = title)
+            
+    heatPlotlyOut <- ggplotly(heat, tooltip = c("x", "y", "fill")) |>
+        layout(title = list(text = "Click To Edit Title", font = font.type, x = 0.5, xanchor = "center", y = 0.98, yanchor = "top"),  # Editing the Plotly axis titles and download button 
+            xaxis = list(title = list(text = "Genes", font = list(size = 18, familly = font.type, color = "black")))) |>
+                    config(editable = TRUE, edits = list(titleText = TRUE, axisTitleText = TRUE),
+                    toImageButtonOptions = list(format = download.type, filename = "heatMap_plot", height = 500, width = 700, scale = 1),
+                    displaylogo = FALSE) #Hiding Plotly Logo 
+    return(heatPlotlyOut)
+    }
