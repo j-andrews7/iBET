@@ -37,7 +37,7 @@ test <- readRDS("/Users/jmarti16/Desktop/ExampleUpdate.rds")
 test1 <- test
 test1@result$GeneRatio <- as.numeric(sapply(strsplit(test@result$GeneRatio, "/"), function(x) as.numeric(x[1]) / as.numeric(x[2]))) # Covert string GeneRatio Fractions into numeric Fractions. 
 
-y <- "Hello"
+
 # shinyEnrichment(test, simMatrix = y)
 
 ```
@@ -54,7 +54,7 @@ scores <- setNames(-log10(test$qvalue), test$ID)
 reduceTerms <- reduceSimMatrix(simMatrix, scores, threshold = 0.7, orgdb = "org.Hs.eg.db")
 ```
 ```{R}
-shinyEnrichment(test1, simMatrix = reduceTerms)
+shinyEnrichment(test1, sim.matrix = reduceTerms)
 
 ```
 
@@ -72,3 +72,9 @@ treeEnrichment(reduceTerms, title = "Hello")
 ```
 
 ```{R}
+
+# Test for if statement
+source("/Volumes/JM/Development/iBET/R/testenrichment.R")
+shinyEnrichment1(test1, sim.matrix = NULL)
+
+```

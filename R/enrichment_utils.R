@@ -18,9 +18,10 @@
 make_dot_plot <- function(enrich, num.sets = 10, colour.by = "p.adjust", title.for.plot = "Title", x.axis = "GeneRatio", text.size = 10, colour1 = "red", colour2 = "blue"){
     enrich <- enrich[order(enrich$p.adjust), ]
     enrich <- enrich[seq(num.sets), ]
-    dotPlot <- ggplot(enrich, aes(x = .data[[x.axis]], y = reorder(Description, .data[[x.axis]], color = .data[[colour.by]], size = Count, group = Description, text = Description)) +
-        geom_point(alpha = 0.7) +
-        scale_size_continuous(range = c(3, 7), name = "Count") + 
+    dotPlot <- ggplot(enrich, 
+        aes(x = .data[[x.axis]], y = reorder(Description, .data[[x.axis]]), color = .data[[colour.by]], size = Count, text = Description))+
+        geom_point(alpha = 0.7)+
+        scale_size_continuous(range = c(3, 7), name = "Count")+ 
         theme_minimal() +
         theme(
             axis.text.y = element_text(color = "black", size = text.size, angle = 0, hjust = .5, vjust = .5, face = "plain"),
@@ -28,6 +29,9 @@ make_dot_plot <- function(enrich, num.sets = 10, colour.by = "p.adjust", title.f
         )+
         labs(x = paste(x.axis, "(log10)"), y = "Description", title = title.for.plot)+
         scale_color_gradient(low = colour1, high = colour2, name = colour.by)
+    
+    plotlyOut <- ggplotly(dotPlot, tooltip = c("text", "x", "size", colour.by))
+    return(plotlyOut)
     plotlyOut <- ggplotly(dotPlot, tooltip = c("x", "y", "size", colour.by))
     return(plotlyOut)
 }
@@ -52,7 +56,7 @@ make_bar_plot <- function(enrich, num.sets = 10, colour.by = "p.adjust", title.f
     
     enrich_df <- as.data.frame(enrich)[order(as.data.frame(enrich)[[colour.by]]), ][1:num.sets, ]
     enrich_df[[x.axis]] <- as.numeric(as.character(enrich_df[[x.axis]]))
-    barPlot <- ggplot(enrich_df, aes(x = reorder(Description, .data[[x.axis]]), y = .data[[x.axis]], fill = .data[[colour.by]], text = Description)) +
+    barPlot <- ggplot(enrich_df, aes(x = reorder(Description, !!sym(x.axis)), y = !!sym(x.axis), fill = .data[[colour.by]], text = Description)) +
         geom_col(alpha = 0.8, width = 0.7) +
         scale_fill_gradient(low = colour1, high = colour2, name = colour.by) +
         labs(x = "Description", y = paste(x.axis, "(log10)"), title = title.for.plot) +

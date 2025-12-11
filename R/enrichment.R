@@ -16,7 +16,7 @@
 #' @importFrom clusterProfiler enrichGO enrichKEGG
 #' @author Jacob Martin
 #' @export
-shinyEnrichment1 <- function(enrichment.obj, sim.matrix = NULL) {
+shinyEnrichment <- function(enrichment.obj, sim.matrix = NULL) {
                 
     ui <- dashboardPage(
             dashboardHeader(disable = TRUE),
