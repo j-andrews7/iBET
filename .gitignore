@@ -1,3 +1,7 @@
 .Rproj.user
 .Rhistory
 *.dcf
+.DS_Store
+**/.DS_Store
+._*
+.DS_Store?
